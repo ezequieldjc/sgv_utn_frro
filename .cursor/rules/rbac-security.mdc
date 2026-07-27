@@ -1,0 +1,50 @@
+---
+description: Reglas de RBAC, seguridad de acceso y auditoría
+globs: **/auth/**,**/*.tsx,**/*.py
+alwaysApply: false
+---
+
+- Modelo real de roles y permisos: Vive en el schema `auth`. `auth.usuario` tiene un
+  `rol_id` (FK a `auth.rol`). Los permisos NO están en el usuario ni en el rol directamente:
+  viven en `auth.permiso` y se conectan mediante la tabla intermedia `auth.rol_permiso`
+  (many-to-many entre rol y permiso). Para saber si un usuario puede hacer algo, siempre se
+  resuelve la cadena: usuario → rol → rol_permiso → permiso.
+
+- Permission-First Security: Nunca compares el string de rol crudo (ej: `rol.nombre == "VETERINARIO"`)
+  para mostrar u ocultar elementos de UI o autorizar una acción. Usá códigos de permiso
+  explícitos y atómicos desde `auth.permiso.nombre`, con formato `MODULO_ACCION`
+  (ej: `MASCOTAS_CREAR`, `MASCOTAS_VER`, `TURNOS_EDITAR`, `REPORTES_VER`).
+
+- Conditional Rendering:
+  - Ocultá ítems del menú/sidebar si el usuario no tiene el permiso de lectura de ese módulo.
+  - Deshabilitá u ocultá botones de acción (crear, editar, eliminar) si el usuario no tiene
+    el permiso específico de esa acción.
+
+- Backend Enforcement: Ocultar cosas en la UI es solo por UX, nunca es la medida de
+  seguridad real. TODO endpoint de FastAPI debe validar el permiso correspondiente en el
+  backend (vía dependency de FastAPI que decodifica el JWT, resuelve rol → rol_permiso →
+  permiso, y valida) antes de ejecutar cualquier lógica. Nunca confíes en que el frontend
+  ya filtró algo.
+
+- Invalidación de sesiones (`version_token`): `auth.usuario.version_token` es un contador
+  que se incluye dentro del payload del JWT al generarlo. Cada vez que cambian los permisos,
+  el rol, o se fuerza un logout de un usuario (ej: cambio de contraseña, usuario deshabilitado),
+  incrementá `version_token` en la base de datos. En cada request autenticado, el backend
+  debe comparar el `version_token` del JWT contra el valor actual en `auth.usuario`: si no
+  coinciden, el token es inválido aunque no haya expirado, y se debe rechazar con 401.
+
+- Rotación de contraseña (`auth.historial_contrasena`): Nunca sobrescribas el hash de
+  contraseña en el lugar; cada cambio de contraseña genera un nuevo registro en
+  `auth.historial_contrasena` (con `hashed_password` vía bcrypt/argon2). El campo
+  `debe_cambiar` en `True` obliga al usuario a cambiar su contraseña en el próximo login
+  antes de dejarlo acceder a cualquier otra funcionalidad.
+
+- Auditoría de login (`auth.login`): Todo intento de login (exitoso o fallido) se registra
+  en `auth.login`, incluyendo `username_ingresado` (texto literal, incluso si no existe el
+  usuario), `ip`, `exito` y `razon_fallo` cuando corresponda (ej: `CLAVE_INCORRECTA`,
+  `USUARIO_DESHABILITADO`, `USUARIO_INEXISTENTE`). Esta tabla es la base para detectar
+  fuerza bruta — si vas a implementar bloqueo por intentos fallidos, la lógica de conteo
+  se apoya en esta tabla, no en una tabla nueva.
+
+- Auditoría sensible: Acciones sobre historia clínica, recetas electrónicas y datos
+  personales del cliente (`core.persona`) deben quedar trazadas (quién, qué, cuándo).

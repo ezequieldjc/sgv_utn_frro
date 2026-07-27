@@ -1,0 +1,26 @@
+---
+description: Reglas de UI, diseño y componentes visuales
+globs: **/*.tsx,**/components/**
+alwaysApply: false
+---
+
+- UI Framework: Usá componentes de Shadcn UI (`@/components/ui/...`) siempre que exista un
+  equivalente. No escribas inputs, botones, modales o selects en HTML crudo si Shadcn ya
+  tiene ese componente.
+
+- Icons: Usá `lucide-react` para todos los íconos del sistema. El ícono `PawPrint` es el
+  fallback/branding oficial del proyecto (clínica veterinaria).
+
+- Styling: Usá Tailwind CSS junto con las variables CSS estándar de Shadcn
+  (`bg-background`, `text-foreground`, `border-border`, `bg-primary`, `text-muted-foreground`).
+  No hardcodees colores hex directamente en los componentes.
+
+- Assets:
+  - Imagen de fondo del login: `/bg-login.jpg`.
+  - Logo del negocio: `/logo.png` (si falla la carga, usar el ícono `PawPrint` como fallback).
+
+- Dark/Light Mode: Este proyecto es una SPA con Vite, sin server-side rendering, por lo
+  tanto NO usar el paquete `next-themes` (está pensado para evitar el flash de hidratación
+  de Next.js, que acá no existe). Implementar el cambio de tema con un Context de React
+  simple (`ThemeProvider` propio) que guarde la preferencia en `localStorage` y togglee la
+  clase `dark` en el elemento raíz, usando las mismas variables CSS de Shadcn.

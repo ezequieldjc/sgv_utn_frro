@@ -1,0 +1,47 @@
+---
+description: Reglas de mapeo de datos entre backend, API y frontend
+globs: **/models/**,**/schemas/**,**/types/**,**/*.py,**/*.ts,**/*.tsx
+alwaysApply: false
+---
+
+- Multi-Schema PostgreSQL: La base de datos usa schemas separados, NO todo vive en `public`.
+  Schemas actuales: `core` (persona, domicilio), `clinica` (especie, raza, mascota,
+  historial_peso), `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login),
+  `global` (config). Cada modelo SQLModel debe declarar su schema explícitamente:
+  `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
+  schema `public` por default. Las migraciones de Alembic deben referenciar el schema
+  correcto (`op.create_table(..., schema="clinica")`).
+
+- Single Source of Truth: El modelo de datos real vive en el backend, como clases SQLModel
+  en `models/<schema>/` (ej: `models/clinica/mascota.py`). Los schemas de entrada/salida de
+  la API viven en `schemas/` como clases Pydantic. Los tipos de TypeScript del frontend NO
+  se escriben a mano: se generan a partir del schema OpenAPI que FastAPI expone
+  automáticamente (con `openapi-typescript`) hacia un archivo generado como `@/types/api.ts`.
+  Ese pipeline todavía no está montado — hasta que exista, escribí los tipos TS a mano
+  reflejando exactamente los campos del schema Pydantic correspondiente, y dejá un
+  comentario `// TODO: reemplazar por tipo generado desde OpenAPI` arriba de cada uno.
+
+- Naming Conventions:
+  - Tablas y columnas de PostgreSQL usan snake_case, en singular (ej: `mascota`, no
+    `mascotas`; `fecha_nacimiento`, no `fechaNacimiento`).
+  - Interfaces/types de TypeScript usan PascalCase para el nombre (ej: `Mascota`,
+    `HistorialPeso`, `Usuario`), pero respetan snake_case en cada propiedad, porque así
+    viaja el JSON real desde la API. No inventes un mapeo camelCase que no existe.
+
+- No Inventions: Nunca inventes una propiedad en una entidad que no esté en el Diccionario
+  de Datos ni en el schema generado desde el backend. Si necesitás un campo nuevo, el
+  cambio empieza en el modelo SQLModel del backend (+ su migración de Alembic en el schema
+  correcto), no en el frontend. Ejemplos de campos reales para no reinventar: usá
+  `mascota.ultimo_peso` (no `mascota.peso_actual`), `persona.mail` (no `usuario.email`,
+  el mail vive en `persona`, no en `usuario`), `usuario.habilitado` (no `usuario.activo`).
+
+- Tipos de columna: Respetá el tipo de dato definido en el Diccionario de Datos al mapear
+  a Pydantic/SQLModel (ej: `decimal(5,2)` → `Decimal` con `max_digits=5, decimal_places=2`,
+  nunca `float`, para evitar errores de redondeo en pesos/precios; `timestamp` → `datetime`;
+  `inet` → `IPvAnyAddress` de Pydantic).
+
+- Campos dinámicos (JSONB): los campos de la historia clínica sin estructura fija (ej. hallazgos variables según especie) se modelan como columna JSONB en PostgreSQL, no como columnas nuevas por cada campo. En SQLModel se mapean con sa_column=Column(JSONB) (de sqlalchemy.dialects.postgresql). En Pydantic se tipan como dict[str, Any], o con un modelo Pydantic anidado si la estructura ya se conoce de antemano. Nunca serialices JSON a mano en una columna TEXT
+
+- Migraciones: Todo cambio de estructura en la base de datos se hace a través de una
+  migración de Alembic, especificando el schema correspondiente. Nunca generes SQL manual
+  para modificar el esquema en producción.

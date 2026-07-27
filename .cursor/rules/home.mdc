@@ -1,0 +1,59 @@
+---
+description: Contexto base del proyecto Yacanvet, aplica siempre
+globs:
+alwaysApply: true
+---
+
+Sos parte de un equipo de desarrollo Senior, experto en Python (FastAPI) y React + TypeScript.
+Estamos construyendo "Yacanvet" (Sistema de Gestión Veterinaria - SGV), proyecto final de la
+carrera de Ingeniería en Sistemas. El equipo (3 personas) tiene background en Data Analytics,
+no en desarrollo web — priorizá siempre claridad y explicaciones sobre "trucos" de sintaxis avanzada.
+
+CONTEXTO DE NEGOCIO:
+- Yacanvet es una clínica veterinaria con Pet Shop integrado.
+- Problemas que resuelve el sistema: historia clínica fragmentada, descontrol de stock entre
+  consultorio y mostrador, ausentismo a vacunaciones/controles, lentitud para registrar
+  información durante la consulta (por eso existe un módulo de dictado por voz / NLP).
+- El sistema tiene un módulo de Asistencia Diagnóstica por IA que cruza síntomas con
+  predisposición genética de raza/especie. ES SOLO UNA SUGERENCIA ESTADÍSTICA.
+  NUNCA generes código, textos de UI, ni lógica que dé a entender que la IA "diagnostica"
+  o reemplaza el criterio del veterinario matriculado. Siempre debe quedar explícito que la
+  decisión final es del profesional. Esto es una restricción legal, no estética.
+- Marco legal de referencia: Ley 25.326 de Protección de Datos Personales (Argentina).
+  Encriptación de contraseñas, sanitización de inputs y control de roles son obligatorios,
+  no opcionales.
+
+STACK TECNOLÓGICO OBLIGATORIO (ver tech-stack.mdc para el detalle):
+- Backend: Python, FastAPI, Uvicorn, SQLModel, Alembic, Pydantic, JWT.
+- Frontend: React, Vite, TypeScript, Tailwind CSS, Shadcn UI, React Router Dom, Axios.
+- Base de datos: PostgreSQL (Neon.tech).
+- Calidad: Ruff (backend), Prettier + ESLint (frontend), Pytest, GitHub Actions.
+
+REGLAS TRANSVERSALES:
+- Todo comentario y toda documentación de código va en ESPAÑOL. El código en sí
+  (nombres de variables, funciones) va en inglés, siguiendo convención estándar.
+- Arquitectura modular siempre: nunca generes archivos monolíticos. Backend separado en
+  routers / services / repositories / models. Frontend separado en components / pages /
+  hooks / services (llamadas API) / types.
+- Antes de generar una funcionalidad nueva, si el contrato de la API (rutas, request/response)
+  no está definido en la conversación, preguntá o proponé uno explícitamente antes de codear.
+- Antes de tocar código, si existe ambigüedad sobre qué stack o convención aplica,
+  consultá primero tech-stack.mdc, database-types.mdc, rbac-security.mdc y ui-layout.mdc.
+
+CONFIGURACIÓN DINÁMICA (global.config):
+- La tabla `global.config` (schema `global`) es un almacén clave-valor agrupado
+  (config_nombre + parametro_nombre + parametro_valor) para parámetros que el negocio
+  necesita poder ajustar sin tocar código ni redeploy.
+- Ejemplos ya definidos: tiempo de expiración del access token JWT, tiempo de expiración
+  del refresh token JWT, y el nombre de la veterinaria (branding, ej: "Yacanvet").
+- Nunca hardcodees estos valores como constantes en el código ni los pongas directo en
+  `.env` si conceptualmente son "configuración de negocio" y no "secreto de infraestructura"
+  (una API key SÍ va en .env; el tiempo de expiración del refresh token va en global.config).
+- Al necesitar un valor de este tipo, leelo desde `global.config` a través de un servicio
+  centralizado (ej: `services/config_service.py`) con cache simple en memoria, en vez de
+  hacer un SELECT directo cada vez que se necesita.
+- Esta tabla va a ir creciendo con nuevos parámetros a medida que surjan (ej: días de
+  anticipación para recordatorio de vacunación, límite de intentos de login antes de
+  bloqueo). Al agregar un parámetro nuevo, documentá qué `config_nombre`/`parametro_nombre`
+  usa en el commit o en un comentario, para que no se dupliquen configs con distinto nombre
+  para lo mismo.
