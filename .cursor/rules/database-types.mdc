@@ -7,7 +7,7 @@ alwaysApply: false
 - Multi-Schema PostgreSQL: La base de datos usa schemas separados, NO todo vive en `public`.
   Schemas actuales: `core` (persona, domicilio), `clinica` (especie, raza, mascota,
   historial_peso), `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login),
-  `global` (config). Cada modelo SQLModel debe declarar su schema explícitamente:
+  `sys` (config). Cada modelo SQLModel debe declarar su schema explícitamente:
   `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
   schema `public` por default. Las migraciones de Alembic deben referenciar el schema
   correcto (`op.create_table(..., schema="clinica")`).

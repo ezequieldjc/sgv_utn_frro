@@ -8,7 +8,7 @@ Este documento define la estructura de la base de datos para generar los modelos
 3. Configurar atributos `Field()` con `nullable=False`, `unique=True`, o `default=` según lo especificado. Para los defaults de fecha (NOW), usar `default_factory=datetime.utcnow` (o timezone actual).
 4. Configurar las relaciones (`Relationship`) bidireccionales entre entidades.
 5. Crear las restricciones multi-columna (UniqueConstraint) en los `__table_args__` donde se indique.
-6. El código debe ser modular, separando en sub-carpetas lógicas: `core/`, `auth/`, `clinica/`, `global/`.
+6. El código debe ser modular, separando en sub-carpetas lógicas: `core/`, `auth/`, `clinica/`, `sys/`.
 7. Incluir las "Notas" como docstrings o comentarios en español.
 
 ---
@@ -74,6 +74,8 @@ La asignación concreta de permisos a cada rol vive en la base de datos y no deb
 - **fecha_creacion**: timestamp, Obligatorio. *Default: NOW()*.
 - **debe_cambiar**: boolean, Obligatorio. *Default: True*. (Cambio de clave en próximo login).
 
+Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usuario`. Se obtiene consultando `HistorialContrasena` filtrado por `usuario_id` y ordenando por `fecha_creacion DESC, id DESC`; el primer registro resultante define el `hashed_password` actual.
+
 ### Entidad: `Login`
 - **id**: bigserial, PK.
 - **usuario_id**: integer, Opcional. *FK a usuario.id*. (Puede ser nulo si el usuario ingresado no existe).
@@ -119,7 +121,7 @@ La asignación concreta de permisos a cada rol vive en la base de datos y no deb
 
 ---
 
-## Módulo: Global
+## Módulo: sys
 
 ### Entidad: `Config`
 - **id**: integer, PK.

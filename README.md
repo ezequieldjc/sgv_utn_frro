@@ -1,6 +1,6 @@
-#Sistema Inteligente de Gestión Veterinaria 🐾
+# Sistema Inteligente de Gestión Veterinaria 🐾
 
-es una solución integral para la modernización operativa, clínica y comercial de clínicas veterinarias. El sistema centraliza la gestión de historias clínicas digitales, optimiza el control de inventario unificado (clínica + Pet Shop) y automatiza el flujo de turnos y recordatorios.
+Yacanvet es la veterinaria para la cual se desarrolla este sistema. Esta solución integral moderniza la gestión operativa, clínica y comercial de la clínica, centraliza historias clínicas digitales, optimiza el control de inventario unificado (clínica + Pet Shop) y automatiza el flujo de turnos y recordatorios.
 
 ---
 
@@ -17,7 +17,7 @@ El proyecto está diseñado bajo un paradigma **Cliente/Servidor desacoplado** (
 * **Autenticación & Seguridad:** JWT con esquema de permisos dinámicos (RBAC) y hashing de contraseñas con Passlib/Bcrypt
 * **Linter & Formateador:** Ruff
 
-### **Frontend** *(Próximamente)*
+### **Frontend**
 * **Librería/Framework:** React.js + TypeScript (tipado estricto)
 * **Bundler:** Vite
 * **Estilos:** Tailwind CSS

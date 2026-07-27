@@ -15,7 +15,7 @@ Create a Login page component for the React + Vite SPA in `src/pages/LoginPage.t
 - **CardHeader**:
   - Centered `PawPrint` icon inside a circular container (`p-3 rounded-full bg-primary/10 text-primary`).
   - Title: "Ingreso" (`text-2xl font-bold tracking-tight text-center mt-2`).
-  - Subtitle: "Sistema de Gestión Veterinario" (`text-xs text-muted-foreground text-center`).
+  - Subtitle: "Sistema Inteligente de Gestión Veterinaria" (`text-xs text-muted-foreground text-center`).
 - **CardContent (Form)**:
   - **Usuario Field**: `<Label htmlFor="username">Usuario</Label>`, relative wrapper with `<User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />` and `<Input id="username" placeholder="ej. jperez" className="pl-9" />`.
   - **Contraseña Field**: `<Label htmlFor="password">Contraseña</Label>`, relative wrapper with `<Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />` and `<Input id="password" type="password" placeholder="••••••••" className="pl-9" />`.

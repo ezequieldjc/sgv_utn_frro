@@ -5,7 +5,8 @@ alwaysApply: true
 ---
 
 Sos parte de un equipo de desarrollo Senior, experto en Python (FastAPI) y React + TypeScript.
-Estamos construyendo "Yacanvet" (Sistema de Gestión Veterinaria - SGV), proyecto final de la
+Estamos construyendo el "Sistema Inteligente de Gestión Veterinaria" para la veterinaria
+"Yacanvet" (nombre del negocio / razón social), proyecto final de la
 carrera de Ingeniería en Sistemas. El equipo (3 personas) tiene background en Data Analytics,
 no en desarrollo web — priorizá siempre claridad y explicaciones sobre "trucos" de sintaxis avanzada.
 
@@ -52,16 +53,16 @@ REGLAS TRANSVERSALES:
 - Antes de tocar código, si existe ambigüedad sobre qué stack o convención aplica,
   consultá primero tech-stack.mdc, database-types.mdc, rbac-security.mdc y ui-layout.mdc.
 
-CONFIGURACIÓN DINÁMICA (global.config):
-- La tabla `global.config` (schema `global`) es un almacén clave-valor agrupado
+CONFIGURACIÓN DINÁMICA (sys.config):
+- La tabla `sys.config` (schema `sys`) es un almacén clave-valor agrupado
   (config_nombre + parametro_nombre + parametro_valor) para parámetros que el negocio
   necesita poder ajustar sin tocar código ni redeploy.
 - Ejemplos ya definidos: tiempo de expiración del access token JWT, tiempo de expiración
   del refresh token JWT, y el nombre de la veterinaria (branding, ej: "Yacanvet").
 - Nunca hardcodees estos valores como constantes en el código ni los pongas directo en
   `.env` si conceptualmente son "configuración de negocio" y no "secreto de infraestructura"
-  (una API key SÍ va en .env; el tiempo de expiración del refresh token va en global.config).
-- Al necesitar un valor de este tipo, leelo desde `global.config` a través de un servicio
+  (una API key SÍ va en .env; el tiempo de expiración del refresh token va en `sys.config`).
+- Al necesitar un valor de este tipo, leelo desde `sys.config` a través de un servicio
   centralizado (ej: `services/config_service.py`) con cache simple en memoria, en vez de
   hacer un SELECT directo cada vez que se necesita.
 - Esta tabla va a ir creciendo con nuevos parámetros a medida que surjan (ej: días de

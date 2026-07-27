@@ -25,21 +25,33 @@ Create a responsive App Shell component in `src/components/app-shell.tsx` for th
 - `SISTEMA` should be shown when the user has `configuracion:read` or `usuarios:read`, or when the role is wildcard `*`.
 - Do not hardcode which role receives which permission in this prompt; that mapping lives in the database.
 
+### Navigation Permission Contract:
+- Treat each top-level sidebar section as a resource group, and each clickable item as a stable permission target.
+- The parent section visibility is controlled by at least one `:read` permission in that group.
+- The first sub-item of a module is always the read/list view and maps to `recurso:read`.
+- The second sub-item of a module is always the create/new view and maps to `recurso:create`.
+- If a module later needs update/delete actions, keep them inside the module screen, not as extra sidebar items.
+- When adding a new category, reuse the same pattern immediately so it is easy to find and map to future permissions.
+- Example future category:
+  - `VACUNAS` section shown by `vacunas:read`.
+  - `Vacunas -> Consulta` maps to `vacunas:read`.
+  - `Vacunas -> Agregar Vacuna` maps to `vacunas:create`.
+
 ### Component Structure:
 
 #### 1. Sidebar (Left - Width 256px):
 - **Header**: Flex layout with local image `/logo.png` (size `h-8 w-8 object-contain`) + dynamic `{clinicName}` text (`font-bold text-sm`).
 - **Navigation Menu** (Grouped into sections):
   - **GESTIÓN**:
-    - **Pacientes**: Collapsible/sub-items -> "Consulta", "Alta de Paciente".
-    - **Dueños**: Collapsible/sub-items -> "Consulta", "Alta de Dueño".
-    - **Turnos**: Collapsible/sub-items -> "Calendario", "Nuevo Turno".
-    - **Atenciones**: Collapsible/sub-items -> "Historial", "Nueva Atención".
+    - **Pacientes**: Collapsible/sub-items -> "Consulta" (`pacientes:read`), "Alta de Paciente" (`pacientes:create`).
+    - **Dueños**: Collapsible/sub-items -> "Consulta" (`duenos:read`), "Alta de Dueño" (`duenos:create`).
+    - **Turnos**: Collapsible/sub-items -> "Calendario" (`turnos:read`), "Nuevo Turno" (`turnos:create`).
+    - **Atenciones**: Collapsible/sub-items -> "Historial" (`atenciones:read`), "Nueva Atención" (`atenciones:create`).
   - **INVENTARIO**:
-    - **Stock**: Link -> "Stock e Insumos".
+    - **Stock**: Link -> "Stock e Insumos" (`stock:read`).
   - **SISTEMA**:
-    - **Configuración**: Link -> "Configuración".
-    - **Usuarios**: Link -> "Usuarios".
+    - **Configuración**: Link -> "Configuración" (`configuracion:read`).
+    - **Usuarios**: Link -> "Usuarios" (`usuarios:read`).
 - **Footer**: Single "Cerrar Sesión" button with `LogOut` icon and destructive hover state.
 
 #### 2. Header (Top Horizontal):

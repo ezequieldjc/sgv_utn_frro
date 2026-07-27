@@ -1,21 +1,24 @@
 Resumen en Formato Markdown
-# Especificación Técnica de Login - Sistema YACANVET
+# Especificación Técnica de Login - Sistema Inteligente de Gestión Veterinaria
 ## 1. Introducción y Stack Tecnológico
-Este documento detalla los requerimientos funcionales y técnicos para el módulo de autenticación del sistema YACANVET.
+Este documento detalla los requerimientos funcionales y técnicos para el módulo de autenticación del Sistema Inteligente de Gestión Veterinaria para Yacanvet.
 * **Frontend:** React.js + Vite.
 * **Backend:** Python / FastAPI / Uvicorn.
 * **Base de Datos:** PostgreSQL.
 ## 2. Definición de Estructuras de Datos (PostgreSQL)
 * **Tabla: usuario:** Identidad y estado (id, username, habilitado, version_token, rol_id).
-* **Tabla: historial_contrasenas:** Credenciales con hash bcrypt.
+* **Tabla: historial_contrasena:** Credenciales con hash bcrypt.
 * **Tabla: login (Auditoría):** Registro de intentos y fallos.
-* **Tabla: configuracion_global:** Parámetros como expiración de JWT.
+* **Tabla: sys.config:** Parámetros como expiración de JWT.
 * **Rendimiento:** Uso de @lru_cache para evitar consultas constantes a la configuración.
 ## 3. Flujo de Login (POST /api/auth/login)
 1. **Paso 1: Recepción:** Captura de credenciales e IP real (header X-Forwarded-For).
 2. **Paso 2: Búsqueda:** Validación de existencia y estado habilitado.
-3. **Paso 3: Validación bcrypt:** Comparación de hashes.
-4. **Paso 4: Éxito:** Registro en auditoría y emisión de tokens.
+3. **Paso 3: Última contraseña vigente:** Buscar en `auth.historial_contrasena` el último registro del usuario por `fecha_creacion DESC, id DESC` y usar ese `hashed_password` como contraseña vigente.
+4. **Paso 4: Validación bcrypt:** Comparación del password ingresado contra el `hashed_password` vigente.
+5. **Paso 5: Auditoría obligatoria:** Registrar siempre el intento en `auth.login` antes de responder, tanto si el acceso es exitoso como si falla.
+6. **Paso 6: Éxito:** Si la validación es correcta, emitir tokens y devolver respuesta exitosa.
+7. **Paso 7: Sin historial de contraseñas:** Si el usuario existe pero no tiene registros en `auth.historial_contrasena`, rechazar el login como credenciales inválidas.
 ### 3.1 Estándar de Respuestas de Error
 * Estructura JSON fija: {"error": "CODIGO", "detalle": "..."}.
 * Códigos del login: CREDENCIALES_INVALIDAS, USUARIO_DESHABILITADO.
