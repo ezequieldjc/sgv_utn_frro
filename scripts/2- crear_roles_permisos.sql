@@ -2,7 +2,6 @@
 -- Ejecutar contra la base de datos `sgv`.
 
 BEGIN;
-
 insert into sgv.auth.rol (nombre, descripcion) values ('ADMIN','super usuario');
 insert into sgv.auth.rol (nombre, descripcion) values ('DIRECCION','Usuario Director');
 insert into sgv.auth.rol (nombre, descripcion) values ('VETERINARIO','Veterinario');
