@@ -19,6 +19,11 @@ alwaysApply: false
   - Imagen de fondo del login: `/bg-login.jpg`.
   - Logo del negocio: `/logo.png` (si falla la carga, usar el ícono `PawPrint` como fallback).
 
+- Layouts de referencia:
+  - Pantalla de login: ocupa toda la viewport, centra el formulario y usa fondo con imagen + overlay oscuro.
+  - Shell autenticado: sidebar fijo a la izquierda, topbar superior y área principal vacía por ahora.
+  - La visibilidad de los botones del sidebar depende de permisos; nunca de nombres de rol hardcodeados.
+
 - Dark/Light Mode: Este proyecto es una SPA con Vite, sin server-side rendering, por lo
   tanto NO usar el paquete `next-themes` (está pensado para evitar el flash de hidratación
   de Next.js, que acá no existe). Implementar el cambio de tema con un Context de React

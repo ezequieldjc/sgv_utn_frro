@@ -6,7 +6,7 @@ Este documento detalla los requerimientos funcionales y técnicos para el módul
 * **Backend:** Python / FastAPI / Uvicorn.
 * **Base de Datos:** PostgreSQL.
 ## 2. Definición de Estructuras de Datos (PostgreSQL)
-* **Tabla: usuario:** Identidad y estado (id, username, habilitado, token_version, rol_id).
+* **Tabla: usuario:** Identidad y estado (id, username, habilitado, version_token, rol_id).
 * **Tabla: historial_contrasenas:** Credenciales con hash bcrypt.
 * **Tabla: login (Auditoría):** Registro de intentos y fallos.
 * **Tabla: configuracion_global:** Parámetros como expiración de JWT.
@@ -18,17 +18,19 @@ Este documento detalla los requerimientos funcionales y técnicos para el módul
 4. **Paso 4: Éxito:** Registro en auditoría y emisión de tokens.
 ### 3.1 Estándar de Respuestas de Error
 * Estructura JSON fija: {"error": "CODIGO", "detalle": "..."}.
-* Códigos: CREDENCIALES_INVALIDAS, USUARIO_INACTIVO, TOKEN_EXPIRADO, TOKEN_INVALIDO, PERMISOS_INSUFICIENTES.
+* Códigos del login: CREDENCIALES_INVALIDAS, USUARIO_DESHABILITADO.
+* Códigos de autenticación/autorización general: TOKEN_EXPIRADO, TOKEN_INVALIDO, PERMISOS_INSUFICIENTES.
+* El frontend debe traducir `CREDENCIALES_INVALIDAS` como `Credenciales incorrectas` y `USUARIO_DESHABILITADO` como `Usuario deshabilitado`.
 ## 4. Gestión de Sesiones y JWT
 ### 4.1. Generación de Tokens
-* **Access Token:** user_id, rol_id, token_version, exp.
-* **Refresh Token:** user_id, token_version, exp.
+* **Access Token:** user_id, rol_id, version_token, exp.
+* **Refresh Token:** user_id, version_token, exp.
 * **Seguridad:** Cookies HttpOnly, Secure, SameSite=Strict. Configuración de CORS con allow_credentials=True.
 ### 4.2. Middleware de Autenticación y Autorización
-* Validación criptográfica, de versión y de rol para cada petición protegida.
+* Validación criptográfica, de versión y de permiso para cada petición protegida.
 ### 4.3. Proceso de Refresco Silencioso
 * Uso del Refresh Token para obtener nuevos Access Tokens sin re-login.
 ### 4.4. Cierre de Sesión (Logout)
 * Eliminación de las cookies de tokens en el navegador.
 ## 5. Mecanismo de Revocación de Sesiones
-* Basado en el campo **token_version**. Cualquier cambio crítico incrementa la versión en la BD, invalidando instantáneamente todos los JWT anteriores.
+* Basado en el campo **version_token**. Cualquier cambio crítico incrementa la versión en la BD, invalidando instantáneamente todos los JWT anteriores.

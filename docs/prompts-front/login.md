@@ -1,4 +1,4 @@
-Create a Login component in `app/login/page.tsx` using React, Tailwind CSS, Lucide icons, and Shadcn UI components.
+Create a Login page component for the React + Vite SPA in `src/pages/LoginPage.tsx` using React, Tailwind CSS, Lucide icons, and Shadcn UI components.
 
 ### Requirements:
 1. **Shadcn UI Imports**: Use `@/components/ui/card`, `@/components/ui/input`, `@/components/ui/button`, `@/components/ui/label`.
@@ -12,14 +12,19 @@ Create a Login component in `app/login/page.tsx` using React, Tailwind CSS, Luci
 - Glassmorphism Card: `relative z-10 w-full max-w-md mx-4 p-6 border-border/40 bg-background/80 shadow-2xl backdrop-blur-md rounded-xl`.
 
 ### Component Structure:
-- **CardHeader**: 
+- **CardHeader**:
   - Centered `PawPrint` icon inside a circular container (`p-3 rounded-full bg-primary/10 text-primary`).
   - Title: "Ingreso" (`text-2xl font-bold tracking-tight text-center mt-2`).
   - Subtitle: "Sistema de Gestión Veterinario" (`text-xs text-muted-foreground text-center`).
 - **CardContent (Form)**:
   - **Usuario Field**: `<Label htmlFor="username">Usuario</Label>`, relative wrapper with `<User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />` and `<Input id="username" placeholder="ej. jperez" className="pl-9" />`.
   - **Contraseña Field**: `<Label htmlFor="password">Contraseña</Label>`, relative wrapper with `<Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />` and `<Input id="password" type="password" placeholder="••••••••" className="pl-9" />`.
-  - **Recover Link**: Centered `a` tag: "Olvidé mi contraseña" (`text-xs text-muted-foreground text-center block hover:underline cursor-pointer`).
+  - **Error Message**: render only one error at a time, in red, centered below the fields. Map backend `CREDENCIALES_INVALIDAS` to `Credenciales incorrectas` and backend `USUARIO_DESHABILITADO` to `Usuario deshabilitado`.
+  - **Behavior on Error**: when an error is shown, clear both the username and password inputs.
+  - **Recover Link**: do not render any "Olvidé mi contraseña" link or password recovery action.
   - **Submit Button**: `<Button type="submit" className="w-full mt-2">Ingresar</Button>`.
 
-Produce clean, production-ready TSX code. Do not write explanation prose.
+### Behavior:
+- On successful login, redirect directly to the authenticated shell with sidebar + topbar and an empty main area.
+- Do not include any password-change flow in this prompt.
+- Produce clean, production-ready TSX code. Do not write explanation prose.

@@ -1,4 +1,4 @@
-Create a responsive App Shell component in `components/app-shell.tsx` using React, Tailwind CSS, Lucide icons, and Shadcn UI components.
+Create a responsive App Shell component in `src/components/app-shell.tsx` for the React + Vite SPA using React, Tailwind CSS, Lucide icons, and Shadcn UI components.
 
 ### Props Definition:
 - Accept `clinicName?: string` (default: "Mi Veterinaria") to dynamically render the business name from DB configuration.
@@ -11,6 +11,19 @@ Create a responsive App Shell component in `components/app-shell.tsx` using Reac
    - Use standard Shadcn CSS variables (`bg-background`, `bg-card`, `border-border`, `text-foreground`, `text-muted-foreground`).
    - Use local image `/logo.png` for business logo inside sidebar header (fallback to `PawPrint` icon if image fails).
    - Include `<ModeToggle />` component in the header right area.
+
+### Layout Rules:
+- This shell is used only after authentication succeeds.
+- The main area starts empty for now: `children` is rendered inside the central content area, but there is no default dashboard content.
+- Sidebar items are filtered by permissions, not by hardcoded role names.
+- The backend is responsible for loading the user's role and permissions at login time, storing the relevant claims in the JWT, and the frontend uses those permissions to decide which sidebar groups and items to show.
+
+### Permission Mapping Reference:
+- Use permissions in `recurso:accion` format.
+- `GESTION` should be shown when the user can read any of these resources: `pacientes:read`, `duenos:read`, `turnos:read`, `atenciones:read`.
+- `INVENTARIO` should be shown when the user has `stock:read`.
+- `SISTEMA` should be shown when the user has `configuracion:read` or `usuarios:read`, or when the role is wildcard `*`.
+- Do not hardcode which role receives which permission in this prompt; that mapping lives in the database.
 
 ### Component Structure:
 

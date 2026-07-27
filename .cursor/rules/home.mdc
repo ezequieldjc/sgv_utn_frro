@@ -29,6 +29,18 @@ STACK TECNOLÓGICO OBLIGATORIO (ver tech-stack.mdc para el detalle):
 - Base de datos: PostgreSQL (Neon.tech).
 - Calidad: Ruff (backend), Prettier + ESLint (frontend), Pytest, GitHub Actions.
 
+AUTENTICACIÓN Y UI INICIAL:
+- El sistema arranca en una pantalla de login propia de la SPA, no en Next.js.
+- No existe recuperación/autogestión de contraseñas por ahora.
+- El login solo distingue dos errores de UI: `Credenciales incorrectas` y `Usuario deshabilitado`.
+- Al autenticar correctamente, el usuario entra directo al shell principal con sidebar + topbar + área central vacía.
+- La visibilidad de los botones del sidebar depende de permisos, no del nombre del rol.
+- El backend debe recuperar el rol y los permisos asociados desde la base de datos al iniciar sesión, incluir esa información útil en la JWT y el frontend debe usarla para dibujar el sidebar. No hardcodear matrices de roles en docs ni en código de UI.
+
+ROLES Y PERMISOS:
+- Los permisos de esta versión usan la convención `recurso:accion` y el wildcard `*` para acceso total.
+- La asignación concreta de permisos por rol vive en la base de datos y puede variar sin tocar la UI.
+
 REGLAS TRANSVERSALES:
 - Todo comentario y toda documentación de código va en ESPAÑOL. El código en sí
   (nombres de variables, funciones) va en inglés, siguiendo convención estándar.

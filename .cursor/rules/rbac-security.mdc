@@ -12,11 +12,14 @@ alwaysApply: false
 
 - Permission-First Security: Nunca compares el string de rol crudo (ej: `rol.nombre == "VETERINARIO"`)
   para mostrar u ocultar elementos de UI o autorizar una acción. Usá códigos de permiso
-  explícitos y atómicos desde `auth.permiso.nombre`, con formato `MODULO_ACCION`
-  (ej: `MASCOTAS_CREAR`, `MASCOTAS_VER`, `TURNOS_EDITAR`, `REPORTES_VER`).
+  explícitos y atómicos desde `auth.permiso.nombre`, con formato `recurso:accion`
+  (ej: `pacientes:read`, `pacientes:create`, `turnos:update`, `reportes:read`).
+
+- Los roles, sus permisos y la visibilidad de los menús se resuelven desde la base de datos al iniciar sesión. El backend debe cargar `auth.usuario`, su `rol` y sus `permisos`, guardar esa información útil en el JWT y el frontend debe dibujar el sidebar en base a esos permisos, sin hardcodear matrices de rol en el código ni en los documentos.
 
 - Conditional Rendering:
   - Ocultá ítems del menú/sidebar si el usuario no tiene el permiso de lectura de ese módulo.
+  - Para esta versión, si el usuario tiene `*`, debe ver todos los menús del sidebar.
   - Deshabilitá u ocultá botones de acción (crear, editar, eliminar) si el usuario no tiene
     el permiso específico de esa acción.
 

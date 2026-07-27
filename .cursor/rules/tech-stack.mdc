@@ -11,6 +11,8 @@ alwaysApply: true
 - Framework: This is a React + Vite SPA (Single Page Application), NOT Next.js. Do not use
   Next.js conventions (no Server Components, no 'use client' directive, no app/ router,
   no next/image, no next/link). Use React Router Dom for routing and standard React hooks.
+  Las pantallas viven en componentes o páginas bajo `src/` (por ejemplo `src/pages/` y
+  `src/components/`), no en estructuras `app/` de Next.js.
 
 - Strict TypeScript: Never use `any`. Define explicit interfaces/types for all props, state,
   and API responses. Prefer types generated from the backend's OpenAPI schema

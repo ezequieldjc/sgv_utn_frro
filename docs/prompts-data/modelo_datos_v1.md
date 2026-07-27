@@ -48,12 +48,15 @@ Este documento define la estructura de la base de datos para generar los modelos
 
 ### Entidad: `Permiso`
 - **id**: integer, PK.
-- **nombre**: varchar(50), Obligatorio. *Restricción: Unique (`UQ_Permiso_Nombre`).* (ej: MASCOTAS_CREAR).
+- **nombre**: varchar(50), Obligatorio. *Restricción: Unique (`UQ_Permiso_Nombre`).* (ej: pacientes:read, turnos:create).
 - **descripcion**: varchar(255), Opcional.
 
 ### Entidad: `RolPermiso` (Tabla intermedia)
 - **rol_id**: integer, Obligatorio. *FK a rol.id*. (PK compuesta junto a permiso_id).
 - **permiso_id**: integer, Obligatorio. *FK a permiso.id*. (PK compuesta junto a rol_id).
+
+### Regla de Asignación de Permisos
+La asignación concreta de permisos a cada rol vive en la base de datos y no debe hardcodearse en documentación de UI ni en el frontend . Al iniciar sesión, la aplicación debe leer el rol del usuario y sus permisos asociados para construir la experiencia de navegación y autorización .
 
 ### Entidad: `Usuario`
 - **id**: integer, PK.
