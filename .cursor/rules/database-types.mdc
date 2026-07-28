@@ -11,6 +11,8 @@ alwaysApply: false
   `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
   schema `public` por default. Las migraciones de Alembic deben referenciar el schema
   correcto (`op.create_table(..., schema="clinica")`).
+  Nota de alcance: en la iteración actual solo se migran `core.persona` (sin `domicilio_id`),
+  `auth.*` y `sys.config` — ver `docs/alcance_iteracion_uno.md`.
 
 - Single Source of Truth: El modelo de datos real vive en el backend, como clases SQLModel
   en `models/<schema>/` (ej: `models/clinica/mascota.py`). Los schemas de entrada/salida de
@@ -40,7 +42,22 @@ alwaysApply: false
   nunca `float`, para evitar errores de redondeo en pesos/precios; `timestamp` → `datetime`;
   `inet` → `IPvAnyAddress` de Pydantic).
 
-- Campos dinámicos (JSONB): los campos de la historia clínica sin estructura fija (ej. hallazgos variables según especie) se modelan como columna JSONB en PostgreSQL, no como columnas nuevas por cada campo. En SQLModel se mapean con sa_column=Column(JSONB) (de sqlalchemy.dialects.postgresql). En Pydantic se tipan como dict[str, Any], o con un modelo Pydantic anidado si la estructura ya se conoce de antemano. Nunca serialices JSON a mano en una columna TEXT
+- Campos dinámicos (JSONB): los campos de la historia clínica sin estructura fija (ej.
+  hallazgos variables según especie) se modelan como columna JSONB en PostgreSQL, no como
+  columnas nuevas por cada campo. En SQLModel se mapean con `sa_column=Column(JSONB)` (de
+  `sqlalchemy.dialects.postgresql`). En Pydantic se tipan como `dict[str, Any]`, o con un
+  modelo Pydantic anidado si la estructura ya se conoce de antemano. Nunca serialices JSON
+  a mano en una columna TEXT.
+
+- Configuración dinámica (`sys.config`): Es un almacén clave-valor agrupado
+  (`config_nombre` + `parametro_nombre` + `parametro_valor`) para parámetros de negocio
+  ajustables sin redeploy (ej: expiración de tokens JWT, razón social de la clínica). Nunca
+  pongas estos valores como constantes en el código ni en `.env` — `.env` es para secretos
+  de infraestructura (API keys), no para configuración de negocio. Todo acceso a `sys.config`
+  pasa por un servicio centralizado (ej: `services/config_service.py`) con cache en memoria
+  (`@lru_cache` o similar), nunca un SELECT directo en cada request. Al agregar un
+  `config_nombre`/`parametro_nombre` nuevo, dejá documentado cuál es (en el modelo o en el
+  commit) para no duplicar configs equivalentes con nombres distintos.
 
 - Migraciones: Todo cambio de estructura en la base de datos se hace a través de una
   migración de Alembic, especificando el schema correspondiente. Nunca generes SQL manual

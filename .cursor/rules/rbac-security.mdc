@@ -10,12 +10,19 @@ alwaysApply: false
   (many-to-many entre rol y permiso). Para saber si un usuario puede hacer algo, siempre se
   resuelve la cadena: usuario → rol → rol_permiso → permiso.
 
-- Permission-First Security: Nunca compares el string de rol crudo (ej: `rol.nombre == "VETERINARIO"`)
-  para mostrar u ocultar elementos de UI o autorizar una acción. Usá códigos de permiso
-  explícitos y atómicos desde `auth.permiso.nombre`, con formato `recurso:accion`
-  (ej: `pacientes:read`, `pacientes:create`, `turnos:update`, `reportes:read`).
+- Permission-First Security: Nunca compares el string de rol crudo (ej:
+  `rol.nombre == "VETERINARIO"`) para mostrar u ocultar elementos de UI o autorizar una
+  acción. Usá códigos de permiso explícitos y atómicos desde `auth.permiso.nombre`, con
+  formato `recurso:accion` (ej: `pacientes:read`, `pacientes:create`, `turnos:update`,
+  `reportes:read`).
 
-- Los roles, sus permisos y la visibilidad de los menús se resuelven desde la base de datos al iniciar sesión. El backend debe cargar `auth.usuario`, su `rol` y sus `permisos`, guardar esa información útil en el JWT y el frontend debe dibujar el sidebar en base a esos permisos, sin hardcodear matrices de rol en el código ni en los documentos.
+- Los roles, sus permisos y la visibilidad de los menús se resuelven desde la base de datos
+  al iniciar sesión. El backend carga `auth.usuario`, su `rol` y sus `permisos`, los incluye
+  en el payload del JWT (que viaja en cookie HttpOnly) Y los devuelve además como JSON plano
+  en la respuesta de login y en `GET /api/auth/me` — el frontend no puede leer el JWT
+  directamente porque es HttpOnly, por eso necesita ese JSON aparte. El frontend dibuja el
+  sidebar en base a esos permisos, sin hardcodear matrices de rol en el código ni en los
+  documentos.
 
 - Conditional Rendering:
   - Ocultá ítems del menú/sidebar si el usuario no tiene el permiso de lectura de ese módulo.
@@ -41,13 +48,20 @@ alwaysApply: false
   `auth.historial_contrasena` (con `hashed_password` vía bcrypt/argon2). El campo
   `debe_cambiar` en `True` obliga al usuario a cambiar su contraseña en el próximo login
   antes de dejarlo acceder a cualquier otra funcionalidad.
+  Nota de alcance: mientras no exista la pantalla de cambio de contraseña (ver
+  `docs/alcance_iteracion_uno.md`), el login NO debe bloquearse por `debe_cambiar` — el
+  campo ya existe en el modelo, pero su enforcement se activa recién cuando esa pantalla se
+  construya.
 
 - Auditoría de login (`auth.login`): Todo intento de login (exitoso o fallido) se registra
   en `auth.login`, incluyendo `username_ingresado` (texto literal, incluso si no existe el
-  usuario), `ip`, `exito` y `razon_fallo` cuando corresponda (ej: `CLAVE_INCORRECTA`,
-  `USUARIO_DESHABILITADO`, `USUARIO_INEXISTENTE`). Esta tabla es la base para detectar
-  fuerza bruta — si vas a implementar bloqueo por intentos fallidos, la lógica de conteo
-  se apoya en esta tabla, no en una tabla nueva.
+  usuario), `ip`, `exito` y `razon_fallo` cuando corresponda: `USUARIO_INEXISTENTE`,
+  `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA` (usuario existe y
+  habilitado pero sin registros en `auth.historial_contrasena`). Todos estos casos, salvo
+  `USUARIO_DESHABILITADO`, responden al frontend como HTTP 401 / `Credenciales incorrectas`
+  — la distinción granular es solo para auditoría interna, nunca se expone al usuario. Esta
+  tabla es la base para detectar fuerza bruta — si vas a implementar bloqueo por intentos
+  fallidos, la lógica de conteo se apoya en esta tabla, no en una tabla nueva.
 
 - Auditoría sensible: Acciones sobre historia clínica, recetas electrónicas y datos
   personales del cliente (`core.persona`) deben quedar trazadas (quién, qué, cuándo).

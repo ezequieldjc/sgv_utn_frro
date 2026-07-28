@@ -1,5 +1,8 @@
 # Contexto Maestro: Sistema Inteligente de Gestión Veterinaria para Yacanvet
 
+> Esta es la visión completa del proyecto. Qué parte de todo esto se construye en la corrida
+> actual vive en `docs/alcance_iteracion_actual.md`.
+
 ## Definición del Negocio y Objetivos
 Yacanvet es una clínica veterinaria que requiere modernizar su gestión clínica y comercial . Actualmente operan con registros manuales y fragmentados, lo cual impacta negativamente en la velocidad de atención y el control operativo . Las problemáticas principales radican en la lentitud en el registro clínico por la dificultad para redactar en la computadora mientras se manipulan animales inquietos, sumado a la descentralización de la información por la falta de una Historia Clínica unificada . También sufren un descontrol de inventario debido a la desconexión entre los insumos utilizados médicamente y las ventas del Pet Shop, y un alto ausentismo de pacientes por olvido de los clientes .
 

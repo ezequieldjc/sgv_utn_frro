@@ -1,4 +1,8 @@
-# Modelo de Datos (Diccionario v2)
+# Modelo de Datos (Diccionario v1)
+
+> Alcance de esta iteración: ver `docs/alcance_iteracion_actual.md`. Este diccionario
+> documenta el modelo completo del proyecto (incluye módulos futuros como Clínica); no todo
+> se migra ahora.
 
 Este documento define la estructura de la base de datos para generar los modelos usando **SQLModel** y migrarlos con **Alembic** en PostgreSQL.
 
@@ -16,6 +20,7 @@ Este documento define la estructura de la base de datos para generar los modelos
 ## Módulo: Core
 
 ### Entidad: `Domicilio`
+> Fuera de alcance en esta iteración — no se crea esta tabla todavía (ver nota en `Persona.domicilio_id`).
 - **id**: integer, PK.
 - **pais**: varchar(50), Obligatorio.
 - **provincia**: varchar(50), Obligatorio.
@@ -32,7 +37,9 @@ Este documento define la estructura de la base de datos para generar los modelos
 - **apellido**: varchar(100), Obligatorio.
 - **dni**: varchar(20), Obligatorio. *Restricción: Unique (`UQ_Persona_DNI`).*
 - **sexo**: char(1), Opcional. (M/F/X).
-- **domicilio_id**: integer, Opcional. *FK a domicilio.id*.
+- **domicilio_id**: integer, Opcional. *FK a domicilio.id.* **Fuera de alcance esta
+  iteración: no incluir esta columna todavía** — se agrega en una migración posterior,
+  cuando exista `Domicilio` y el módulo que lo use.
 - **mail**: varchar(100), Opcional.
 - **celular**: varchar(30), Obligatorio.
 - **fecha_alta**: timestamp, Obligatorio. *Default: NOW()*.
@@ -56,7 +63,7 @@ Este documento define la estructura de la base de datos para generar los modelos
 - **permiso_id**: integer, Obligatorio. *FK a permiso.id*. (PK compuesta junto a rol_id).
 
 ### Regla de Asignación de Permisos
-La asignación concreta de permisos a cada rol vive en la base de datos y no debe hardcodearse en documentación de UI ni en el frontend . Al iniciar sesión, la aplicación debe leer el rol del usuario y sus permisos asociados para construir la experiencia de navegación y autorización .
+La asignación concreta de permisos a cada rol vive en la base de datos y no debe hardcodearse en documentación de UI ni en el frontend. Al iniciar sesión, la aplicación debe leer el rol del usuario y sus permisos asociados para construir la experiencia de navegación y autorización.
 
 ### Entidad: `Usuario`
 - **id**: integer, PK.
@@ -72,7 +79,9 @@ La asignación concreta de permisos a cada rol vive en la base de datos y no deb
 - **usuario_id**: integer, Obligatorio. *FK a usuario.id*.
 - **hashed_password**: varchar(255), Obligatorio.
 - **fecha_creacion**: timestamp, Obligatorio. *Default: NOW()*.
-- **debe_cambiar**: boolean, Obligatorio. *Default: True*. (Cambio de clave en próximo login).
+- **debe_cambiar**: boolean, Obligatorio. *Default: True*. (Cambio de clave en próximo login
+  — el campo existe desde esta iteración, pero su enforcement en el login queda para cuando
+  exista la pantalla de cambio de contraseña; ver `docs/alcance_iteracion_actual.md`).
 
 Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usuario`. Se obtiene consultando `HistorialContrasena` filtrado por `usuario_id` y ordenando por `fecha_creacion DESC, id DESC`; el primer registro resultante define el `hashed_password` actual.
 
@@ -82,12 +91,17 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 - **username_ingresado**: varchar(50), Obligatorio.
 - **fecha**: timestamp, Obligatorio. *Default: NOW()*.
 - **exito**: boolean, Obligatorio. (True=Exitoso, False=Fallido).
-- **ip**: inet, Obligatorio. (En SQLModel mapear como String o usar tipo IP de SQLAlchemy).
-- **razon_fallo**: varchar(50), Opcional. (Ej: CLAVE_INCORRECTA).
+- **ip**: inet, Obligatorio. (En SQLModel mapear como String o usar tipo IP de SQLAlchemy; en Pydantic, `IPvAnyAddress`).
+- **razon_fallo**: varchar(50), Opcional. (Valores: `USUARIO_INEXISTENTE`,
+  `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA` — ver
+  `.cursor/rules/rbac-security.mdc`).
 
 ---
 
 ## Módulo: Clinica
+
+> **Fuera de alcance en esta iteración** (ver `docs/alcance_iteracion_actual.md`).
+> Diccionario documentado para referencia futura; no se crean estas tablas todavía.
 
 ### Entidad: `Especie`
 - **id**: integer, PK.
@@ -131,3 +145,11 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 - **parametro_nombre**: varchar(100), Obligatorio.
 - **parametro_valor**: varchar(255), Obligatorio.
 - *Restricción compuesta en `__table_args__`: UniqueConstraint sobre (`config_id`, `parametro_id`) llamada `UQ_Config_IDID`.*
+
+#### Valores iniciales esperados (seed)
+
+| config_id | parametro_id | config_nombre | parametro_nombre        | Uso |
+|---|---|---|---|---|
+| 1 | 1 | JWT      | ACCESS_TOKEN_EXPIRACION  | Expiración del Access Token — `select parametro_valor from sys.config where config_id = 1 and parametro_id = 1` |
+| 1 | 2 | JWT      | REFRESH_TOKEN_EXPIRACION | Expiración del Refresh Token — `config_id = 1 and parametro_id = 2` |
+| 2 | 1 | BRANDING | RAZON_SOCIAL             | Nombre de la clínica, expuesto en `GET /api/config/public` como `razon_social` — `config_id = 2 and parametro_id = 1` |

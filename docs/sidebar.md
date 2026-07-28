@@ -1,7 +1,7 @@
 Create a responsive App Shell component in `src/components/app-shell.tsx` for the React + Vite SPA using React, Tailwind CSS, Lucide icons, and Shadcn UI components.
 
 ### Props Definition:
-- Accept `clinicName?: string` (default: "Mi Veterinaria") to dynamically render the business name from DB configuration.
+- Accept `clinicName?: string` (default: "Mi Veterinaria") to dynamically render the business name. The AppShell is a pure presentation component and must NOT fetch this data itself.
 - Accept `children: React.ReactNode` for rendering page content.
 
 ### Requirements & Imports:
@@ -12,17 +12,25 @@ Create a responsive App Shell component in `src/components/app-shell.tsx` for th
    - Use local image `/logo.png` for business logo inside sidebar header (fallback to `PawPrint` icon if image fails).
    - Include `<ModeToggle />` component in the header right area.
 
+### Enrutamiento y protección de rutas:
+- Implementar `<ProtectedRoute>` como wrapper de React Router. Al montar, si no hay estado de sesión ya hidratado, llama a `GET /api/auth/me`. HTTP 200 → hidrata usuario y permisos. Simultáneamente (o en paralelo), llama a `GET /api/config/public` para obtener `razon_social`. Luego, renderiza `children` pasando `clinicName` al layout. HTTP 401 → redirige a `/login`.
+- Este shell (`app-shell.tsx`) solo se renderiza dentro de rutas envueltas por
+  `<ProtectedRoute>`.
+
 ### Layout Rules:
 - This shell is used only after authentication succeeds.
 - The main area starts empty for now: `children` is rendered inside the central content area, but there is no default dashboard content.
 - Sidebar items are filtered by permissions, not by hardcoded role names.
-- The backend is responsible for loading the user's role and permissions at login time, storing the relevant claims in the JWT, and the frontend uses those permissions to decide which sidebar groups and items to show.
+- The backend loads the user's role and permissions at login time; the frontend receives
+  them via the login response JSON and via `GET /api/auth/me` (not by decoding the JWT,
+  which lives in an HttpOnly cookie and is not readable by JS).
 
 ### Permission Mapping Reference:
 - Use permissions in `recurso:accion` format.
 - `GESTION` should be shown when the user can read any of these resources: `pacientes:read`, `duenos:read`, `turnos:read`, `atenciones:read`.
 - `INVENTARIO` should be shown when the user has `stock:read`.
-- `SISTEMA` should be shown when the user has `configuracion:read` or `usuarios:read`, or when the role is wildcard `*`.
+- `SISTEMA` should be shown when the user has `configuracion:read` or `usuarios:read`.
+- Global Wildcard Rule: If the user's permissions array includes the wildcard `*`, they implicitly have access to ALL sidebar sections and internal actions, bypassing any specific `:read` or `:create` checks.
 - Do not hardcode which role receives which permission in this prompt; that mapping lives in the database.
 
 ### Navigation Permission Contract:
@@ -52,17 +60,25 @@ Create a responsive App Shell component in `src/components/app-shell.tsx` for th
   - **SISTEMA**:
     - **Configuración**: Link -> "Configuración" (`configuracion:read`).
     - **Usuarios**: Link -> "Usuarios" (`usuarios:read`).
-- **Footer**: Single "Cerrar Sesión" button with `LogOut` icon and destructive hover state.
+- **Footer**: Single "Cerrar Sesión" button with `LogOut` icon and destructive hover state. On click: `POST /api/auth/logout`, then redirect to `/login`.
 
 #### 2. Header (Top Horizontal):
-- **Left**: Sidebar toggle button (`Menu` icon) + Breadcrumbs text (`Pacientes / Consulta`).
-- **Center**: Global search bar with `Search` icon + placeholder "Buscar por mascota, DNI del dueño o N° de chip..." + `<kbd>Ctrl K</kbd>` badge.
+- **Left**: Sidebar toggle button (`Menu` icon) + Dynamic Breadcrumbs component.
+  - Use `useLocation()` from `react-router-dom` to read the current pathname.
+  - Dynamically map the URL segments to readable labels (e.g., if path is `/pacientes/consulta`, render `Pacientes / Consulta`).
+- **Center**: Global search bar with `Search` icon + placeholder "Buscar por mascota, DNI del dueño o N° de chip..." + `<kbd>Ctrl K</kbd>` badge. *(Note: Render as visual mockup only. No real search behavior yet).*
 - **Right**:
-  - Primary button: `+ Nueva Atención` (`bg-primary text-primary-foreground`).
+  - Primary button: `+ Nueva Atención` (`bg-primary text-primary-foreground`). *(Note: Render as visual mockup only. No onClick behavior or permission checks yet, as the Clinica module is out of scope for this iteration).*
   - Mode toggle button `<ModeToggle />`.
   - User Dropdown (`DropdownMenu`):
-    - Trigger: Avatar with initials "DP" + "Dr. Pérez" text + `ChevronDown`.
-    - Menu Items: "Mi Perfil", "Configuración", Divider, "Cerrar Sesión" (destructive text).
+    - Trigger: Avatar con las iniciales y el nombre completo del usuario autenticado
+      (`persona.nombre` + `persona.apellido`, obtenidos de la sesión — nunca hardcodeado) +
+      `ChevronDown`. (Ejemplo ilustrativo del formato: iniciales "DP", texto "Dr. Pérez".)
+    - Menu Items: 
+      - "Mi Perfil" (Links to `/perfil`. Does not require any explicit permission, this route is inherently available to all authenticated users).
+      - "Configuración"
+      - Divider
+      - "Cerrar Sesión" (destructive text...)
 
 #### 3. Main Area:
 - `<main className="flex-1 overflow-y-auto p-6 bg-background">` rendering `{children}`.
