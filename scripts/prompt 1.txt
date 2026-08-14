@@ -1,0 +1,24 @@
+Actuá como un Senior Full-Stack Engineer siguiendo estrictamente las reglas definidas en @tech-stack.mdc y @home.mdc.
+
+Tu objetivo en este paso es construir la estructura base (scaffolding) de carpetas y archivos de configuración para el backend (FastAPI) y el frontend (React + Vite SPA).
+
+Instrucciones de ejecución:
+1. Leé @alcance_iteracion_uno.md para entender los límites de la iteración actual.
+2. En la raíz del proyecto, creá la carpeta `backend/` con la siguiente arquitectura N-capas:
+   - `backend/app/` conteniendo `api/`, `core/`, `db/`, `models/`, `schemas/`, `services/`.
+   - `backend/app/main.py` con una instancia mínima de FastAPI y middleware de CORS configurado.
+   - `backend/requirements.txt` con las dependencias base: `fastapi`, `uvicorn[standard]`, `sqlmodel`, `alembic`, `pydantic-settings`, `python-jose[cryptography]`, `passlib[bcrypt]`, `psycopg2-binary`.
+   - `backend/.env.example` con variables para DATABASE_URL y SECRET_KEY.
+
+3. En la raíz del proyecto, creá la carpeta `frontend/` configurada como React + Vite + TypeScript:
+   - Configuración de Tailwind CSS con las variables CSS estándar.
+   - Alias de importación `@/` en `tsconfig.json` y `vite.config.ts`.
+   - Estructura interna en `frontend/src/`: `components/ui/`, `hooks/`, `lib/`, `pages/`, `types/`.
+   - `package.json` con dependencias base: `react`, `react-dom`, `react-router-dom`, `lucide-react`, `clsx`, `tailwind-merge`.
+
+RESTRICCIONES:
+- NO crees modelos de base de datos ni endpoints funcionales aún (eso va en la siguiente etapa).
+- NO uses Next.js ni convenciones de SSR.
+- Mantené las carpetas `.cursor/` y `docs/` intactas.
+
+Antes de escribir o modificar archivos, mostrame la lista detallada de archivos que vas a crear y esperá mi confirmación explícita.

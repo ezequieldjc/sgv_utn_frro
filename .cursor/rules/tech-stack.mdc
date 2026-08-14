@@ -1,0 +1,34 @@
+---
+description: Reglas de stack tecnológico y estilo de código
+globs: **/*.py,**/*.tsx,**/*.ts
+alwaysApply: true
+---
+
+- Role: Act as a Senior Full-Stack Engineer. For backend code, act as a Python/FastAPI expert
+  with deep knowledge of SQLModel and Pydantic. For frontend code, act as a React + TypeScript
+  expert with deep knowledge of Vite and Shadcn UI.
+
+- Framework: This is a React + Vite SPA (Single Page Application), NOT Next.js. Do not use
+  Next.js conventions (no Server Components, no 'use client' directive, no app/ router,
+  no next/image, no next/link). Use React Router Dom para routing y hooks estándar de React.
+  Las pantallas viven en componentes o páginas bajo `src/` (por ejemplo `src/pages/` y
+  `src/components/`), no en estructuras `app/` de Next.js.
+
+- Strict TypeScript: Never use `any`. Define explicit interfaces/types for all props, state,
+  and API responses. Prefer types generated from the backend's OpenAPI schema
+  (see database-types.mdc) over manually written types.
+
+- Strict Python typing: All backend code must use type hints. All request/response bodies
+  must be validated through Pydantic/SQLModel schemas — never accept or return raw dicts.
+
+- Imports: Use path aliases configured in vite.config and tsconfig
+  (`@/components/...`, `@/lib/...`, `@/types/...`, `@/hooks/...`).
+
+- No Fluff: Do not write explanatory prose or conversational text inside code responses.
+  Return clean, production-ready code. Explanations, if needed, go outside the code block,
+  in Spanish.
+
+- Testing: Para toda regla de negocio crítica, generá siempre el Pytest correspondiente junto
+  con el código. Ejemplos vigentes ahora: flujo de login, resolución de permisos
+  (rol → rol_permiso → permiso). Ejemplos futuros ya previstos: asignación de turnos, control
+  de stock, reglas de la historia clínica.

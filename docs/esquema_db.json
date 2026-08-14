@@ -1,0 +1,505 @@
+[{
+  "esquema": "auth",
+  "tabla": "historial_contrasena",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('auth.historial_contrasena_id_seq'::regclass)"
+}, {
+  "esquema": "auth",
+  "tabla": "historial_contrasena",
+  "columna": "usuario_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "historial_contrasena",
+  "columna": "hashed_password",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "historial_contrasena",
+  "columna": "fecha_creacion",
+  "tipo_dato": "timestamp without time zone",
+  "permite_null": "NO",
+  "valor_defecto": "CURRENT_TIMESTAMP"
+}, {
+  "esquema": "auth",
+  "tabla": "historial_contrasena",
+  "columna": "debe_cambiar",
+  "tipo_dato": "boolean",
+  "permite_null": "NO",
+  "valor_defecto": "false"
+}, {
+  "esquema": "auth",
+  "tabla": "login",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('auth.login_id_seq'::regclass)"
+}, {
+  "esquema": "auth",
+  "tabla": "login",
+  "columna": "usuario_id",
+  "tipo_dato": "integer",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "login",
+  "columna": "username_ingresado",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "login",
+  "columna": "fecha",
+  "tipo_dato": "timestamp without time zone",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "login",
+  "columna": "exito",
+  "tipo_dato": "boolean",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "login",
+  "columna": "ip",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "login",
+  "columna": "razon_fallo",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "permiso",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('auth.permiso_id_seq'::regclass)"
+}, {
+  "esquema": "auth",
+  "tabla": "permiso",
+  "columna": "nombre",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "permiso",
+  "columna": "descripcion",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "rol",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('auth.rol_id_seq'::regclass)"
+}, {
+  "esquema": "auth",
+  "tabla": "rol",
+  "columna": "nombre",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "rol",
+  "columna": "descripcion",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "rol_permiso",
+  "columna": "rol_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "rol_permiso",
+  "columna": "permiso_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "usuario",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('auth.usuario_id_seq'::regclass)"
+}, {
+  "esquema": "auth",
+  "tabla": "usuario",
+  "columna": "persona_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "usuario",
+  "columna": "username",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "usuario",
+  "columna": "habilitado",
+  "tipo_dato": "boolean",
+  "permite_null": "NO",
+  "valor_defecto": "false"
+}, {
+  "esquema": "auth",
+  "tabla": "usuario",
+  "columna": "rol_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "usuario",
+  "columna": "version_token",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "auth",
+  "tabla": "usuario",
+  "columna": "fecha_creacion",
+  "tipo_dato": "timestamp without time zone",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "especie",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('clinica.especie_id_seq'::regclass)"
+}, {
+  "esquema": "clinica",
+  "tabla": "especie",
+  "columna": "nombre",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "especie",
+  "columna": "descripcion",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "especie",
+  "columna": "activo",
+  "tipo_dato": "boolean",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "historial_peso",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('clinica.historial_peso_id_seq'::regclass)"
+}, {
+  "esquema": "clinica",
+  "tabla": "historial_peso",
+  "columna": "mascota_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "historial_peso",
+  "columna": "fecha",
+  "tipo_dato": "timestamp without time zone",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "historial_peso",
+  "columna": "peso_kg",
+  "tipo_dato": "numeric",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "mascota",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('clinica.mascota_id_seq'::regclass)"
+}, {
+  "esquema": "clinica",
+  "tabla": "mascota",
+  "columna": "persona_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "mascota",
+  "columna": "raza_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "mascota",
+  "columna": "nombre",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "mascota",
+  "columna": "fecha_nacimiento",
+  "tipo_dato": "date",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "mascota",
+  "columna": "ultimo_peso",
+  "tipo_dato": "numeric",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "mascota",
+  "columna": "estado",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "mascota",
+  "columna": "fecha_alta",
+  "tipo_dato": "timestamp without time zone",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "raza",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('clinica.raza_id_seq'::regclass)"
+}, {
+  "esquema": "clinica",
+  "tabla": "raza",
+  "columna": "especie_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "raza",
+  "columna": "nombre",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "raza",
+  "columna": "descripcion",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "clinica",
+  "tabla": "raza",
+  "columna": "activo",
+  "tipo_dato": "boolean",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('core.domicilio_id_seq'::regclass)"
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "pais",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "provincia",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "ciudad",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "cp",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "calle",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "altura",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "departamento",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "domicilio",
+  "columna": "notas",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('core.persona_id_seq'::regclass)"
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "nombre",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "apellido",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "dni",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "sexo",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "domicilio_id",
+  "tipo_dato": "integer",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "mail",
+  "tipo_dato": "character varying",
+  "permite_null": "YES",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "celular",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "core",
+  "tabla": "persona",
+  "columna": "fecha_alta",
+  "tipo_dato": "timestamp without time zone",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "sys",
+  "tabla": "config",
+  "columna": "id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": "nextval('sys.config_id_seq'::regclass)"
+}, {
+  "esquema": "sys",
+  "tabla": "config",
+  "columna": "config_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "sys",
+  "tabla": "config",
+  "columna": "config_nombre",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "sys",
+  "tabla": "config",
+  "columna": "parametro_id",
+  "tipo_dato": "integer",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "sys",
+  "tabla": "config",
+  "columna": "parametro_nombre",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}, {
+  "esquema": "sys",
+  "tabla": "config",
+  "columna": "parametro_valor",
+  "tipo_dato": "character varying",
+  "permite_null": "NO",
+  "valor_defecto": null
+}]

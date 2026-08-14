@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+from sqlmodel import select
+
+from app.core.security import hash_password
+from app.models.auth.historial_contrasena import HistorialContrasena
+from app.models.auth.login import Login
+from app.models.auth.permiso import Permiso
+from app.models.auth.rol import Rol
+from app.models.auth.rol_permiso import RolPermiso
+from app.models.auth.usuario import Usuario
+from app.models.core.persona import Persona
+from app.models.sys.config import Config
+
+
+def _seed_jwt_config(session) -> None:
+    session.add_all(
+        [
+            Config(
+                config_id=1,
+                config_nombre="JWT",
+                parametro_id=1,
+                parametro_nombre="ACCESS_TOKEN_EXPIRACION",
+                parametro_valor="15",
+            ),
+            Config(
+                config_id=1,
+                config_nombre="JWT",
+                parametro_id=2,
+                parametro_nombre="REFRESH_TOKEN_EXPIRACION",
+                parametro_valor="1440",
+            ),
+            Config(
+                config_id=2,
+                config_nombre="BRANDING",
+                parametro_id=1,
+                parametro_nombre="RAZON_SOCIAL",
+                parametro_valor="Yacanvet",
+            ),
+        ]
+    )
+
+
+def seed_usuario_con_permiso(
+    session,
+    *,
+    username: str,
+    password: str,
+    nombre: str,
+    apellido: str,
+    dni: str,
+    permiso_nombre: str,
+    rol_nombre: str = "ADMIN",
+    habilitado: bool = True,
+) -> Usuario:
+    persona = Persona(
+        nombre=nombre,
+        apellido=apellido,
+        dni=dni,
+        celular="123456789",
+        mail=f"{username}@example.com",
+    )
+    rol = session.exec(select(Rol).where(Rol.nombre == rol_nombre)).first()
+    if rol is None:
+        rol = Rol(nombre=rol_nombre, descripcion=rol_nombre)
+
+    permiso = session.exec(select(Permiso).where(Permiso.nombre == permiso_nombre)).first()
+    if permiso is None:
+        permiso = Permiso(nombre=permiso_nombre, descripcion=permiso_nombre)
+
+    usuario = Usuario(
+        persona=persona,
+        username=username,
+        habilitado=habilitado,
+        rol=rol,
+        version_token=1,
+    )
+    historial = HistorialContrasena(
+        usuario=usuario,
+        hashed_password=hash_password(password),
+        debe_cambiar=False,
+    )
+
+    session.add_all([persona, rol, permiso, usuario, historial])
+    session.commit()
+    session.refresh(rol)
+    session.refresh(permiso)
+    session.refresh(usuario)
+
+    existing_link = session.exec(
+        select(RolPermiso).where(
+            RolPermiso.rol_id == rol.id,
+            RolPermiso.permiso_id == permiso.id,
+        )
+    ).first()
+    if existing_link is None:
+        session.add(RolPermiso(rol_id=rol.id or 0, permiso_id=permiso.id or 0))
+        session.commit()
+
+    return usuario
+
+
+def test_list_usuarios_requires_auth(client, session) -> None:
+    _seed_jwt_config(session)
+    session.commit()
+
+    response = client.get("/api/usuarios")
+    assert response.status_code == 401
+    assert response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_list_usuarios_forbidden_without_permission(client, session) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="jperez",
+        password="Secret123!",
+        nombre="Juan",
+        apellido="Pérez",
+        dni="30111222",
+        permiso_nombre="pacientes:read",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "jperez", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.get("/api/usuarios")
+    assert response.status_code == 403
+    assert response.json()["error"] == "PERMISOS_INSUFICIENTES"
+
+
+def test_list_usuarios_success_with_ultimo_inicio(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:ver",
+        rol_nombre="ADMIN",
+    )
+    otro = seed_usuario_con_permiso(
+        session,
+        username="nuevo",
+        password="Secret123!",
+        nombre="Ana",
+        apellido="Ruiz",
+        dni="40111222",
+        permiso_nombre="usuarios:ver",
+        rol_nombre="ADMIN",
+    )
+
+    login_fecha = datetime.utcnow() - timedelta(hours=1)
+    session.add(
+        Login(
+            usuario_id=admin.id,
+            username_ingresado="admin",
+            fecha=login_fecha,
+            exito=True,
+            ip="127.0.0.1",
+        )
+    )
+    session.add(
+        Login(
+            usuario_id=admin.id,
+            username_ingresado="admin",
+            fecha=login_fecha - timedelta(days=1),
+            exito=False,
+            ip="127.0.0.1",
+            razon_fallo="CLAVE_INCORRECTA",
+        )
+    )
+    session.commit()
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.get("/api/usuarios")
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) == 2
+
+    by_username = {item["username"]: item for item in payload}
+    assert set(by_username.keys()) == {"admin", "nuevo"}
+
+    admin_item = by_username["admin"]
+    assert admin_item["id"] == admin.id
+    assert admin_item["nombre"] == "María"
+    assert admin_item["apellido"] == "Gómez"
+    assert admin_item["habilitado"] is True
+    assert admin_item["rol_id"] == admin.rol_id
+    assert admin_item["rol_nombre"] == "ADMIN"
+    assert admin_item["ultimo_inicio_sesion"] is not None
+
+    nuevo_item = by_username["nuevo"]
+    assert nuevo_item["id"] == otro.id
+    assert nuevo_item["ultimo_inicio_sesion"] is None

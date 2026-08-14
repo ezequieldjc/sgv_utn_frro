@@ -1,0 +1,35 @@
+4:
+Actuá como un experto en React, TypeScript y Vite (Senior Frontend Engineer), respetando estrictamente @ui-layout.mdc.
+
+Tu objetivo en este paso es implementar la capa de usuario completa en `frontend/` (Login, App Shell, Layout y Protección de Rutas) conectada con los endpoints del backend, basándote en @sidebar.md y la especificación de UI de @login.md.
+
+Instrucciones de ejecución (Trabajá exclusivamente dentro de `frontend/src/`):
+
+1. Cliente HTTP y Tipos (`lib/` y `types/`):
+   - Configurar un cliente HTTP (Fetch API o Axios) configurado obligatoriamente con `withCredentials: true` (o `credentials: 'include'`) para enviar y recibir cookies HttpOnly.
+   - Definir las interfaces de TypeScript para la sesión (`Usuario`, `AuthSessionResponse`, `PublicConfig`) reflejando el contrato acordado con el backend. Sin `any`.
+
+2. Estado Global / Autenticación (`hooks/` o `context/`):
+   - Creá un `AuthContext` o hook `useAuth` para gestionar el estado de sesión (`usuario`, `permisos`, `clinicName`, `isLoading`).
+   - Al montar, si no hay estado de sesión, debe consultar `GET /api/auth/me` y `GET /api/config/public` en paralelo para rehidratar la UI o determinar si el usuario debe autenticarse.
+
+3. Pantalla de Login (`pages/login.tsx`):
+   - Diseño full viewport centrado, fondo con `/bg-login.jpg` + overlay oscuro.
+   - Formulario con componentes Shadcn UI (Card, Input, Button).
+   - Branding dinámico leyendo la razón social desde `GET /api/config/public` (fallback a logo local `/logo.png` o ícono `PawPrint`).
+   - Manejo de errores de login estricto: traducir `CREDENCIALES_INVALIDAS` a "Credenciales incorrectas" y `USUARIO_DESHABILITADO` a "Usuario deshabilitado". Ante cualquiera de los dos, limpiar los campos de usuario y clave.
+   - Tras login exitoso, redirigir al Shell.
+
+4. Componente `<ProtectedRoute>`:
+   - Wrapper de React Router Dom. Si finalizó la carga de `/api/auth/me` y el usuario está autenticado, renderiza `children`; si no, redirige a `/login`.
+
+5. App Shell & Layout (`components/app-shell.tsx`):
+   - Implementá el componente respetando punto por punto la especificación funcional y la jerarquía de @sidebar.md.
+   - Sidebar con filtrado de visibilidad por permisos (`recurso:accion` o wildcard `*`).
+   - Topbar con Breadcrumbs dinámicos (`useLocation`), barra de búsqueda decorativa, `<ModeToggle />`, y menú de usuario con avatar (iniciales + nombre/apellido real).
+   - Botón de "Cerrar Sesión" ejecutando `POST /api/auth/logout` y redirigiendo a `/login`.
+
+6. Ruteo (`App.tsx`):
+   - Configurar las rutas principales con `react-router-dom`: `/login`, y rutas protegidas encasilladas dentro del `AppShell` (por ahora renderizando una vista principal vacía o de bienvenida en el área central).
+
+Before writing files, show me your proposed folder structure within `frontend/src/` and explain how `<ProtectedRoute>` will handle the initial session hydration.

@@ -1,0 +1,43 @@
+---
+description: Reglas de UI, diseño y componentes visuales
+globs: **/*.tsx,**/components/**
+alwaysApply: false
+---
+
+- UI Framework: Usá componentes de Shadcn UI (`@/components/ui/...`) siempre que exista un
+  equivalente. No escribas inputs, botones, modales o selects en HTML crudo si Shadcn ya
+  tiene ese componente.
+
+- Icons: Usá `lucide-react` para todos los íconos del sistema. El ícono `PawPrint` es el
+  fallback/branding oficial del proyecto (clínica veterinaria).
+
+- Styling: Usá Tailwind CSS junto con las variables CSS estándar de Shadcn
+  (`bg-background`, `text-foreground`, `border-border`, `bg-primary`, `text-muted-foreground`).
+  No hardcodees colores hex directamente en los componentes.
+
+- Assets:
+  - Imagen de fondo del login: `/bg-login.jpg`.
+  - Logo del negocio: `/logo.png` (si falla la carga, usar el ícono `PawPrint` como fallback).
+
+- Layouts de referencia:
+  - Pantalla de login: ocupa toda la viewport, centra el formulario y usa fondo con imagen + overlay oscuro.
+  - Shell autenticado: sidebar fijo a la izquierda, topbar superior y área principal vacía por ahora.
+  - La visibilidad de los botones del sidebar depende de permisos; nunca de nombres de rol hardcodeados.
+
+- Dark/Light Mode: Este proyecto es una SPA con Vite, sin server-side rendering, por lo
+  tanto NO usar el paquete `next-themes` (está pensado para evitar el flash de hidratación
+  de Next.js, que acá no existe). Implementar el cambio de tema con un Context de React
+  simple (`ThemeProvider` propio) que guarde la preferencia en `localStorage` y togglee la
+  clase `dark` en el elemento raíz, usando las mismas variables CSS de Shadcn.
+
+- Aesthetic Theme: Paleta de colores basada en **Slate** para tonos neutros/fondos y **Emerald** para elementos primarios/botones/acentos.
+- Login Styling: Tarjeta central sobre `/login_background.jpg` con efecto glassmorphism (`backdrop-blur-md` + transparencia `bg-card/80`), bordes suavemente iluminados y sombra elevada.
+
+- Sistema de Diseño y Paleta de Colores:
+  - Paleta Neutra: Slate (para fondos, tarjetas, bordes y textos secundarios).
+  - Paleta Primaria: Emerald (para botones de acción principal, estados activos del sidebar y acentos).
+  - Componentes: Modales y tarjetas con bordes suavizados (`rounded-2xl`) y sombras sutiles (`shadow-md`).
+
+- Estilizado de la Pantalla de Login:
+  - Imagen de Fondo: `/login_background.jpg` con cobertura total (`bg-cover bg-center`).
+  - Tarjeta Central: Efecto glassmorphism (`backdrop-blur-md` + `bg-card/80` o `bg-slate-900/80`), bordes sutiles y sombra profunda (`shadow-2xl`).

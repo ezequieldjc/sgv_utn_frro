@@ -1,0 +1,20 @@
+Actuá como un experto en Python, FastAPI y SQLModel, respetando estrictamente @database-types.mdc.
+
+Tu objetivo en este paso es crear los modelos de base de datos en `backend/app/models/` y dejar configurado Alembic para las migraciones.
+
+Instrucciones de ejecución:
+1. Leé @alcance_iteracion_uno.md. Es CRÍTICO que respetes el alcance: NO crees la tabla `core.domicilio`, NO incluyas el campo `domicilio_id` en el modelo `Persona`, y NO crees NINGUNA tabla del esquema `clinica`.
+2. Basándote en @modelo_datos_v1.md (para reglas de negocio y relaciones) y @esquema_db.json (para tipos físicos), creá los modelos SQLModel organizados por schema. Te sugiero esta estructura:
+   - `backend/app/models/core/persona.py`
+   - `backend/app/models/auth/` (archivos para rol, permiso, rol_permiso, usuario, historial_contrasena, login)
+   - `backend/app/models/sys/config.py`
+3. Requisitos técnicos obligatorios para los modelos:
+   - Toda clase debe heredar de `SQLModel, table=True`.
+   - Incluir explícitamente el schema en cada clase: `__table_args__ = {"schema": "nombre_del_esquema", ...}` (incluyendo las UniqueConstraints que figuran en el .md).
+   - Tipado estricto (ej: `id: int | None = Field(default=None, primary_key=True)`).
+   - Manejo de fechas de creación usando `default_factory=datetime.utcnow` (de la librería `datetime`).
+   - Configurar relaciones (`Relationship`) bidireccionales SOLO entre las entidades que están dentro del alcance.
+4. Configuración de Alembic:
+   - Inicializá o ajustá la configuración de Alembic (`alembic/env.py`) para que soporte múltiples esquemas de PostgreSQL (`core`, `auth`, `sys`) y lea correctamente el `SQLModel.metadata` importando todos los modelos creados.
+
+Antes de escribir el código de todos los archivos, mostrame la estructura de carpetas que vas a armar en `models/` y un ejemplo del código de `Usuario` para que yo pueda auditar cómo armaste las relaciones y el `__table_args__`. Esperá mi OK.

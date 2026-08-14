@@ -1,0 +1,67 @@
+---
+description: Reglas de RBAC, seguridad de acceso y auditoría
+globs: **/auth/**,**/*.tsx,**/*.py
+alwaysApply: false
+---
+
+- Modelo real de roles y permisos: Vive en el schema `auth`. `auth.usuario` tiene un
+  `rol_id` (FK a `auth.rol`). Los permisos NO están en el usuario ni en el rol directamente:
+  viven en `auth.permiso` y se conectan mediante la tabla intermedia `auth.rol_permiso`
+  (many-to-many entre rol y permiso). Para saber si un usuario puede hacer algo, siempre se
+  resuelve la cadena: usuario → rol → rol_permiso → permiso.
+
+- Permission-First Security: Nunca compares el string de rol crudo (ej:
+  `rol.nombre == "VETERINARIO"`) para mostrar u ocultar elementos de UI o autorizar una
+  acción. Usá códigos de permiso explícitos y atómicos desde `auth.permiso.nombre`, con
+  formato `recurso:accion` (ej: `pacientes:read`, `pacientes:create`, `turnos:update`,
+  `reportes:read`).
+
+- Los roles, sus permisos y la visibilidad de los menús se resuelven desde la base de datos
+  al iniciar sesión. El backend carga `auth.usuario`, su `rol` y sus `permisos`, los incluye
+  en el payload del JWT (que viaja en cookie HttpOnly) Y los devuelve además como JSON plano
+  en la respuesta de login y en `GET /api/auth/me` — el frontend no puede leer el JWT
+  directamente porque es HttpOnly, por eso necesita ese JSON aparte. El frontend dibuja el
+  sidebar en base a esos permisos, sin hardcodear matrices de rol en el código ni en los
+  documentos.
+
+- Conditional Rendering:
+  - Ocultá ítems del menú/sidebar si el usuario no tiene el permiso de lectura de ese módulo.
+  - Para esta versión, si el usuario tiene `*`, debe ver todos los menús del sidebar.
+  - Deshabilitá u ocultá botones de acción (crear, editar, eliminar) si el usuario no tiene
+    el permiso específico de esa acción.
+
+- Backend Enforcement: Ocultar cosas en la UI es solo por UX, nunca es la medida de
+  seguridad real. TODO endpoint de FastAPI debe validar el permiso correspondiente en el
+  backend (vía dependency de FastAPI que decodifica el JWT, resuelve rol → rol_permiso →
+  permiso, y valida) antes de ejecutar cualquier lógica. Nunca confíes en que el frontend
+  ya filtró algo.
+
+- Invalidación de sesiones (`version_token`): `auth.usuario.version_token` es un contador
+  que se incluye dentro del payload del JWT al generarlo. Cada vez que cambian los permisos,
+  el rol, o se fuerza un logout de un usuario (ej: cambio de contraseña, usuario deshabilitado),
+  incrementá `version_token` en la base de datos. En cada request autenticado, el backend
+  debe comparar el `version_token` del JWT contra el valor actual en `auth.usuario`: si no
+  coinciden, el token es inválido aunque no haya expirado, y se debe rechazar con 401.
+
+- Rotación de contraseña (`auth.historial_contrasena`): Nunca sobrescribas el hash de
+  contraseña en el lugar; cada cambio de contraseña genera un nuevo registro en
+  `auth.historial_contrasena` (con `hashed_password` vía bcrypt/argon2). El campo
+  `debe_cambiar` en `True` obliga al usuario a cambiar su contraseña en el próximo login
+  antes de dejarlo acceder a cualquier otra funcionalidad.
+  Nota de alcance: mientras no exista la pantalla de cambio de contraseña (ver
+  `docs/alcance_iteracion_uno.md`), el login NO debe bloquearse por `debe_cambiar` — el
+  campo ya existe en el modelo, pero su enforcement se activa recién cuando esa pantalla se
+  construya.
+
+- Auditoría de login (`auth.login`): Todo intento de login (exitoso o fallido) se registra
+  en `auth.login`, incluyendo `username_ingresado` (texto literal, incluso si no existe el
+  usuario), `ip`, `exito` y `razon_fallo` cuando corresponda: `USUARIO_INEXISTENTE`,
+  `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA` (usuario existe y
+  habilitado pero sin registros en `auth.historial_contrasena`). Todos estos casos, salvo
+  `USUARIO_DESHABILITADO`, responden al frontend como HTTP 401 / `Credenciales incorrectas`
+  — la distinción granular es solo para auditoría interna, nunca se expone al usuario. Esta
+  tabla es la base para detectar fuerza bruta — si vas a implementar bloqueo por intentos
+  fallidos, la lógica de conteo se apoya en esta tabla, no en una tabla nueva.
+
+- Auditoría sensible: Acciones sobre historia clínica, recetas electrónicas y datos
+  personales del cliente (`core.persona`) deben quedar trazadas (quién, qué, cuándo).

@@ -1,0 +1,29 @@
+Actuá como un experto en Python y FastAPI (Senior Backend Engineer) especializado en seguridad.
+
+Tu objetivo en este paso es implementar la lógica de autenticación, el control de acceso basado en permisos (RBAC) y los endpoints iniciales, siguiendo estrictamente las reglas de @rbac-security.mdc y la especificación de @login.md.
+
+Instrucciones de ejecución (Trabajá exclusivamente dentro de `backend/app/` y `backend/tests/`):
+
+1. Utilidades y Seguridad (`core/` y `services/`):
+   - Implementá el hasheo y validación de contraseñas usando `passlib` (bcrypt).
+   - Implementá la lógica de generación y decodificación de JWT (usando `python-jose` y `SECRET_KEY`).
+   - Creá un servicio (`services/auth_service.py` o similar) que resuelva la autenticación: buscar al usuario, validar que esté `habilitado`, obtener la contraseña VIGENTE desde `auth.historial_contrasena` (último registro) y comparar.
+   - Creá el servicio/dependencia de autorización que: decodifique el JWT, valide el `version_token` contra la base de datos, resuelva la cadena completa (usuario -> rol -> rol_permiso -> permiso) y valide si el usuario tiene el permiso requerido.
+
+2. Endpoints (en `api/`):
+   - Implementá `POST /api/auth/login`: Debe seguir paso a paso la sección 3 de @login.md. Es OBLIGATORIO registrar el intento (exitoso o fallido con su `razon_fallo`) en `auth.login` ANTES de responder. Si es exitoso, inyectá el JWT en una cookie HttpOnly y devolvé el JSON con los datos del usuario y sus permisos planos.
+   - Implementá `GET /api/auth/me`: Endpoint protegido que lee la cookie HttpOnly, valida el `version_token` y devuelve el mismo JSON de sesión para que el frontend se rehidrate.
+   - Implementá `POST /api/auth/logout`: Que simplemente limpie las cookies.
+   - Implementá `GET /api/config/public`: Que devuelva la `razon_social` consultando la tabla `sys.config` según especifica @login.md.
+
+3. Testing (`tests/`):
+   - Como indica @tech-stack.mdc, escribí tests en Pytest (ej: `test_auth.py`) comprobando:
+     a) Un login exitoso.
+     b) Un login fallido (que genere el registro correspondiente en la tabla de auditoría).
+     c) El bloqueo por `version_token` inválido o usuario deshabilitado.
+
+RESTRICCIONES:
+- No uses diccionarios crudos: todo request y response debe estar validado por schemas de Pydantic en `schemas/`.
+- No asumas que la contraseña está en la tabla usuario (está en `historial_contrasena`).
+
+Antes de escribir el código, explicame brevemente cómo vas a organizar los archivos (qué va en routers, qué va en services) y mostrame el schema Pydantic que vas a usar para la respuesta del login. Esperá mi OK.

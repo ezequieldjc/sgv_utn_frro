@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+alembic
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+psycopg2-binary
