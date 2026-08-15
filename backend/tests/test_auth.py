@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from sqlmodel import select
 
 from app.core.security import hash_password
@@ -18,6 +20,8 @@ def seed_auth_data(session, *, enabled: bool = True, version_token: int = 1) -> 
         nombre="Juan",
         apellido="Pérez",
         dni="30111222",
+        sexo="M",
+        fecha_nacimiento=date(1990, 1, 15),
         celular="123456789",
         mail="juan@example.com",
     )

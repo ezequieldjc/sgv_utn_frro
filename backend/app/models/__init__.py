@@ -4,5 +4,6 @@ from app.models.auth.permiso import Permiso
 from app.models.auth.rol import Rol
 from app.models.auth.rol_permiso import RolPermiso
 from app.models.auth.usuario import Usuario
+from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
 from app.models.sys.config import Config

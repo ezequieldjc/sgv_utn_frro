@@ -20,12 +20,13 @@ Este documento define la estructura de la base de datos para generar los modelos
 ## Módulo: Core
 
 ### Entidad: `Domicilio`
-> Fuera de alcance en esta iteración — no se crea esta tabla todavía (ver nota en `Persona.domicilio_id`).
+> Atributo de `Persona` persistido en tabla separada (`core.domicilio`), vinculado por
+> `persona.domicilio_id`.
 - **id**: integer, PK.
 - **pais**: varchar(50), Obligatorio.
 - **provincia**: varchar(50), Obligatorio.
 - **ciudad**: varchar(50), Obligatorio.
-- **cp**: varchar(10), Opcional.
+- **cp**: varchar(10), Obligatorio.
 - **calle**: varchar(100), Obligatorio.
 - **altura**: varchar(10), Obligatorio.
 - **departamento**: varchar(20), Opcional.
@@ -36,10 +37,9 @@ Este documento define la estructura de la base de datos para generar los modelos
 - **nombre**: varchar(100), Obligatorio.
 - **apellido**: varchar(100), Obligatorio.
 - **dni**: varchar(20), Obligatorio. *Restricción: Unique (`UQ_Persona_DNI`).*
-- **sexo**: char(1), Opcional. (M/F/X).
-- **domicilio_id**: integer, Opcional. *FK a domicilio.id.* **Fuera de alcance esta
-  iteración: no incluir esta columna todavía** — se agrega en una migración posterior,
-  cuando exista `Domicilio` y el módulo que lo use.
+- **sexo**: char(1), Obligatorio. (M/F/X).
+- **fecha_nacimiento**: date, Obligatorio.
+- **domicilio_id**: integer, Opcional. *FK a domicilio.id.*
 - **mail**: varchar(100), Opcional.
 - **celular**: varchar(30), Obligatorio.
 - **fecha_alta**: timestamp, Obligatorio. *Default: NOW()*.

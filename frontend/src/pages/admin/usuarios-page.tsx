@@ -1,6 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Copy,
   Eye,
   KeyRound,
@@ -15,6 +18,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -34,6 +45,14 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { apiFetch } from "@/lib/api";
 import type { UsuarioListItem } from "@/types/usuarios";
+
+type SortKey = "nombre" | "username" | "ultimo_inicio" | "estado" | "rol";
+type SortDir = "asc" | "desc";
+
+interface HabilitadoConfirmState {
+  usuario: UsuarioListItem;
+  nextHabilitado: boolean;
+}
 
 function hasPermission(permisos: string[], required: string): boolean {
   return permisos.includes("*") || permisos.includes(required);
@@ -66,6 +85,39 @@ function matchesSearch(usuario: UsuarioListItem, query: string): boolean {
 
   const fullName = `${usuario.nombre} ${usuario.apellido}`.toLowerCase();
   return fullName.includes(normalized) || usuario.username.toLowerCase().includes(normalized);
+}
+
+function compareNullableDate(a: string | null, b: string | null): number {
+  if (a === null && b === null) {
+    return 0;
+  }
+  if (a === null) {
+    return 1;
+  }
+  if (b === null) {
+    return -1;
+  }
+  return new Date(a).getTime() - new Date(b).getTime();
+}
+
+function compareUsuarios(a: UsuarioListItem, b: UsuarioListItem, sortKey: SortKey): number {
+  switch (sortKey) {
+    case "nombre": {
+      const nameA = `${a.apellido} ${a.nombre}`.toLowerCase();
+      const nameB = `${b.apellido} ${b.nombre}`.toLowerCase();
+      return nameA.localeCompare(nameB, "es");
+    }
+    case "username":
+      return a.username.toLowerCase().localeCompare(b.username.toLowerCase(), "es");
+    case "ultimo_inicio":
+      return compareNullableDate(a.ultimo_inicio_sesion, b.ultimo_inicio_sesion);
+    case "estado":
+      return Number(a.habilitado) - Number(b.habilitado);
+    case "rol":
+      return a.rol_nombre.toLowerCase().localeCompare(b.rol_nombre.toLowerCase(), "es");
+    default:
+      return 0;
+  }
 }
 
 function AccessDenied() {
@@ -127,6 +179,38 @@ function ActionIconButton({
   );
 }
 
+function SortableHead({
+  label,
+  sortKey,
+  activeKey,
+  activeDir,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  activeDir: SortDir;
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = activeKey === sortKey;
+  const Icon = !isActive ? ArrowUpDown : activeDir === "asc" ? ArrowUp : ArrowDown;
+
+  return (
+    <TableHead>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1.5 font-medium hover:text-foreground"
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        <Icon
+          className={`size-3.5 ${isActive ? "text-foreground" : "text-muted-foreground"}`}
+        />
+      </button>
+    </TableHead>
+  );
+}
+
 function UsuariosTableSkeleton() {
   return (
     <div className="space-y-3 p-4">
@@ -144,6 +228,13 @@ export default function UsuariosPage() {
   const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [sortKey, setSortKey] = React.useState<SortKey>("nombre");
+  const [sortDir, setSortDir] = React.useState<SortDir>("asc");
+  const [confirmState, setConfirmState] = React.useState<HabilitadoConfirmState | null>(
+    null
+  );
+  const [isUpdatingHabilitado, setIsUpdatingHabilitado] = React.useState(false);
+  const [confirmError, setConfirmError] = React.useState<string | null>(null);
 
   const canView = hasPermission(permisos, "usuarios:ver");
   const canCreate = hasPermission(permisos, "usuarios:crear");
@@ -189,10 +280,14 @@ export default function UsuariosPage() {
     };
   }, [canView]);
 
-  const filteredUsuarios = React.useMemo(
-    () => usuarios.filter((usuario) => matchesSearch(usuario, search)),
-    [usuarios, search]
-  );
+  const filteredUsuarios = React.useMemo(() => {
+    const filtered = usuarios.filter((usuario) => matchesSearch(usuario, search));
+    const sorted = [...filtered].sort((a, b) => {
+      const result = compareUsuarios(a, b, sortKey);
+      return sortDir === "asc" ? result : -result;
+    });
+    return sorted;
+  }, [usuarios, search, sortKey, sortDir]);
 
   const allFilteredSelected =
     filteredUsuarios.length > 0 &&
@@ -218,19 +313,65 @@ export default function UsuariosPage() {
     });
   }
 
-  function toggleHabilitado(id: number) {
-    setUsuarios((prev) =>
-      prev.map((usuario) =>
-        usuario.id === id
-          ? { ...usuario, habilitado: !usuario.habilitado }
-          : usuario
-      )
-    );
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir("asc");
+  }
+
+  function openHabilitadoConfirm(usuario: UsuarioListItem) {
+    setConfirmError(null);
+    setConfirmState({
+      usuario,
+      nextHabilitado: !usuario.habilitado,
+    });
+  }
+
+  function closeHabilitadoConfirm() {
+    if (isUpdatingHabilitado) {
+      return;
+    }
+    setConfirmState(null);
+    setConfirmError(null);
+  }
+
+  async function confirmHabilitadoChange() {
+    if (!confirmState) {
+      return;
+    }
+
+    setIsUpdatingHabilitado(true);
+    setConfirmError(null);
+    try {
+      const updated = await apiFetch<UsuarioListItem>(
+        `/api/usuarios/${confirmState.usuario.id}/habilitado`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ habilitado: confirmState.nextHabilitado }),
+        }
+      );
+      setUsuarios((prev) =>
+        prev.map((usuario) => (usuario.id === updated.id ? updated : usuario))
+      );
+      setConfirmState(null);
+    } catch {
+      setConfirmError("No se pudo actualizar el estado del usuario. Intentá de nuevo.");
+    } finally {
+      setIsUpdatingHabilitado(false);
+    }
   }
 
   if (!canView) {
     return <AccessDenied />;
   }
+
+  const confirmFullName = confirmState
+    ? `${confirmState.usuario.nombre} ${confirmState.usuario.apellido}`.trim()
+    : "";
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -259,9 +400,11 @@ export default function UsuariosPage() {
           </div>
 
           {canCreate ? (
-            <Button type="button" className="shrink-0">
-              <Plus className="size-4" />
-              Nuevo Usuario
+            <Button type="button" className="shrink-0" asChild>
+              <Link to="/admin/usuarios/nuevo">
+                <Plus className="size-4" />
+                Nuevo Usuario
+              </Link>
             </Button>
           ) : null}
         </div>
@@ -286,12 +429,42 @@ export default function UsuariosPage() {
                       aria-label="Seleccionar todos"
                     />
                   </TableHead>
-                  <TableHead>Nombre y Apellido</TableHead>
-                  <TableHead>Nombre de Usuario</TableHead>
-                  <TableHead>Último Inicio de Sesión</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <SortableHead
+                    label="Nombre y Apellido"
+                    sortKey="nombre"
+                    activeKey={sortKey}
+                    activeDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortableHead
+                    label="Nombre de Usuario"
+                    sortKey="username"
+                    activeKey={sortKey}
+                    activeDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortableHead
+                    label="Último Inicio de Sesión"
+                    sortKey="ultimo_inicio"
+                    activeKey={sortKey}
+                    activeDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortableHead
+                    label="Estado"
+                    sortKey="estado"
+                    activeKey={sortKey}
+                    activeDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortableHead
+                    label="Rol"
+                    sortKey="rol"
+                    activeKey={sortKey}
+                    activeDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <TableHead className="text-left">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -349,8 +522,8 @@ export default function UsuariosPage() {
                             {usuario.rol_nombre}
                           </Link>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-1">
+                        <TableCell className="text-left">
+                          <div className="flex items-center justify-start gap-1">
                             {canEdit ? (
                               <ActionIconButton
                                 label={
@@ -358,7 +531,7 @@ export default function UsuariosPage() {
                                     ? "Inhabilitar usuario"
                                     : "Habilitar usuario"
                                 }
-                                onClick={() => toggleHabilitado(usuario.id)}
+                                onClick={() => openHabilitadoConfirm(usuario)}
                               >
                                 {usuario.habilitado ? (
                                   <UserX className="size-4" />
@@ -405,6 +578,55 @@ export default function UsuariosPage() {
             {selectedIds.size > 0 ? ` · ${selectedIds.size} seleccionados` : ""}
           </p>
         ) : null}
+
+        <Dialog
+          open={confirmState !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeHabilitadoConfirm();
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {confirmState?.nextHabilitado ? "Habilitar usuario" : "Inhabilitar usuario"}
+              </DialogTitle>
+              <DialogDescription>
+                {confirmState?.nextHabilitado
+                  ? `¿Confirmás habilitar a ${confirmFullName} (@${confirmState.usuario.username})? Podrá volver a iniciar sesión.`
+                  : `¿Confirmás inhabilitar a ${confirmFullName} (@${confirmState?.usuario.username})? Se cerrarán sus sesiones activas.`}
+              </DialogDescription>
+            </DialogHeader>
+
+            {confirmError ? (
+              <p className="text-sm text-destructive">{confirmError}</p>
+            ) : null}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeHabilitadoConfirm}
+                disabled={isUpdatingHabilitado}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant={confirmState?.nextHabilitado ? "default" : "destructive"}
+                onClick={() => void confirmHabilitadoChange()}
+                disabled={isUpdatingHabilitado}
+              >
+                {isUpdatingHabilitado
+                  ? "Guardando..."
+                  : confirmState?.nextHabilitado
+                    ? "Habilitar"
+                    : "Inhabilitar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );

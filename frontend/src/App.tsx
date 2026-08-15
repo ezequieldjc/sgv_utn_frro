@@ -6,6 +6,7 @@ import { AppShell } from './components/app-shell';
 import LoginPage from './pages/login';
 import ShellHome from './pages/shell-home';
 import UsuariosPage from './pages/admin/usuarios-page';
+import UsuarioFormPage from './pages/admin/usuario-form-page';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           >
             <Route index element={<ShellHome />} />
             <Route path="admin/usuarios" element={<UsuariosPage />} />
+            <Route path="admin/usuarios/nuevo" element={<UsuarioFormPage mode="create" />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlmodel import select
 
@@ -59,6 +59,8 @@ def seed_usuario_con_permiso(
         nombre=nombre,
         apellido=apellido,
         dni=dni,
+        sexo="M",
+        fecha_nacimiento=date(1990, 1, 1),
         celular="123456789",
         mail=f"{username}@example.com",
     )
@@ -206,3 +208,310 @@ def test_list_usuarios_success_with_ultimo_inicio(client, session) -> None:
     nuevo_item = by_username["nuevo"]
     assert nuevo_item["id"] == otro.id
     assert nuevo_item["ultimo_inicio_sesion"] is None
+
+
+def test_patch_habilitado_requires_auth(client, session) -> None:
+    _seed_jwt_config(session)
+    session.commit()
+
+    response = client.patch("/api/usuarios/1/habilitado", json={"habilitado": False})
+    assert response.status_code == 401
+    assert response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_patch_habilitado_forbidden_without_permission(client, session) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="jperez",
+        password="Secret123!",
+        nombre="Juan",
+        apellido="Pérez",
+        dni="30111222",
+        permiso_nombre="usuarios:ver",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "jperez", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.patch("/api/usuarios/1/habilitado", json={"habilitado": False})
+    assert response.status_code == 403
+    assert response.json()["error"] == "PERMISOS_INSUFICIENTES"
+
+
+def test_patch_habilitado_not_found(client, session) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:editar",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.patch("/api/usuarios/99999/habilitado", json={"habilitado": False})
+    assert response.status_code == 404
+    assert response.json()["error"] == "USUARIO_NO_ENCONTRADO"
+
+
+def test_patch_habilitado_success_and_version_token(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:editar",
+    )
+    target = seed_usuario_con_permiso(
+        session,
+        username="target",
+        password="Secret123!",
+        nombre="Ana",
+        apellido="Ruiz",
+        dni="40111222",
+        permiso_nombre="usuarios:ver",
+        rol_nombre="RECEPCION",
+        habilitado=True,
+    )
+    assert target.version_token == 1
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    disable_response = client.patch(
+        f"/api/usuarios/{target.id}/habilitado",
+        json={"habilitado": False},
+    )
+    assert disable_response.status_code == 200
+    disable_payload = disable_response.json()
+    assert disable_payload["id"] == target.id
+    assert disable_payload["habilitado"] is False
+    assert disable_payload["username"] == "target"
+
+    session.refresh(target)
+    assert target.habilitado is False
+    assert target.version_token == 2
+
+    enable_response = client.patch(
+        f"/api/usuarios/{target.id}/habilitado",
+        json={"habilitado": True},
+    )
+    assert enable_response.status_code == 200
+    assert enable_response.json()["habilitado"] is True
+
+    session.refresh(target)
+    assert target.habilitado is True
+    assert target.version_token == 2
+
+    idempotent_response = client.patch(
+        f"/api/usuarios/{target.id}/habilitado",
+        json={"habilitado": True},
+    )
+    assert idempotent_response.status_code == 200
+    assert idempotent_response.json()["habilitado"] is True
+    session.refresh(target)
+    assert target.version_token == 2
+    assert admin.username == "admin"
+
+
+def _usuario_create_payload(*, dni: str, rol_id: int, nombre: str = "Carlos", apellido: str = "López") -> dict:
+    return {
+        "nombre": nombre,
+        "apellido": apellido,
+        "dni": dni,
+        "fecha_nacimiento": "1992-05-10",
+        "sexo": "M",
+        "celular": "11 5555-1234",
+        "mail": "carlos@example.com",
+        "domicilio": {
+            "pais": "Argentina",
+            "provincia": "Buenos Aires",
+            "ciudad": "Rosario",
+            "calle": "San Martín",
+            "altura": "1234",
+            "cp": "2000",
+            "departamento": "A",
+            "notas": None,
+        },
+        "rol_id": rol_id,
+        "habilitado": True,
+    }
+
+
+def test_create_usuario_requires_auth(client, session) -> None:
+    _seed_jwt_config(session)
+    session.commit()
+
+    response = client.post("/api/usuarios", json=_usuario_create_payload(dni="50111222", rol_id=1))
+    assert response.status_code == 401
+    assert response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_create_usuario_forbidden_without_permission(client, session) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="viewer",
+        password="Secret123!",
+        nombre="Vista",
+        apellido="Solo",
+        dni="30111222",
+        permiso_nombre="usuarios:ver",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "viewer", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post("/api/usuarios", json=_usuario_create_payload(dni="50111222", rol_id=1))
+    assert response.status_code == 403
+    assert response.json()["error"] == "PERMISOS_INSUFICIENTES"
+
+
+def test_create_usuario_success(client, session) -> None:
+    from app.core.security import verify_password
+
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/usuarios",
+        json=_usuario_create_payload(dni="50111222", rol_id=admin.rol_id or 0),
+    )
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["username"] == "clopez"
+    assert payload["debe_cambiar"] is True
+    assert isinstance(payload["password_temporal"], str)
+    assert "-" in payload["password_temporal"]
+
+    created = session.exec(select(Usuario).where(Usuario.id == payload["id"])).first()
+    assert created is not None
+    assert created.habilitado is True
+
+    historial = session.exec(
+        select(HistorialContrasena)
+        .where(HistorialContrasena.usuario_id == created.id)
+        .order_by(HistorialContrasena.fecha_creacion.desc())
+    ).first()
+    assert historial is not None
+    assert historial.debe_cambiar is True
+    assert verify_password(payload["password_temporal"], historial.hashed_password)
+
+    persona = session.get(Persona, created.persona_id)
+    assert persona is not None
+    assert persona.dni == "50111222"
+    assert persona.celular == "1155551234"
+    assert persona.domicilio_id is not None
+
+
+def test_create_usuario_duplicate_dni(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/usuarios",
+        json=_usuario_create_payload(dni="20111222", rol_id=admin.rol_id or 0),
+    )
+    assert response.status_code == 409
+    assert response.json()["error"] == "DNI_DUPLICADO"
+
+
+def test_create_usuario_rol_not_found(client, session) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/usuarios",
+        json=_usuario_create_payload(dni="50111222", rol_id=99999),
+    )
+    assert response.status_code == 404
+    assert response.json()["error"] == "ROL_NO_ENCONTRADO"
+
+
+def test_list_roles_success(client, session) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.get("/api/roles")
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) >= 1
+    assert "id" in payload[0]
+    assert "nombre" in payload[0]

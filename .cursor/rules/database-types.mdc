@@ -11,8 +11,8 @@ alwaysApply: false
   `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
   schema `public` por default. Las migraciones de Alembic deben referenciar el schema
   correcto (`op.create_table(..., schema="clinica")`).
-  Nota de alcance: en la iteración actual solo se migran `core.persona` (sin `domicilio_id`),
-  `auth.*` y `sys.config` — ver `docs/alcance_iteracion_uno.md`.
+  Nota: `core.persona` incluye `fecha_nacimiento` y `domicilio_id` (FK a `core.domicilio`);
+  también se migran `auth.*` y `sys.config`.
 
 - Single Source of Truth: El modelo de datos real vive en el backend, como clases SQLModel
   en `models/<schema>/` (ej: `models/clinica/mascota.py`). Los schemas de entrada/salida de

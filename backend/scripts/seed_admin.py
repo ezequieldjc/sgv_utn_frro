@@ -5,7 +5,7 @@ Usar desde backend/: python -m venv .venv; source .venv/bin/activate; pip instal
 """
 import os
 import sys
-from uuid import uuid4
+from datetime import date
 
 from passlib.context import CryptContext
 from sqlmodel import Session, select, create_engine
@@ -63,7 +63,14 @@ with Session(engine) as session:
     stmt = select(Persona).where(Persona.dni == default_dni)
     persona = session.exec(stmt).first()
     if not persona:
-        persona = Persona(nombre=admin_nombre, apellido=admin_apellido, dni=default_dni, celular=default_cel)
+        persona = Persona(
+            nombre=admin_nombre,
+            apellido=admin_apellido,
+            dni=default_dni,
+            sexo="M",
+            fecha_nacimiento=date(1990, 1, 1),
+            celular=default_cel,
+        )
         session.add(persona)
         session.commit()
         session.refresh(persona)
