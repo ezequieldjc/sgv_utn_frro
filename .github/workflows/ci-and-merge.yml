@@ -1,31 +1,23 @@
-name: CI y Merge a Main
-
-on:
-  push:
-    branches: [ staging ]
-
-jobs:
-  pruebas-ci:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Simulacion de CI
-        run: echo "Aqui se ejecutaran tus CIs cuando los configures"
-
-  fusionar-a-main:
+fusionar-a-main:
     needs: pruebas-ci
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
+      - name: Generar token del Bot
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.generate_token.outputs.token }}
 
       - name: Actualizar main desde staging
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "bot-merge-sgv-utn[bot]"
+          git config user.email "bot-merge-sgv-utn[bot]@users.noreply.github.com"
           git checkout main
           git merge origin/staging --ff-only
           git push origin main
