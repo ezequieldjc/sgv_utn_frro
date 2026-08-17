@@ -28,7 +28,20 @@ alwaysApply: true
   Return clean, production-ready code. Explanations, if needed, go outside the code block,
   in Spanish.
 
-- Testing: Para toda regla de negocio crítica, generá siempre el Pytest correspondiente junto
-  con el código. Ejemplos vigentes ahora: flujo de login, resolución de permisos
-  (rol → rol_permiso → permiso). Ejemplos futuros ya previstos: asignación de turnos, control
-  de stock, reglas de la historia clínica.
+- Testing & Quality Control (Mandatory Rules):
+  - Proactive Testing: Como asistente de IA, SIEMPRE debes generar la suite de tests correspondiente al escribir o modificar una funcionalidad. El código sin tests se considera incompleto.
+  - Self-Documenting Tests: NUNCA generes archivos externos (como `TESTS.md` o planillas) para listar tests. Los tests se documentan en el propio código usando nombres de función ultra-descriptivos bajo el patrón `test_<feature>_<condicion>_<resultado_esperado>` (ej. `test_crear_turno_fecha_pasada_devuelve_error_400`). Usa `docstrings` en Python únicamente para explicar la lógica detrás de reglas de negocio complejas.
+  - What MUST be Tested:
+    1. Reglas de Negocio y Lógica Crítica: Cálculos de inventario unificado (Pet Shop + Farmacia), descuento de stock, cálculo de agenda y alertas.
+    2. Autorización y Permisos (RBAC): Validar explícitamente que un usuario sin el permiso requerido (ej. `MASCOTAS_CREAR`) reciba una respuesta `403 Forbidden`.
+    3. Endpoints de API: Validar respuestas exitosas (`200`/`201`) y errores controlados (`400`, `403`, `404`, `500`).
+    4. Integración con BD: Persistencia real de entidades (Historias Clínicas, Mascotas, Turnos) mediante la BD de pruebas.
+  - What MUST NOT be Tested (Mocks & Restrictions):
+    1. APIs Externas (OpenAI / WhatsApp API): NUNCA realices llamadas HTTP reales a servicios externos en los tests. SIEMPRE utiliza `Mocks` / `Patches` para simular las respuestas del agente de IA y las notificaciones.
+    2. Librerías de Terceros: No testees si FastAPI, SQLModel o React funcionan.
+    3. Estilos y Píxeles: No generes tests para verificar clases de Tailwind, márgenes o colores en el Frontend.
+  - Testing Levels & Stack:
+    - Unit Tests: `Pytest` (Backend) y `Vitest` (Frontend). Para funciones puras, validaciones de Pydantic y utilidades de renderizado aislado.
+    - Integration Tests: `Pytest` + `TestClient` (FastAPI) + PostgreSQL de pruebas. Para verificar el flujo completo de la API REST, ORM y base de datos.
+    - End-to-End (E2E) Tests: `Playwright` o `Cypress`. Exclusivamente para "Caminos Críticos": Flujo de Login, Registro e Historia Clínica Digital por dictado de voz, y Venta/Cierre en Pet Shop.
+  - CI Compatibility: Todo test generado debe ser 100% automatizado, determinista y ejecutable mediante el comando `pytest` en la tubería de GitHub Actions para la rama `dev`.

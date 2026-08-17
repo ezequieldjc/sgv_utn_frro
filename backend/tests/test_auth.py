@@ -69,7 +69,7 @@ def seed_auth_data(session, *, enabled: bool = True, version_token: int = 1) -> 
     return usuario
 
 
-def test_login_success(client, session) -> None:
+def test_login_credenciales_validas_devuelve_200_setea_cookies_y_registra_auditoria(client, session) -> None:
     user = seed_auth_data(session)
 
     response = client.post(
@@ -97,7 +97,7 @@ def test_login_success(client, session) -> None:
     assert attempts[0].ip == "203.0.113.10"
 
 
-def test_login_failed_registers_audit(client, session) -> None:
+def test_login_clave_incorrecta_devuelve_401_y_registra_auditoria(client, session) -> None:
     seed_auth_data(session)
 
     response = client.post(
@@ -114,7 +114,7 @@ def test_login_failed_registers_audit(client, session) -> None:
     assert attempts[0].razon_fallo == "CLAVE_INCORRECTA"
 
 
-def test_login_blocks_disabled_user(client, session) -> None:
+def test_login_usuario_deshabilitado_devuelve_403_y_registra_auditoria(client, session) -> None:
     seed_auth_data(session, enabled=False)
 
     response = client.post(
@@ -131,7 +131,7 @@ def test_login_blocks_disabled_user(client, session) -> None:
     assert attempts[0].razon_fallo == "USUARIO_DESHABILITADO"
 
 
-def test_me_blocks_revoked_token(client, session) -> None:
+def test_me_version_token_desactualizado_devuelve_401(client, session) -> None:
     user = seed_auth_data(session)
 
     login_response = client.post(
@@ -147,3 +147,79 @@ def test_me_blocks_revoked_token(client, session) -> None:
     me_response = client.get("/api/auth/me")
     assert me_response.status_code == 401
     assert me_response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_login_usuario_inexistente_devuelve_401_y_registra_auditoria(client, session) -> None:
+    response = client.post(
+        "/api/auth/login",
+        json={"username": "noexiste", "password": "Secret123!"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"] == "CREDENCIALES_INVALIDAS"
+
+    attempts = session.exec(select(Login)).all()
+    assert len(attempts) == 1
+    assert attempts[0].exito is False
+    assert attempts[0].razon_fallo == "USUARIO_INEXISTENTE"
+    assert attempts[0].username_ingresado == "noexiste"
+
+
+def test_login_sin_historial_contrasena_devuelve_401(client, session) -> None:
+    persona = Persona(
+        nombre="Ana",
+        apellido="SinClave",
+        dni="40111222",
+        sexo="F",
+        fecha_nacimiento=date(1991, 3, 20),
+        celular="123456789",
+        mail="ana@example.com",
+    )
+    rol = Rol(nombre="ADMIN", descripcion="Administrador")
+    usuario = Usuario(
+        persona=persona,
+        username="asinclave",
+        habilitado=True,
+        rol=rol,
+        version_token=1,
+    )
+    session.add_all([persona, rol, usuario])
+    session.commit()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"username": "asinclave", "password": "Secret123!"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"] == "CREDENCIALES_INVALIDAS"
+
+    attempts = session.exec(select(Login)).all()
+    assert len(attempts) == 1
+    assert attempts[0].exito is False
+    assert attempts[0].razon_fallo == "SIN_HISTORIAL_CONTRASENA"
+
+
+def test_me_sin_cookie_devuelve_401(client, session) -> None:
+    seed_auth_data(session)
+
+    response = client.get("/api/auth/me")
+    assert response.status_code == 401
+    assert response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_logout_elimina_cookies_devuelve_204(client, session) -> None:
+    seed_auth_data(session)
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "jperez", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+    assert client.cookies.get("access_token")
+    assert client.cookies.get("refresh_token")
+
+    logout_response = client.post("/api/auth/logout")
+    assert logout_response.status_code == 204
+    assert client.cookies.get("access_token") in (None, "")
+    assert client.cookies.get("refresh_token") in (None, "")
