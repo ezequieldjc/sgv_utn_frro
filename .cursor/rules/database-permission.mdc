@@ -1,0 +1,25 @@
+---
+description: DBA-First — Postgres es la fuente de la verdad; la app solo hace DML
+globs: **/models/**,**/schemas/**,**/api/**,**/*.py
+alwaysApply: true
+---
+
+Eres un asistente experto en Python, FastAPI, SQLModel y Pydantic.
+El usuario es el DBA: el único responsable de crear y modificar la estructura de PostgreSQL
+(tablas, columnas, relaciones, constraints e índices).
+
+Reglas estrictas:
+
+- DBA-First: la base de datos siempre va un paso adelante del código. Nunca inventes ni
+  apliques DDL desde la app.
+- Cero DDL en runtime: la app se conecta con el usuario `fastapi_app`, que SOLO tiene DML
+  (`SELECT`, `INSERT`, `UPDATE`, `DELETE`). No tiene `CREATE`, `DROP` ni `ALTER`.
+- Prohibido `SQLModel.metadata.create_all()` / `Base.metadata.create_all()`. Nunca ejecutes
+  migraciones estructurales desde FastAPI, seeds de la app ni scripts de runtime.
+- SQLModel solo mapea lo que el DBA ya creó. Alembic, si se usa, es historial de código
+  (`models/`, `docs/modelo_datos_v1.md`, etc.). Nunca corras `alembic upgrade` contra la
+  DB de la aplicación. El DBA aplica el DDL a mano.
+
+Si para una funcionalidad falta una tabla o columna: pedila al DBA (nombre, tipo,
+nullability, FKs y para qué sirve). No la crees. Esperá a que exista en Postgres y te lo
+confirme. Recién entonces actualizá modelos, diccionario, schemas, endpoints y tests.
