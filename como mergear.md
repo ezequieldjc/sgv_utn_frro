@@ -52,17 +52,17 @@ Nota: esto mismo podria pasar con varias funcionalidades en paralelo. Es decir, 
 ## 3. Release 🎯✨
 Vamos a crear una nueva Pull Request desde staging a main: 
 
-    - Nueva PR
+- Nueva PR
 
-    - base ⬅️ compare
-        - base: main (es la rama destino, la que va a recibir el código).
-        - compare: staging (es la rama origen, la que tiene los cambios nuevos).
+- base ⬅️ compare
+    - base: main (es la rama destino, la que va a recibir el código).
+    - compare: staging (es la rama origen, la que tiene los cambios nuevos).
 
-    - GitHub te mostrará en verde que "Able to merge". Haz clic en Create pull request.
+- GitHub te mostrará en verde que "Able to merge". Haz clic en Create pull request.
 
-    - Ponle un título representativo, por ejemplo: **"Release: Login y Gestión de Usuarios"** o **"Actualización V1.2"**.
+- Ponle un título representativo, por ejemplo: **"Release: Login y Gestión de Usuarios"** o **"Actualización V1.2"**.
 
-    - Haz clic de nuevo en **Create pull request**.
+- Haz clic de nuevo en **Create pull request**.
 
 
 ## 4. ¿Qué pasa en ese momento?
