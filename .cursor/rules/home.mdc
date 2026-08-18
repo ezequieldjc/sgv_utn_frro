@@ -1,29 +1,24 @@
 ---
-description: Contexto transversal del proyecto (equipo, restricción legal de la IA, flujo de trabajo). Aplica siempre — el resto de las reglas y el alcance de cada iteración viven en archivos separados.
-globs:
+description: Flujo de trabajo DBA-First (pedir estructura, luego mapear código)
+globs: **/models/**,**/schemas/**,**/api/**,**/*.py
 alwaysApply: true
 ---
 
-Sos parte de un equipo de desarrollo Senior, experto en Python (FastAPI) y React + TypeScript.
-Estamos construyendo el "Sistema Inteligente de Gestión Veterinaria" para la veterinaria
-"Yacanvet", proyecto final de la carrera de Ingeniería en Sistemas. El equipo (3 personas)
-tiene background en Data Analytics, no en desarrollo web — priorizá siempre claridad y
-explicaciones sobre "trucos" de sintaxis avanzada.
+# Flujo DBA-First
 
-RESTRICCIÓN LEGAL (no estética):
-- El módulo de Asistencia Diagnóstica por IA cruza síntomas con predisposición genética de
-  raza/especie. ES SOLO UNA SUGERENCIA ESTADÍSTICA. Nunca generes código, textos de UI, ni
-  lógica que dé a entender que la IA "diagnostica" o reemplaza el criterio del veterinario
-  matriculado; la decisión final siempre es del profesional.
-- Marco legal de referencia: Ley 25.326 de Protección de Datos Personales (Argentina).
-  Encriptación de contraseñas, sanitización de inputs y control de acceso por permisos son
-  obligatorios, no opcionales.
+1. Si el DBA ya creó estructura en Postgres (ej: "Creé `clinica.mascota` con los campos X, Y, Z"),
+   actualizá únicamente:
+   - El modelo **SQLModel** en `models/<schema>/` con `__table_args__ = {"schema": "..."}`.
+   - Los schemas **Pydantic** en `schemas/`.
+   - Los endpoints en `app/api/` usando solo DML, con `get_session` (u otra inyección del proyecto).
+   - El diccionario `docs/modelo_datos_v1.md` para que coincida con Postgres.
+   - Alembic solo si el DBA lo pide, como historial de código — nunca como DDL contra la app.
 
-FLUJO DE TRABAJO:
-- Antes de generar una funcionalidad nueva, si el contrato de la API (rutas, request/response)
-  no está definido en la conversación ni en `docs/`, preguntá o proponé uno explícitamente
-  antes de codear.
-- Ante cualquier ambigüedad de stack o convención, consultá primero `tech-stack.mdc`,
-  `database-types.mdc`, `rbac-security.mdc` y `ui-layout.mdc` antes de asumir algo.
-- El alcance de lo que se construye en cada momento vive en
-  `docs/alcance_iteracion_uno.md`, no en este archivo ni en el prompt de turno.
+2. Si te piden una funcionalidad y falta una tabla o columna:
+   - **Stop.** No inventes el campo en SQLModel, no escribas DDL, no corras Alembic contra la DB.
+   - Pedile al DBA exactamente qué estructura necesitás y por qué.
+   - Cuando el DBA confirme que ya está en Postgres, seguí el paso 1 y recién ahí implementá
+     la funcionalidad.
+
+El usuario de conexión de la app es `fastapi_app` (solo DML). Todo el código debe ser
+síncrono o asíncrono según el proyecto actual; respetá las dependencias existentes.
