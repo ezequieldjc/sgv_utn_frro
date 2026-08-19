@@ -82,3 +82,10 @@ class UsuarioCreateResponse(BaseModel):
     username: str
     password_temporal: str
     debe_cambiar: bool
+
+
+class UsuarioRestablecerResponse(BaseModel):
+    mensaje: str
+    usuario_id: int
+    username: str
+    password_temporal: str

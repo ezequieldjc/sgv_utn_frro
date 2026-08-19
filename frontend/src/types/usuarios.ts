@@ -25,6 +25,14 @@ export interface UsuarioCreateResponse {
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
+export interface UsuarioRestablecerResponse {
+  mensaje: string;
+  usuario_id: number;
+  username: string;
+  password_temporal: string;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
 export interface DomicilioCreatePayload {
   pais: string;
   provincia: string;

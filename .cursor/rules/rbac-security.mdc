@@ -47,19 +47,19 @@ alwaysApply: false
   contraseña en el lugar; cada cambio de contraseña genera un nuevo registro en
   `auth.historial_contrasena` (con `hashed_password` vía bcrypt/argon2). El campo
   `debe_cambiar` en `True` obliga al usuario a cambiar su contraseña en el próximo login
-  antes de dejarlo acceder a cualquier otra funcionalidad.
-  Nota de alcance: mientras no exista la pantalla de cambio de contraseña (ver
-  `docs/alcance_iteracion_uno.md`), el login NO debe bloquearse por `debe_cambiar` — el
-  campo ya existe en el modelo, pero su enforcement se activa recién cuando esa pantalla se
-  construya.
+  antes de dejarlo acceder a cualquier otra funcionalidad: `POST /api/auth/login` responde
+  `403 DEBE_CAMBIAR_CONTRASENA` y no emite JWT; el cambio se hace en
+  `POST /api/auth/cambiar-contrasena-obligatorio` (público, sin auto-login).
 
 - Auditoría de login (`auth.login`): Todo intento de login (exitoso o fallido) se registra
   en `auth.login`, incluyendo `username_ingresado` (texto literal, incluso si no existe el
   usuario), `ip`, `exito` y `razon_fallo` cuando corresponda: `USUARIO_INEXISTENTE`,
   `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA` (usuario existe y
-  habilitado pero sin registros en `auth.historial_contrasena`). Todos estos casos, salvo
-  `USUARIO_DESHABILITADO`, responden al frontend como HTTP 401 / `Credenciales incorrectas`
-  — la distinción granular es solo para auditoría interna, nunca se expone al usuario. Esta
+  habilitado pero sin registros en `auth.historial_contrasena`), `DEBE_CAMBIAR_CONTRASENA`
+  (credenciales válidas pero el historial vigente exige cambio). `USUARIO_DESHABILITADO` y
+  `DEBE_CAMBIAR_CONTRASENA` responden 403 al frontend; el resto de fallos de login se
+  agrupan como HTTP 401 / `Credenciales incorrectas` — la distinción granular es solo para
+  auditoría interna, nunca se expone al usuario. Esta
   tabla es la base para detectar fuerza bruta — si vas a implementar bloqueo por intentos
   fallidos, la lógica de conteo se apoya en esta tabla, no en una tabla nueva.
 
