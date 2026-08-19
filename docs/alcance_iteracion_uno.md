@@ -4,7 +4,8 @@
 
 - Arquitectura general (frontend, backend, base de datos) según
   `.cursor/rules/tech-stack.mdc` y `.cursor/rules/database-types.mdc`.
-- Pantalla de login (`docs/prompts-front/login.md` + `docs/prompts-back/login.md`).
+- Login autenticado (`docs/login.md`) y cambio obligatorio de contraseña cuando
+  `auth.historial_contrasena.debe_cambiar` es `true` (`docs/login_cambio_pwd.md`).
 - Home autenticada: sidebar + topbar + área central vacía (`docs/prompts-front/sidebar.md`).
 - Modelo de datos mínimo para sostener lo anterior: `core.persona` (sin `domicilio_id`),
   `auth.usuario`, `auth.rol`, `auth.permiso`, `auth.rol_permiso`, `auth.historial_contrasena`,
@@ -19,9 +20,9 @@
   se migra ni se crean sus tablas en esta iteración.
 - Historia Clínica Digital, dictado por voz / NLP, asistencia diagnóstica por IA, inventario
   unificado, automatización de turnos, recordatorios por WhatsApp, recetas electrónicas.
-- Recuperación de contraseña y pantalla de cambio de contraseña. El campo
-  `auth.historial_contrasena.debe_cambiar` existe en el modelo, pero su enforcement en el
-  login (bloquear el acceso hasta cambiar la clave) queda para cuando exista esa pantalla.
+- Recuperación de contraseña (olvidé mi clave). El cambio obligatorio en el login ya
+  está en alcance: si el historial vigente tiene `debe_cambiar`, el acceso se bloquea
+  hasta actualizar la clave.
 
 ## Por qué existe este archivo
 

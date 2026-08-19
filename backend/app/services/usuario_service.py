@@ -15,7 +15,12 @@ from app.models.auth.rol import Rol
 from app.models.auth.usuario import Usuario
 from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
-from app.schemas.usuarios import UsuarioCreate, UsuarioCreateResponse, UsuarioListItem
+from app.schemas.usuarios import (
+    UsuarioCreate,
+    UsuarioCreateResponse,
+    UsuarioListItem,
+    UsuarioRestablecerResponse,
+)
 
 
 def _strip_accents(value: str) -> str:
@@ -218,4 +223,29 @@ def create_usuario(session: Session, payload: UsuarioCreate) -> UsuarioCreateRes
         username=usuario.username,
         password_temporal=password_temporal,
         debe_cambiar=True,
+    )
+
+
+def restablecer_contrasena(session: Session, usuario_id: int) -> UsuarioRestablecerResponse:
+    usuario = session.get(Usuario, usuario_id)
+    if usuario is None:
+        raise APIError(404, "USUARIO_NO_ENCONTRADO", "No se encontró el usuario solicitado")
+
+    password_temporal = generate_temp_password()
+    historial = HistorialContrasena(
+        usuario_id=usuario.id or 0,
+        hashed_password=hash_password(password_temporal),
+        debe_cambiar=True,
+    )
+    usuario.version_token += 1
+    session.add(historial)
+    session.add(usuario)
+    session.commit()
+    session.refresh(usuario)
+
+    return UsuarioRestablecerResponse(
+        mensaje="Contraseña restablecida exitosamente",
+        usuario_id=usuario.id or 0,
+        username=usuario.username,
+        password_temporal=password_temporal,
     )

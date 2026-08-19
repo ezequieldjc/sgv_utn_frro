@@ -79,9 +79,9 @@ La asignación concreta de permisos a cada rol vive en la base de datos y no deb
 - **usuario_id**: integer, Obligatorio. *FK a usuario.id*.
 - **hashed_password**: varchar(255), Obligatorio.
 - **fecha_creacion**: timestamp, Obligatorio. *Default: NOW()*.
-- **debe_cambiar**: boolean, Obligatorio. *Default: True*. (Cambio de clave en próximo login
-  — el campo existe desde esta iteración, pero su enforcement en el login queda para cuando
-  exista la pantalla de cambio de contraseña; ver `docs/alcance_iteracion_actual.md`).
+- **debe_cambiar**: boolean, Obligatorio. *Default: True*. Si el registro vigente es `true`,
+  el login no emite JWT y responde `403 DEBE_CAMBIAR_CONTRASENA` hasta que el usuario
+  actualice la clave (`POST /api/auth/cambiar-contrasena-obligatorio`).
 
 Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usuario`. Se obtiene consultando `HistorialContrasena` filtrado por `usuario_id` y ordenando por `fecha_creacion DESC, id DESC`; el primer registro resultante define el `hashed_password` actual.
 
@@ -93,8 +93,8 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 - **exito**: boolean, Obligatorio. (True=Exitoso, False=Fallido).
 - **ip**: inet, Obligatorio. (En SQLModel mapear como String o usar tipo IP de SQLAlchemy; en Pydantic, `IPvAnyAddress`).
 - **razon_fallo**: varchar(50), Opcional. (Valores: `USUARIO_INEXISTENTE`,
-  `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA` — ver
-  `.cursor/rules/rbac-security.mdc`).
+  `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA`,
+  `DEBE_CAMBIAR_CONTRASENA` — ver `.cursor/rules/rbac-security.mdc`).
 
 ---
 
