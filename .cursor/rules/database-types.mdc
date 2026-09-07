@@ -5,12 +5,28 @@ alwaysApply: false
 ---
 
 - Multi-Schema PostgreSQL: La base de datos usa schemas separados, NO todo vive en `public`.
-  Schemas actuales: `core` (persona, domicilio), `clinica` (especie, raza, mascota,
-  historial_peso), `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login),
-  `sys` (config). Cada modelo SQLModel debe declarar su schema explícitamente:
+<<<<<<< HEAD
+  Schemas actuales: `core` (persona, domicilio), `catalogo` (estado_reproductivo, habitat,
+  tamanio, pelaje, temperamento, mascota_estado — con `activo` para baja lógica),
+  `clinica` (especie, raza, mascota, historial_peso), `auth` (usuario, rol, permiso,
+  rol_permiso, historial_contrasena, login), `sys` (config). Cada modelo SQLModel debe
+  declarar su schema explícitamente: `__table_args__ = {"schema": "clinica"}` (o el schema
+  que corresponda). Nunca asumas schema `public` por default.
+  Nota: `core.persona` incluye `fecha_nacimiento` y `domicilio_id` (FK a `core.domicilio`).
+  Diccionario: `docs/modelo_datos_v1.md`.
+=======
+  Schemas actuales:
+  - `core` (persona, domicilio)
+  - `catalogo` (estado_reproductivo, habitat, tamanio, pelaje, temperamento, mascota_estado)
+  - `clinica` (especie, raza, mascota, historial_peso, patologia, patologia_predisposicion)
+  - `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login)
+  - `sys` (config)
+  Cada modelo SQLModel debe declarar su schema explícitamente:
   `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
   schema `public` por default.
-  Nota: `core.persona` incluye `fecha_nacimiento` y `domicilio_id` (FK a `core.domicilio`).
+  Nota: `core.persona` incluye `fecha_nacimiento`, `domicilio_id` (FK a `core.domicilio`) y
+  `es_cliente`. El diccionario canónico está en `docs/modelo_datos_v1.md`.
+>>>>>>> 916b3f3cec9cf2bc213928b410b7cafbf7b6199a
 
 - Single Source of Truth: PostgreSQL (el DBA) es la fuente de la verdad estructural. Los
   modelos SQLModel en `models/<schema>/` (ej. `models/clinica/mascota.py`) deben reflejar
@@ -33,8 +49,10 @@ alwaysApply: false
   pediselo al DBA (no empieces por SQLModel ni por Alembic). Cuando el DBA confirme que
   ya existe en Postgres, actualizá el modelo SQLModel, `docs/modelo_datos_v1.md`, schemas
   Pydantic y tipos TS. Ejemplos de campos reales para no reinventar: usá
-  `mascota.ultimo_peso` (no `mascota.peso_actual`), `persona.mail` (no `usuario.email`,
-  el mail vive en `persona`, no en `usuario`), `usuario.habilitado` (no `usuario.activo`).
+  `mascota.ultimo_peso` (no `mascota.peso_actual`), `mascota.mascota_estado_id` (no un
+  campo libre `mascota.estado`), `historial_peso.peso_kg` (no `peso`), `persona.mail` (no
+  `usuario.email`, el mail vive en `persona`, no en `usuario`), `usuario.habilitado` (no
+  `usuario.activo`).
 
 - Tipos de columna: Respetá el tipo de dato definido en el Diccionario de Datos / Postgres
   al mapear a Pydantic/SQLModel (ej: `decimal(5,2)` → `Decimal` con `max_digits=5,

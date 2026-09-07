@@ -22,9 +22,11 @@ class Persona(SQLModel, table=True):
     mail: str | None = Field(default=None, max_length=100)
     celular: str = Field(max_length=30, nullable=False)
     fecha_alta: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    es_cliente: bool = Field(default=True, nullable=False)
 
     domicilio: Mapped["Domicilio"] = Relationship(back_populates="personas")
     usuario: Mapped["Usuario"] = Relationship(
         back_populates="persona",
         sa_relationship_kwargs={"uselist": False},
     )
+    mascotas: Mapped[list["Mascota"]] = Relationship(back_populates="persona")

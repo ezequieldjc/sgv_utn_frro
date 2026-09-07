@@ -120,8 +120,6 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Mascotas y Clientes",
     icon: Users,
     items: [
-      { to: "/mascotas/nueva", label: "Nueva Mascota", permiso: "mascotas:crear" },
-      { to: "/clientes/nuevo", label: "Nuevo Cliente", permiso: "clientes:crear" },
       { to: "/mascotas", label: "Listado de Mascotas", permiso: "mascotas:ver_listado" },
       { to: "/clientes", label: "Listado de Clientes", permiso: "clientes:ver_listado" },
     ],
@@ -145,6 +143,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: "/admin/usuarios", label: "Usuarios", permiso: "usuarios:ver" },
       { to: "/admin/roles", label: "Roles y Permisos", permiso: "roles:ver" },
+      { to: "/admin/catalogos", label: "Catálogos", permiso: "catalogos:ver" },
       { to: "/admin/parametros", label: "Parámetros", permiso: "parametros:ver" },
       { to: "/admin/auditoria", label: "Auditoría", permiso: "auditoria:ver" },
     ],
@@ -168,6 +167,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   analisis: "Análisis",
   admin: "Admin",
   usuarios: "Usuarios",
+  catalogos: "Catálogos",
   roles: "Roles y Permisos",
   parametros: "Parámetros",
   auditoria: "Auditoría",

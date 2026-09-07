@@ -36,12 +36,14 @@ autenticación del Sistema Inteligente de Gestión Veterinaria para Yacanvet.
 ### 3.1 Estándar de Respuestas de Error
 
 - Estructura JSON fija: `{"error": "CODIGO", "detalle": "..."}`.
-- Códigos del login: `CREDENCIALES_INVALIDAS` (HTTP 401), `USUARIO_DESHABILITADO` (HTTP 403).
+- Códigos del login: `CREDENCIALES_INVALIDAS` (HTTP 401), `USUARIO_DESHABILITADO` (HTTP 403),
+  `DEBE_CAMBIAR_CONTRASENA` (HTTP 403; credenciales válidas pero hay que actualizar la clave).
 - Códigos de autenticación/autorización general: `TOKEN_EXPIRADO`, `TOKEN_INVALIDO`,
   `PERMISOS_INSUFICIENTES`.
 - El frontend traduce `CREDENCIALES_INVALIDAS` → `Credenciales incorrectas` y
   `USUARIO_DESHABILITADO` → `Usuario deshabilitado`. Ante cualquiera de los dos, limpiar los
-  campos de usuario y contraseña.
+  campos de usuario y contraseña. Ante `DEBE_CAMBIAR_CONTRASENA` no mostrar ese error rojo:
+  abrir el modal de cambio de contraseña (ver `docs/login_cambio_pwd.md`).
 - `razon_fallo` interno para auditoría (nunca expuesto al usuario) usa códigos más granulares:
   ver `.cursor/rules/rbac-security.mdc`.
 

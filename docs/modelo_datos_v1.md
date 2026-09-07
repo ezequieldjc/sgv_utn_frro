@@ -12,7 +12,7 @@ Este documento define la estructura de la base de datos para generar los modelos
 3. Configurar atributos `Field()` con `nullable=False`, `unique=True`, o `default=` según lo especificado. Para los defaults de fecha (NOW), usar `default_factory=datetime.utcnow` (o timezone actual).
 4. Configurar las relaciones (`Relationship`) bidireccionales entre entidades.
 5. Crear las restricciones multi-columna (UniqueConstraint) en los `__table_args__` donde se indique.
-6. El código debe ser modular, separando en sub-carpetas lógicas: `core/`, `auth/`, `clinica/`, `sys/`.
+6. El código debe ser modular, separando en sub-carpetas lógicas: `core/`, `auth/`, `clinica/`, `catalogo/`, `sys/`.
 7. Incluir las "Notas" como docstrings o comentarios en español.
 
 ---
@@ -43,6 +43,11 @@ Este documento define la estructura de la base de datos para generar los modelos
 - **mail**: varchar(100), Opcional.
 - **celular**: varchar(30), Obligatorio.
 - **fecha_alta**: timestamp, Obligatorio. *Default: NOW()*.
+- **es_cliente**: boolean, Obligatorio. *Default: True*. Indica si la persona es
+  cliente/dueño de la clínica. El listado de clientes (`GET /api/clientes`) solo incluye
+  filas con `es_cliente = true`. Al dar de alta un usuario/empleado del sistema
+  (`POST /api/usuarios`) se debe persistir `es_cliente = false`. Una misma persona puede
+  ser empleado (`auth.usuario`) y cliente (`es_cliente = true`) a la vez.
 
 ---
 
@@ -79,9 +84,10 @@ La asignación concreta de permisos a cada rol vive en la base de datos y no deb
 - **usuario_id**: integer, Obligatorio. *FK a usuario.id*.
 - **hashed_password**: varchar(255), Obligatorio.
 - **fecha_creacion**: timestamp, Obligatorio. *Default: NOW()*.
-- **debe_cambiar**: boolean, Obligatorio. *Default: True*. (Cambio de clave en próximo login
-  — el campo existe desde esta iteración, pero su enforcement en el login queda para cuando
-  exista la pantalla de cambio de contraseña; ver `docs/alcance_iteracion_actual.md`).
+- **debe_cambiar**: boolean, Obligatorio. *Default: True*. Si el registro vigente es `true`,
+  el login no emite JWT y responde `403 DEBE_CAMBIAR_CONTRASENA` hasta que el usuario
+  actualice la clave (`POST /api/auth/cambiar-contrasena-obligatorio`). Ver también
+  `docs/login.md` y `docs/alcance_iteracion_uno.md`.
 
 Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usuario`. Se obtiene consultando `HistorialContrasena` filtrado por `usuario_id` y ordenando por `fecha_creacion DESC, id DESC`; el primer registro resultante define el `hashed_password` actual.
 
@@ -93,45 +99,159 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 - **exito**: boolean, Obligatorio. (True=Exitoso, False=Fallido).
 - **ip**: inet, Obligatorio. (En SQLModel mapear como String o usar tipo IP de SQLAlchemy; en Pydantic, `IPvAnyAddress`).
 - **razon_fallo**: varchar(50), Opcional. (Valores: `USUARIO_INEXISTENTE`,
-  `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA` — ver
-  `.cursor/rules/rbac-security.mdc`).
+  `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA`,
+  `DEBE_CAMBIAR_CONTRASENA` — ver `.cursor/rules/rbac-security.mdc`).
+
+---
+
+## Módulo: Catalogo (`catalogo`)
+<<<<<<< HEAD
+
+> Tablas paramétricas para combos (Admin → Catálogos). Script DBA de baja lógica:
+> `scripts/base/catalogo_add_activo.sql`. Spec de pantalla:
+> `docs/prompts botones/admin_catalogos.md`.
+
+Campos comunes a todas (salvo donde se indique):
+- **id**: integer, PK.
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+- **activo**: boolean, Obligatorio. *Default: True*. Baja lógica (no se borran filas).
+
+### Entidades con `especie_id` (filtro por especie)
+
+`EstadoReproductivo`, `Habitat`, `Tamanio`, `Pelaje`, `Temperamento`:
+
+- **especie_id**: integer, Opcional a nivel BD (nullable histórico). *Idealmente FK a
+  `clinica.especie.id`.* En la UI de Admin Catálogos, para altas/ediciones nuevas, se
+  exige seleccionar especie (ver spec).
+
+### Entidad: `MascotaEstado` (`catalogo.mascota_estado`)
+
+Catálogo **global** (sin `especie_id`): estado operativo de la mascota.
 
 ---
 
 ## Módulo: Clinica
 
-> **Fuera de alcance en esta iteración** (ver `docs/alcance_iteracion_actual.md`).
-> Diccionario documentado para referencia futura; no se crean estas tablas todavía.
+> Las tablas de clínica/catálogo pueden existir ya en PostgreSQL aunque la UI de mascotas
+> aún no esté cableada. Ver también `docs/prompts botones/admin_catalogos.md`.
+=======
+
+> Tablas paramétricas para combos del alta/edición de mascota. Las tablas específicas de
+> especie incluyen `especie_id` para filtrar en frontend. En BD ya existen; el cableado de
+> endpoints/UI del módulo Mascotas se documenta en
+> `docs/modelo_datos_cambios_mascota_20260907.md` (sección API).
+
+### Entidad: `EstadoReproductivo` (`catalogo.estado_reproductivo`)
+- **id**: integer, PK.
+- **especie_id**: integer, Opcional. *(filtro por especie; idealmente FK a `clinica.especie.id`)*
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+
+### Entidad: `Habitat` (`catalogo.habitat`)
+- **id**: integer, PK.
+- **especie_id**: integer, Opcional.
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+
+### Entidad: `Tamanio` (`catalogo.tamanio`)
+- **id**: integer, PK.
+- **especie_id**: integer, Opcional.
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+
+### Entidad: `Pelaje` (`catalogo.pelaje`)
+- **id**: integer, PK.
+- **especie_id**: integer, Opcional.
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+
+### Entidad: `Temperamento` (`catalogo.temperamento`)
+- **id**: integer, PK.
+- **especie_id**: integer, Opcional.
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+
+### Entidad: `MascotaEstado` (`catalogo.mascota_estado`)
+> Catálogo **global** (no filtra por especie). Reemplaza el antiguo campo libre
+> `clinica.mascota.estado`.
+- **id**: integer, PK.
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+
+---
+
+## Módulo: Clinica (`clinica`)
+
+> Las tablas de este módulo **ya existen en PostgreSQL**. El desarrollo de pantallas/API de
+> mascotas y del motor de predisposición puede estar fuera del alcance de la iteración de
+> app actual; ver `docs/alcance_iteracion_uno.md` y
+> `docs/modelo_datos_cambios_mascota_20260907.md`.
+>>>>>>> 916b3f3cec9cf2bc213928b410b7cafbf7b6199a
 
 ### Entidad: `Especie`
 - **id**: integer, PK.
-- **nombre**: varchar(50), Obligatorio. *Unique*.
-- **descripcion**: text, Opcional.
+- **nombre**: varchar(50), Obligatorio. *Unique (`UQ_Especie_Nombre`)*.
+- **descripcion**: text/varchar, Opcional.
 - **activo**: boolean, Obligatorio. *Default: True*.
 
 ### Entidad: `Raza`
 - **id**: integer, PK.
-- **especie_id**: integer, Obligatorio. *FK a especie.id*.
+- **especie_id**: integer, Obligatorio. *FK a `clinica.especie.id`*.
 - **nombre**: varchar(50), Obligatorio.
-- **descripcion**: text, Opcional.
+- **descripcion**: text/varchar, Opcional.
 - **activo**: boolean, Obligatorio. *Default: True*.
 
 ### Entidad: `Mascota`
 - **id**: integer, PK.
-- **persona_id**: integer, Obligatorio. *FK a persona.id*. (Dueño).
-- **raza_id**: integer, Obligatorio. *FK a raza.id*.
+- **persona_id**: integer, Obligatorio. *FK a `core.persona.id`* (dueño/tutor).
+- **raza_id**: integer, Obligatorio. *FK a `clinica.raza.id`*.
 - **nombre**: varchar(50), Obligatorio.
 - **fecha_nacimiento**: date, Opcional.
-- **ultimo_peso**: decimal(5,2), Opcional.
-- **estado**: varchar(20), Obligatorio. (VIVA, FALLECIDA, INACTIVA).
+- **ultimo_peso**: decimal(5,2), Opcional. *Se sincroniza desde `historial_peso` vía trigger.*
+- **sexo**: char(1), Opcional. *Restricción CHECK: `'M'`, `'H'`, `'U'`.*
+- **microchip**: varchar(15), Opcional. *Unique.*
+- **alertas_medicas**: text, Opcional.
 - **fecha_alta**: timestamp, Obligatorio. *Default: NOW()*.
+- **pelaje_id**: integer, Opcional. *FK a `catalogo.pelaje.id`*.
+- **tamanio_id**: integer, Opcional. *FK a `catalogo.tamanio.id`*.
+- **habitat_id**: integer, Opcional. *FK a `catalogo.habitat.id`*.
+- **estado_reproductivo_id**: integer, Opcional. *FK a `catalogo.estado_reproductivo.id`*.
+- **temperamento_id**: integer, Opcional. *FK a `catalogo.temperamento.id`*.
+- **mascota_estado_id**: integer, Obligatorio. *FK a `catalogo.mascota_estado.id`*.
+
+> Ya **no** existe la columna libre `estado` (VIVA/FALLECIDA/…). El estado operativo se
+> modela con `mascota_estado_id`.
 
 ### Entidad: `HistorialPeso`
 - **id**: integer, PK.
-- **mascota_id**: integer, Obligatorio. *FK a mascota.id*.
-- **fecha**: timestamp, Obligatorio. *Default: NOW()*.
+- **mascota_id**: integer, Obligatorio. *FK a `clinica.mascota.id`*.
+- **fecha**: timestamp, Obligatorio.
 - **peso_kg**: decimal(5,2), Obligatorio.
-- *Restricción compuesta en `__table_args__`: UniqueConstraint sobre (`mascota_id`, `fecha`) llamada `UQ_HP_MascotaFecha`.*
+- *Restricción: UniqueConstraint (`mascota_id`, `fecha`) = `UQ_HP_MascotaFecha`.*
+- *Trigger `trg_actualizar_ultimo_peso` (`AFTER INSERT`): ejecuta
+  `clinica.fn_actualizar_ultimo_peso()` y setea `mascota.ultimo_peso = NEW.peso_kg`
+  (`WHERE mascota.id = NEW.mascota_id`).*
+
+### Entidad: `Patologia`
+- **id**: integer, PK.
+- **nombre**: varchar(100), Obligatorio.
+- **descripcion**: text, Opcional.
+- **nivel_gravedad**: varchar(20), Opcional. *CHECK: `'Baja' | 'Moderada' | 'Alta' | 'Crítica'`.*
+
+### Entidad: `PatologiaPredisposicion`
+> Matriz demográfica para **sugerencias estadísticas** de riesgo (asistencia diagnóstica).
+> No es un diagnóstico clínico ni reemplaza el criterio del veterinario matriculado.
+
+- **predisposicion_id**: integer, PK. *Excepción de nomenclatura (idealmente `id`); pendiente alinear.*
+- **patologia_id**: integer, Obligatorio. *FK a `clinica.patologia.id`*.
+- **especie_id**: integer, Opcional. *Columna presente; hoy sin FK formal a `clinica.especie`.*
+- **raza_id**: integer, Opcional. *FK a `clinica.raza.id`*.
+- **estado_reproductivo_id**: integer, Opcional. *FK a `catalogo.estado_reproductivo.id`*.
+- **habitat_id**: integer, Opcional. *FK a `catalogo.habitat.id`*.
+- **tamanio_id**: integer, Opcional. *FK a `catalogo.tamanio.id`*.
+- **rango_edad_meses_min**: integer, Opcional.
+- **rango_edad_meses_max**: integer, Opcional.
 
 ---
 
