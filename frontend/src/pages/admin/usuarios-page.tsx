@@ -4,9 +4,11 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Check,
   Copy,
   Eye,
   KeyRound,
+  Loader2,
   Plus,
   Search,
   ShieldOff,
@@ -44,7 +46,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/context/auth-context";
 import { apiFetch } from "@/lib/api";
-import type { UsuarioListItem } from "@/types/usuarios";
+import type { UsuarioListItem, UsuarioRestablecerResponse } from "@/types/usuarios";
 
 type SortKey = "nombre" | "username" | "ultimo_inicio" | "estado" | "rol";
 type SortDir = "asc" | "desc";
@@ -235,6 +237,13 @@ export default function UsuariosPage() {
   );
   const [isUpdatingHabilitado, setIsUpdatingHabilitado] = React.useState(false);
   const [confirmError, setConfirmError] = React.useState<string | null>(null);
+  const [resetUsuario, setResetUsuario] = React.useState<UsuarioListItem | null>(null);
+  const [isResetting, setIsResetting] = React.useState(false);
+  const [resetError, setResetError] = React.useState<string | null>(null);
+  const [resetResult, setResetResult] = React.useState<UsuarioRestablecerResponse | null>(
+    null
+  );
+  const [passwordCopied, setPasswordCopied] = React.useState(false);
 
   const canView = hasPermission(permisos, "usuarios:ver");
   const canCreate = hasPermission(permisos, "usuarios:crear");
@@ -362,6 +371,62 @@ export default function UsuariosPage() {
       setConfirmError("No se pudo actualizar el estado del usuario. Intentá de nuevo.");
     } finally {
       setIsUpdatingHabilitado(false);
+    }
+  }
+
+  function openResetConfirm(usuario: UsuarioListItem) {
+    setResetError(null);
+    setResetUsuario(usuario);
+  }
+
+  function closeResetConfirm() {
+    if (isResetting) {
+      return;
+    }
+    setResetUsuario(null);
+    setResetError(null);
+  }
+
+  function closeResetResult() {
+    setResetResult(null);
+    setPasswordCopied(false);
+  }
+
+  async function confirmResetPassword() {
+    if (!resetUsuario) {
+      return;
+    }
+
+    setIsResetting(true);
+    setResetError(null);
+    try {
+      const result = await apiFetch<UsuarioRestablecerResponse>(
+        `/api/usuarios/${resetUsuario.id}/restablecer-contrasena`,
+        { method: "POST" }
+      );
+      setResetUsuario(null);
+      setPasswordCopied(false);
+      setResetResult(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setResetError(
+        message || "No se pudo restablecer la contraseña. Intentá de nuevo."
+      );
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
+  async function copyTemporaryPassword() {
+    if (!resetResult) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(resetResult.password_temporal);
+      setPasswordCopied(true);
+    } catch {
+      setPasswordCopied(false);
     }
   }
 
@@ -548,7 +613,10 @@ export default function UsuariosPage() {
                             ) : null}
 
                             {canEdit ? (
-                              <ActionIconButton label="Restablecer contraseña">
+                              <ActionIconButton
+                                label="Restablecer contraseña"
+                                onClick={() => openResetConfirm(usuario)}
+                              >
                                 <KeyRound className="size-4" />
                               </ActionIconButton>
                             ) : null}
@@ -623,6 +691,99 @@ export default function UsuariosPage() {
                   : confirmState?.nextHabilitado
                     ? "Habilitar"
                     : "Inhabilitar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={resetUsuario !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeResetConfirm();
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>¿Restablecer contraseña?</DialogTitle>
+              <DialogDescription>
+                {`Esta acción generará una nueva contraseña temporal para el usuario @${resetUsuario?.username} y cerrará todas sus sesiones activas de forma inmediata. ¿Deseas continuar?`}
+              </DialogDescription>
+            </DialogHeader>
+
+            {resetError ? (
+              <p className="text-sm text-destructive">{resetError}</p>
+            ) : null}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeResetConfirm}
+                disabled={isResetting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void confirmResetPassword()}
+                disabled={isResetting}
+              >
+                {isResetting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Restableciendo...
+                  </>
+                ) : (
+                  "Restablecer Contraseña"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={resetResult !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeResetResult();
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Contraseña Restablecida Exitosamente</DialogTitle>
+              <DialogDescription>
+                Comunícale la siguiente contraseña temporal al usuario. Deberá usarla
+                en su próximo inicio de sesión y el sistema le pedirá cambiarla:
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 flex items-center justify-between rounded-md border bg-muted p-4 font-mono text-lg">
+              <span className="tracking-wide">{resetResult?.password_temporal}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                aria-label="Copiar"
+                onClick={() => void copyTemporaryPassword()}
+              >
+                {passwordCopied ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+              </Button>
+            </div>
+            {passwordCopied ? (
+              <p className="text-sm text-muted-foreground">Copiada al portapapeles</p>
+            ) : null}
+
+            <DialogFooter>
+              <Button type="button" onClick={closeResetResult}>
+                Entendido
               </Button>
             </DialogFooter>
           </DialogContent>

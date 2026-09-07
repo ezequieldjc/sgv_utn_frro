@@ -12,6 +12,9 @@ from app.services.config_service import clear_config_cache
 
 @pytest.fixture(autouse=True)
 def test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    # SQLite in-memory keeps pytest determinista y sin Postgres local.
+    # tech-stack.mdc pide PostgreSQL de pruebas: migrarlo es una tarea de CI aparte
+    # (schema_translate_map en get_engine ya mapea auth/core/sys a default en SQLite).
     monkeypatch.setenv("DATABASE_URL", "sqlite://")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key")
     get_settings.cache_clear()

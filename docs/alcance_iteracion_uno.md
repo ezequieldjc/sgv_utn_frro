@@ -4,9 +4,10 @@
 
 - Arquitectura general (frontend, backend, base de datos) según
   `.cursor/rules/tech-stack.mdc` y `.cursor/rules/database-types.mdc`.
-- Pantalla de login (`docs/prompts-front/login.md` + `docs/prompts-back/login.md`).
+- Login autenticado (`docs/login.md`) y cambio obligatorio de contraseña cuando
+  `auth.historial_contrasena.debe_cambiar` es `true` (`docs/login_cambio_pwd.md`).
 - Home autenticada: sidebar + topbar + área central vacía (`docs/prompts-front/sidebar.md`).
-- Modelo de datos mínimo para sostener lo anterior: `core.persona` (sin `domicilio_id`),
+- Modelo de datos mínimo para sostener lo anterior: `core.persona`,
   `auth.usuario`, `auth.rol`, `auth.permiso`, `auth.rol_permiso`, `auth.historial_contrasena`,
   `auth.login`, `sys.config` — ver `docs/modelo_datos_v1.md`.
 
@@ -19,6 +20,9 @@
   tablas de `clinica.*` y `catalogo.*` **ya existen en PostgreSQL** y están documentadas en
   `docs/modelo_datos_v1.md` y `docs/modelo_datos_cambios_mascota_20260907.md`; el cableado
   de la aplicación queda para una iteración posterior.
+- Recuperación de contraseña (olvidé mi clave). El cambio obligatorio en el login ya
+  está en alcance: si el historial vigente tiene `debe_cambiar`, el acceso se bloquea
+  hasta actualizar la clave.
 
 ## Nota sobre el diccionario de datos
 

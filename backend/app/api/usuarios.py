@@ -9,9 +9,15 @@ from app.schemas.usuarios import (
     UsuarioCreateResponse,
     UsuarioHabilitadoUpdate,
     UsuarioListItem,
+    UsuarioRestablecerResponse,
 )
 from app.services.authorization_service import require_permission
-from app.services.usuario_service import create_usuario, list_usuarios, set_usuario_habilitado
+from app.services.usuario_service import (
+    create_usuario,
+    list_usuarios,
+    restablecer_contrasena,
+    set_usuario_habilitado,
+)
 
 router = APIRouter(prefix="/api/usuarios", tags=["usuarios"])
 
@@ -44,3 +50,16 @@ def patch_usuario_habilitado(
 ) -> UsuarioListItem:
     require_permission(session, access_token, "usuarios:editar")
     return set_usuario_habilitado(session, usuario_id, body.habilitado)
+
+
+@router.post(
+    "/{usuario_id}/restablecer-contrasena",
+    response_model=UsuarioRestablecerResponse,
+)
+def post_restablecer_contrasena(
+    usuario_id: int,
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> UsuarioRestablecerResponse:
+    require_permission(session, access_token, "usuarios:editar")
+    return restablecer_contrasena(session, usuario_id)

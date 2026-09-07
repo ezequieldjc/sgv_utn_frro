@@ -105,7 +105,7 @@ def seed_usuario_con_permiso(
     return usuario
 
 
-def test_list_usuarios_requires_auth(client, session) -> None:
+def test_list_usuarios_sin_auth_devuelve_401(client, session) -> None:
     _seed_jwt_config(session)
     session.commit()
 
@@ -114,7 +114,7 @@ def test_list_usuarios_requires_auth(client, session) -> None:
     assert response.json()["error"] == "TOKEN_INVALIDO"
 
 
-def test_list_usuarios_forbidden_without_permission(client, session) -> None:
+def test_list_usuarios_sin_permiso_usuarios_ver_devuelve_403(client, session) -> None:
     _seed_jwt_config(session)
     seed_usuario_con_permiso(
         session,
@@ -137,7 +137,7 @@ def test_list_usuarios_forbidden_without_permission(client, session) -> None:
     assert response.json()["error"] == "PERMISOS_INSUFICIENTES"
 
 
-def test_list_usuarios_success_with_ultimo_inicio(client, session) -> None:
+def test_list_usuarios_con_permiso_devuelve_200_y_ultimo_inicio(client, session) -> None:
     _seed_jwt_config(session)
     admin = seed_usuario_con_permiso(
         session,
@@ -211,7 +211,7 @@ def test_list_usuarios_success_with_ultimo_inicio(client, session) -> None:
     assert nuevo_item["ultimo_inicio_sesion"] is None
 
 
-def test_patch_habilitado_requires_auth(client, session) -> None:
+def test_patch_habilitado_sin_auth_devuelve_401(client, session) -> None:
     _seed_jwt_config(session)
     session.commit()
 
@@ -220,7 +220,7 @@ def test_patch_habilitado_requires_auth(client, session) -> None:
     assert response.json()["error"] == "TOKEN_INVALIDO"
 
 
-def test_patch_habilitado_forbidden_without_permission(client, session) -> None:
+def test_patch_habilitado_sin_permiso_usuarios_editar_devuelve_403(client, session) -> None:
     _seed_jwt_config(session)
     seed_usuario_con_permiso(
         session,
@@ -243,7 +243,7 @@ def test_patch_habilitado_forbidden_without_permission(client, session) -> None:
     assert response.json()["error"] == "PERMISOS_INSUFICIENTES"
 
 
-def test_patch_habilitado_not_found(client, session) -> None:
+def test_patch_habilitado_id_inexistente_devuelve_404(client, session) -> None:
     _seed_jwt_config(session)
     seed_usuario_con_permiso(
         session,
@@ -266,7 +266,7 @@ def test_patch_habilitado_not_found(client, session) -> None:
     assert response.json()["error"] == "USUARIO_NO_ENCONTRADO"
 
 
-def test_patch_habilitado_success_and_version_token(client, session) -> None:
+def test_patch_habilitado_inhabilitar_incrementa_version_token(client, session) -> None:
     _seed_jwt_config(session)
     admin = seed_usuario_con_permiso(
         session,
@@ -356,7 +356,7 @@ def _usuario_create_payload(*, dni: str, rol_id: int, nombre: str = "Carlos", ap
     }
 
 
-def test_create_usuario_requires_auth(client, session) -> None:
+def test_create_usuario_sin_auth_devuelve_401(client, session) -> None:
     _seed_jwt_config(session)
     session.commit()
 
@@ -365,7 +365,7 @@ def test_create_usuario_requires_auth(client, session) -> None:
     assert response.json()["error"] == "TOKEN_INVALIDO"
 
 
-def test_create_usuario_forbidden_without_permission(client, session) -> None:
+def test_create_usuario_sin_permiso_usuarios_crear_devuelve_403(client, session) -> None:
     _seed_jwt_config(session)
     seed_usuario_con_permiso(
         session,
@@ -388,7 +388,7 @@ def test_create_usuario_forbidden_without_permission(client, session) -> None:
     assert response.json()["error"] == "PERMISOS_INSUFICIENTES"
 
 
-def test_create_usuario_success(client, session) -> None:
+def test_create_usuario_exitoso_persiste_historial_debe_cambiar(client, session) -> None:
     from app.core.security import verify_password
 
     _seed_jwt_config(session)
@@ -440,7 +440,7 @@ def test_create_usuario_success(client, session) -> None:
     assert persona.es_cliente is False
 
 
-def test_create_usuario_duplicate_dni(client, session) -> None:
+def test_create_usuario_dni_duplicado_devuelve_409(client, session) -> None:
     _seed_jwt_config(session)
     admin = seed_usuario_con_permiso(
         session,
@@ -466,7 +466,7 @@ def test_create_usuario_duplicate_dni(client, session) -> None:
     assert response.json()["error"] == "DNI_DUPLICADO"
 
 
-def test_create_usuario_rol_not_found(client, session) -> None:
+def test_create_usuario_rol_inexistente_devuelve_404(client, session) -> None:
     _seed_jwt_config(session)
     seed_usuario_con_permiso(
         session,
@@ -492,9 +492,35 @@ def test_create_usuario_rol_not_found(client, session) -> None:
     assert response.json()["error"] == "ROL_NO_ENCONTRADO"
 
 
-def test_list_roles_success(client, session) -> None:
+def test_create_usuario_username_colision_asigna_sufijo_numerico(client, session) -> None:
     _seed_jwt_config(session)
-    seed_usuario_con_permiso(
+    admin = seed_usuario_con_permiso(
+        session,
+        username="clopez",
+        password="Secret123!",
+        nombre="Clara",
+        apellido="López",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "clopez", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/usuarios",
+        json=_usuario_create_payload(dni="50111222", rol_id=admin.rol_id or 0),
+    )
+    assert response.status_code == 201
+    assert response.json()["username"] == "clopez2"
+
+
+def test_create_usuario_dni_no_numerico_devuelve_422(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
         session,
         username="admin",
         password="Secret123!",
@@ -510,10 +536,298 @@ def test_list_roles_success(client, session) -> None:
     )
     assert login_response.status_code == 200
 
-    response = client.get("/api/roles")
+    payload = _usuario_create_payload(dni="ABC123", rol_id=admin.rol_id or 0)
+    response = client.post("/api/usuarios", json=payload)
+    assert response.status_code == 422
+
+
+def test_create_usuario_cp_no_numerico_devuelve_422(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    payload = _usuario_create_payload(dni="50111222", rol_id=admin.rol_id or 0)
+    payload["domicilio"]["cp"] = "ABC"
+    response = client.post("/api/usuarios", json=payload)
+    assert response.status_code == 422
+
+
+def test_create_usuario_mail_invalido_devuelve_422(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    payload = _usuario_create_payload(dni="50111222", rol_id=admin.rol_id or 0)
+    payload["mail"] = "sin-arroba"
+    response = client.post("/api/usuarios", json=payload)
+    assert response.status_code == 422
+
+
+def test_create_usuario_con_permiso_wildcard_devuelve_201(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="*",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/usuarios",
+        json=_usuario_create_payload(dni="50111222", rol_id=admin.rol_id or 0),
+    )
+    assert response.status_code == 201
+    assert response.json()["username"] == "clopez"
+
+
+def test_generate_temp_password_formato_alfanumerico_con_guion() -> None:
+    from app.services.usuario_service import generate_temp_password
+
+    password = generate_temp_password()
+    assert len(password) == 10
+    assert password.count("-") == 1
+    left, right = password.split("-")
+    assert len(left) == 4
+    assert len(right) == 5
+    assert left.isalnum()
+    assert right.isalnum()
+    assert generate_temp_password() != generate_temp_password()
+
+
+def test_restablecer_contrasena_sin_auth_devuelve_401(client, session) -> None:
+    _seed_jwt_config(session)
+    session.commit()
+
+    response = client.post("/api/usuarios/1/restablecer-contrasena")
+    assert response.status_code == 401
+    assert response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_restablecer_contrasena_sin_permiso_usuarios_editar_devuelve_403(client, session) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="viewer",
+        password="Secret123!",
+        nombre="Vista",
+        apellido="Solo",
+        dni="30111222",
+        permiso_nombre="usuarios:ver",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "viewer", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post("/api/usuarios/1/restablecer-contrasena")
+    assert response.status_code == 403
+    assert response.json()["error"] == "PERMISOS_INSUFICIENTES"
+
+
+def test_restablecer_contrasena_id_inexistente_devuelve_404(client, session) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:editar",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post("/api/usuarios/99999/restablecer-contrasena")
+    assert response.status_code == 404
+    assert response.json()["error"] == "USUARIO_NO_ENCONTRADO"
+
+
+def test_restablecer_contrasena_exitoso_inserta_historial_e_incrementa_version_token(
+    client, session
+) -> None:
+    from app.core.security import verify_password
+
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:editar",
+    )
+    target = seed_usuario_con_permiso(
+        session,
+        username="target",
+        password="Secret123!",
+        nombre="Ana",
+        apellido="Ruiz",
+        dni="40111222",
+        permiso_nombre="usuarios:ver",
+        rol_nombre="RECEPCION",
+    )
+    historiales_antes = session.exec(
+        select(HistorialContrasena).where(HistorialContrasena.usuario_id == target.id)
+    ).all()
+    assert len(historiales_antes) == 1
+    historial_original_id = historiales_antes[0].id
+    assert target.version_token == 1
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post(f"/api/usuarios/{target.id}/restablecer-contrasena")
     assert response.status_code == 200
     payload = response.json()
-    assert isinstance(payload, list)
-    assert len(payload) >= 1
-    assert "id" in payload[0]
-    assert "nombre" in payload[0]
+    assert payload["mensaje"] == "Contraseña restablecida exitosamente"
+    assert payload["usuario_id"] == target.id
+    assert payload["username"] == "target"
+    assert isinstance(payload["password_temporal"], str)
+    assert "-" in payload["password_temporal"]
+
+    session.refresh(target)
+    assert target.version_token == 2
+
+    historiales = session.exec(
+        select(HistorialContrasena)
+        .where(HistorialContrasena.usuario_id == target.id)
+        .order_by(HistorialContrasena.id.desc())
+    ).all()
+    assert len(historiales) == 2
+    assert historiales[1].id == historial_original_id
+    assert historiales[1].debe_cambiar is False
+    latest = historiales[0]
+    assert latest.debe_cambiar is True
+    assert verify_password(payload["password_temporal"], latest.hashed_password)
+    assert not verify_password("Secret123!", latest.hashed_password)
+
+
+def test_restablecer_contrasena_invalida_sesion_activa_de_la_victima(client, session) -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:editar",
+    )
+    seed_usuario_con_permiso(
+        session,
+        username="target",
+        password="Secret123!",
+        nombre="Ana",
+        apellido="Ruiz",
+        dni="40111222",
+        permiso_nombre="usuarios:ver",
+        rol_nombre="RECEPCION",
+    )
+
+    victim_client = TestClient(app)
+    victim_login = victim_client.post(
+        "/api/auth/login",
+        json={"username": "target", "password": "Secret123!"},
+    )
+    assert victim_login.status_code == 200
+    me_before = victim_client.get("/api/auth/me")
+    assert me_before.status_code == 200
+
+    admin_login = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert admin_login.status_code == 200
+
+    target = session.exec(select(Usuario).where(Usuario.username == "target")).first()
+    assert target is not None
+    reset_response = client.post(f"/api/usuarios/{target.id}/restablecer-contrasena")
+    assert reset_response.status_code == 200
+
+    me_after = victim_client.get("/api/auth/me")
+    assert me_after.status_code == 401
+    assert me_after.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_restablecer_contrasena_con_permiso_wildcard_devuelve_200(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="*",
+    )
+    target = seed_usuario_con_permiso(
+        session,
+        username="target",
+        password="Secret123!",
+        nombre="Ana",
+        apellido="Ruiz",
+        dni="40111222",
+        permiso_nombre="usuarios:ver",
+        rol_nombre="RECEPCION",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    response = client.post(f"/api/usuarios/{target.id}/restablecer-contrasena")
+    assert response.status_code == 200
+    assert response.json()["usuario_id"] == target.id
+    assert admin.username == "admin"

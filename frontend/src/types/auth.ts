@@ -13,3 +13,8 @@ export interface AuthSessionResponse {
   usuario: Usuario;
   permisos: string[];
 }
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface CambiarContrasenaObligatorioResponse {
+  mensaje: string;
+}
