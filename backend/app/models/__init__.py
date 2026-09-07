@@ -4,6 +4,13 @@ from app.models.auth.permiso import Permiso
 from app.models.auth.rol import Rol
 from app.models.auth.rol_permiso import RolPermiso
 from app.models.auth.usuario import Usuario
+from app.models.catalogo.estado_reproductivo import EstadoReproductivo
+from app.models.catalogo.habitat import Habitat
+from app.models.catalogo.mascota_estado import MascotaEstado
+from app.models.catalogo.pelaje import Pelaje
+from app.models.catalogo.tamanio import Tamanio
+from app.models.catalogo.temperamento import Temperamento
+from app.models.clinica.especie import Especie
 from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
 from app.models.sys.config import Config

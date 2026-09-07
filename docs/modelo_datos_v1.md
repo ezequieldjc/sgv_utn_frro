@@ -12,7 +12,7 @@ Este documento define la estructura de la base de datos para generar los modelos
 3. Configurar atributos `Field()` con `nullable=False`, `unique=True`, o `default=` según lo especificado. Para los defaults de fecha (NOW), usar `default_factory=datetime.utcnow` (o timezone actual).
 4. Configurar las relaciones (`Relationship`) bidireccionales entre entidades.
 5. Crear las restricciones multi-columna (UniqueConstraint) en los `__table_args__` donde se indique.
-6. El código debe ser modular, separando en sub-carpetas lógicas: `core/`, `auth/`, `clinica/`, `sys/`.
+6. El código debe ser modular, separando en sub-carpetas lógicas: `core/`, `auth/`, `clinica/`, `catalogo/`, `sys/`.
 7. Incluir las "Notas" como docstrings o comentarios en español.
 
 ---
@@ -98,10 +98,36 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 
 ---
 
+## Módulo: Catalogo (`catalogo`)
+
+> Tablas paramétricas para combos (Admin → Catálogos). Script DBA de baja lógica:
+> `scripts/base/catalogo_add_activo.sql`. Spec de pantalla:
+> `docs/prompts botones/admin_catalogos.md`.
+
+Campos comunes a todas (salvo donde se indique):
+- **id**: integer, PK.
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+- **activo**: boolean, Obligatorio. *Default: True*. Baja lógica (no se borran filas).
+
+### Entidades con `especie_id` (filtro por especie)
+
+`EstadoReproductivo`, `Habitat`, `Tamanio`, `Pelaje`, `Temperamento`:
+
+- **especie_id**: integer, Opcional a nivel BD (nullable histórico). *Idealmente FK a
+  `clinica.especie.id`.* En la UI de Admin Catálogos, para altas/ediciones nuevas, se
+  exige seleccionar especie (ver spec).
+
+### Entidad: `MascotaEstado` (`catalogo.mascota_estado`)
+
+Catálogo **global** (sin `especie_id`): estado operativo de la mascota.
+
+---
+
 ## Módulo: Clinica
 
-> **Fuera de alcance en esta iteración** (ver `docs/alcance_iteracion_actual.md`).
-> Diccionario documentado para referencia futura; no se crean estas tablas todavía.
+> Las tablas de clínica/catálogo pueden existir ya en PostgreSQL aunque la UI de mascotas
+> aún no esté cableada. Ver también `docs/prompts botones/admin_catalogos.md`.
 
 ### Entidad: `Especie`
 - **id**: integer, PK.

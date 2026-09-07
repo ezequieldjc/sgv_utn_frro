@@ -5,12 +5,14 @@ alwaysApply: false
 ---
 
 - Multi-Schema PostgreSQL: La base de datos usa schemas separados, NO todo vive en `public`.
-  Schemas actuales: `core` (persona, domicilio), `clinica` (especie, raza, mascota,
-  historial_peso), `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login),
-  `sys` (config). Cada modelo SQLModel debe declarar su schema explícitamente:
-  `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
-  schema `public` por default.
+  Schemas actuales: `core` (persona, domicilio), `catalogo` (estado_reproductivo, habitat,
+  tamanio, pelaje, temperamento, mascota_estado — con `activo` para baja lógica),
+  `clinica` (especie, raza, mascota, historial_peso), `auth` (usuario, rol, permiso,
+  rol_permiso, historial_contrasena, login), `sys` (config). Cada modelo SQLModel debe
+  declarar su schema explícitamente: `__table_args__ = {"schema": "clinica"}` (o el schema
+  que corresponda). Nunca asumas schema `public` por default.
   Nota: `core.persona` incluye `fecha_nacimiento` y `domicilio_id` (FK a `core.domicilio`).
+  Diccionario: `docs/modelo_datos_v1.md`.
 
 - Single Source of Truth: PostgreSQL (el DBA) es la fuente de la verdad estructural. Los
   modelos SQLModel en `models/<schema>/` (ej. `models/clinica/mascota.py`) deben reflejar
