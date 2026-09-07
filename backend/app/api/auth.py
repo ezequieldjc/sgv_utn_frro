@@ -6,8 +6,18 @@ from sqlmodel import Session
 from app.core.errors import APIError
 from app.core.settings import get_settings
 from app.db.session import get_session
-from app.schemas.auth import AuthSessionResponse, LoginRequest
-from app.services.auth_service import build_session_response, create_login_audit, validate_login
+from app.schemas.auth import (
+    AuthSessionResponse,
+    CambiarContrasenaObligatorioRequest,
+    CambiarContrasenaObligatorioResponse,
+    LoginRequest,
+)
+from app.services.auth_service import (
+    build_session_response,
+    cambiar_contrasena_obligatorio,
+    create_login_audit,
+    validate_login,
+)
 from app.services.authorization_service import get_current_authenticated_session
 from app.services.config_service import get_access_token_expiration_minutes, get_refresh_token_expiration_minutes
 from app.services.token_service import issue_token_pair
@@ -48,6 +58,12 @@ def login(payload: LoginRequest, request: Request, response: Response, session: 
         )
         if validation.failure_reason == "USUARIO_DESHABILITADO":
             raise APIError(403, "USUARIO_DESHABILITADO", "Usuario deshabilitado")
+        if validation.failure_reason == "DEBE_CAMBIAR_CONTRASENA":
+            raise APIError(
+                403,
+                "DEBE_CAMBIAR_CONTRASENA",
+                "Debe actualizar su contraseña para continuar.",
+            )
         raise APIError(401, "CREDENCIALES_INVALIDAS", "Credenciales incorrectas")
 
     session_response = build_session_response(session, validation.user)
@@ -86,6 +102,17 @@ def login(payload: LoginRequest, request: Request, response: Response, session: 
         path="/",
     )
     return session_response
+
+
+@router.post(
+    "/cambiar-contrasena-obligatorio",
+    response_model=CambiarContrasenaObligatorioResponse,
+)
+def post_cambiar_contrasena_obligatorio(
+    payload: CambiarContrasenaObligatorioRequest,
+    session: Session = Depends(get_session),
+) -> CambiarContrasenaObligatorioResponse:
+    return cambiar_contrasena_obligatorio(session, payload)
 
 
 @router.get("/me", response_model=AuthSessionResponse)
