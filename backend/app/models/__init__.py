@@ -11,14 +11,11 @@ from app.models.catalogo.pelaje import Pelaje
 from app.models.catalogo.tamanio import Tamanio
 from app.models.catalogo.temperamento import Temperamento
 from app.models.clinica.especie import Especie
-<<<<<<< HEAD
-=======
 from app.models.clinica.historial_peso import HistorialPeso
 from app.models.clinica.mascota import Mascota
 from app.models.clinica.patologia import Patologia
 from app.models.clinica.patologia_predisposicion import PatologiaPredisposicion
 from app.models.clinica.raza import Raza
->>>>>>> 916b3f3cec9cf2bc213928b410b7cafbf7b6199a
 from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
 from app.models.sys.config import Config
