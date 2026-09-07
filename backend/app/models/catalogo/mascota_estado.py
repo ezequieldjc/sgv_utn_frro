@@ -11,5 +11,6 @@ class MascotaEstado(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     nombre: str = Field(max_length=50, nullable=False)
     descripcion: str | None = Field(default=None, max_length=255)
+    activo: bool = Field(default=True, nullable=False)
 
     mascotas: Mapped[list["Mascota"]] = Relationship(back_populates="mascota_estado")

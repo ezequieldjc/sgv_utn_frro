@@ -72,8 +72,11 @@ Create a responsive App Shell component in `src/components/app-shell.tsx` for th
     - Collapsible/sub-items:
       - "Usuarios" (requires `usuarios:ver`)
       - "Roles y Permisos" (requires `roles:ver`)
+      - "Catálogos" (requires `catalogos:ver`)
       - "Parámetros" (requires `parametros:ver`)
       - "Auditoría" (requires `auditoria:ver`)
+      - La pantalla de Catálogos vive en `/admin/catalogos` (spec:
+        `docs/prompts botones/admin_catalogos.md`).
 - **Footer**: Single "Cerrar Sesión" button with `LogOut` icon and destructive hover state. On click: `POST /api/auth/logout`, then redirect to `/login`.
 
 #### 2. Header (Top Horizontal):
