@@ -190,6 +190,7 @@ def create_usuario(session: Session, payload: UsuarioCreate) -> UsuarioCreateRes
         domicilio_id=domicilio.id,
         mail=payload.mail,
         celular=payload.celular,
+        es_cliente=False,
     )
     session.add(persona)
     session.flush()

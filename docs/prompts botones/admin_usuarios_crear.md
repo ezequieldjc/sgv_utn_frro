@@ -61,3 +61,4 @@ C. Datos de la Cuenta (`auth.usuario`):
 
 6. Auditoría:
 - Los campos `fecha_alta` (`core.persona`), `fecha_creacion` y `version_token` (`auth.usuario`) se gestionan automáticamente en servidor/DB y no figuran como editables.
+- Al crear la `persona` del empleado, persistir **`es_cliente = false`** de forma explícita (el default de DB es `true`; si no se fuerza `false`, el empleado aparecería en el listado de clientes).

@@ -24,6 +24,7 @@ def seed_auth_data(session, *, enabled: bool = True, version_token: int = 1) -> 
         fecha_nacimiento=date(1990, 1, 15),
         celular="123456789",
         mail="juan@example.com",
+        es_cliente=False,
     )
     rol = Rol(nombre="ADMIN", descripcion="Administrador")
     permiso = Permiso(nombre="pacientes:read", descripcion="Lectura de pacientes")

@@ -120,8 +120,6 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Mascotas y Clientes",
     icon: Users,
     items: [
-      { to: "/mascotas/nueva", label: "Nueva Mascota", permiso: "mascotas:crear" },
-      { to: "/clientes/nuevo", label: "Nuevo Cliente", permiso: "clientes:crear" },
       { to: "/mascotas", label: "Listado de Mascotas", permiso: "mascotas:ver_listado" },
       { to: "/clientes", label: "Listado de Clientes", permiso: "clientes:ver_listado" },
     ],
