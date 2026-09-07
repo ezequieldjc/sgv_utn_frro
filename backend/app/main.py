@@ -3,11 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.auth import router as auth_router
-<<<<<<< HEAD
 from app.api.catalogos import router as catalogos_router
-=======
 from app.api.clientes import router as clientes_router
->>>>>>> 916b3f3cec9cf2bc213928b410b7cafbf7b6199a
 from app.api.config import router as config_router
 from app.api.roles import router as roles_router
 from app.api.usuarios import router as usuarios_router
