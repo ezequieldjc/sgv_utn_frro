@@ -70,6 +70,7 @@ with Session(engine) as session:
             sexo="M",
             fecha_nacimiento=date(1990, 1, 1),
             celular=default_cel,
+            es_cliente=False,
         )
         session.add(persona)
         session.commit()
