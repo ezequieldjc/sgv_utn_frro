@@ -38,8 +38,5 @@ app.include_router(auth_router)
 app.include_router(config_router)
 app.include_router(roles_router)
 app.include_router(usuarios_router)
-<<<<<<< HEAD
 app.include_router(catalogos_router)
-=======
 app.include_router(clientes_router)
->>>>>>> 916b3f3cec9cf2bc213928b410b7cafbf7b6199a
