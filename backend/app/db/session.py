@@ -9,7 +9,14 @@ from sqlmodel import Session
 
 from app.core.settings import get_settings
 
-SCHEMA_TRANSLATION_MAP = {"auth": None, "core": None, "sys": None}
+SCHEMA_TRANSLATION_MAP = {
+    "auth": None,
+    "core": None,
+    "sys": None,
+    "catalogo": None,
+    "clinica": None,
+}
+
 
 
 @lru_cache(maxsize=1)

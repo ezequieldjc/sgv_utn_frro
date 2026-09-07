@@ -63,6 +63,7 @@ def seed_usuario_con_permiso(
         fecha_nacimiento=date(1990, 1, 1),
         celular="123456789",
         mail=f"{username}@example.com",
+        es_cliente=False,
     )
     rol = session.exec(select(Rol).where(Rol.nombre == rol_nombre)).first()
     if rol is None:
@@ -436,6 +437,7 @@ def test_create_usuario_exitoso_persiste_historial_debe_cambiar(client, session)
     assert persona.dni == "50111222"
     assert persona.celular == "1155551234"
     assert persona.domicilio_id is not None
+    assert persona.es_cliente is False
 
 
 def test_create_usuario_dni_duplicado_devuelve_409(client, session) -> None:
