@@ -105,11 +105,11 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 ---
 
 ## Módulo: Catalogo (`catalogo`)
-<<<<<<< HEAD
 
-> Tablas paramétricas para combos (Admin → Catálogos). Script DBA de baja lógica:
-> `scripts/base/catalogo_add_activo.sql`. Spec de pantalla:
-> `docs/prompts botones/admin_catalogos.md`.
+> Tablas paramétricas para combos (Admin → Catálogos / alta de mascota). Script DBA de baja
+> lógica: `scripts/base/catalogo_add_activo.sql`. Spec de pantalla:
+> `docs/prompts botones/admin_catalogos.md`. Ver también
+> `docs/modelo_datos_cambios_mascota_20260907.md`.
 
 Campos comunes a todas (salvo donde se indique):
 - **id**: integer, PK.
@@ -127,57 +127,8 @@ Campos comunes a todas (salvo donde se indique):
 
 ### Entidad: `MascotaEstado` (`catalogo.mascota_estado`)
 
-Catálogo **global** (sin `especie_id`): estado operativo de la mascota.
-
----
-
-## Módulo: Clinica
-
-> Las tablas de clínica/catálogo pueden existir ya en PostgreSQL aunque la UI de mascotas
-> aún no esté cableada. Ver también `docs/prompts botones/admin_catalogos.md`.
-=======
-
-> Tablas paramétricas para combos del alta/edición de mascota. Las tablas específicas de
-> especie incluyen `especie_id` para filtrar en frontend. En BD ya existen; el cableado de
-> endpoints/UI del módulo Mascotas se documenta en
-> `docs/modelo_datos_cambios_mascota_20260907.md` (sección API).
-
-### Entidad: `EstadoReproductivo` (`catalogo.estado_reproductivo`)
-- **id**: integer, PK.
-- **especie_id**: integer, Opcional. *(filtro por especie; idealmente FK a `clinica.especie.id`)*
-- **nombre**: varchar(50), Obligatorio.
-- **descripcion**: varchar(255), Opcional.
-
-### Entidad: `Habitat` (`catalogo.habitat`)
-- **id**: integer, PK.
-- **especie_id**: integer, Opcional.
-- **nombre**: varchar(50), Obligatorio.
-- **descripcion**: varchar(255), Opcional.
-
-### Entidad: `Tamanio` (`catalogo.tamanio`)
-- **id**: integer, PK.
-- **especie_id**: integer, Opcional.
-- **nombre**: varchar(50), Obligatorio.
-- **descripcion**: varchar(255), Opcional.
-
-### Entidad: `Pelaje` (`catalogo.pelaje`)
-- **id**: integer, PK.
-- **especie_id**: integer, Opcional.
-- **nombre**: varchar(50), Obligatorio.
-- **descripcion**: varchar(255), Opcional.
-
-### Entidad: `Temperamento` (`catalogo.temperamento`)
-- **id**: integer, PK.
-- **especie_id**: integer, Opcional.
-- **nombre**: varchar(50), Obligatorio.
-- **descripcion**: varchar(255), Opcional.
-
-### Entidad: `MascotaEstado` (`catalogo.mascota_estado`)
-> Catálogo **global** (no filtra por especie). Reemplaza el antiguo campo libre
-> `clinica.mascota.estado`.
-- **id**: integer, PK.
-- **nombre**: varchar(50), Obligatorio.
-- **descripcion**: varchar(255), Opcional.
+Catálogo **global** (sin `especie_id`): estado operativo de la mascota. Reemplaza el
+antiguo campo libre `clinica.mascota.estado`.
 
 ---
 
@@ -186,8 +137,7 @@ Catálogo **global** (sin `especie_id`): estado operativo de la mascota.
 > Las tablas de este módulo **ya existen en PostgreSQL**. El desarrollo de pantallas/API de
 > mascotas y del motor de predisposición puede estar fuera del alcance de la iteración de
 > app actual; ver `docs/alcance_iteracion_uno.md` y
-> `docs/modelo_datos_cambios_mascota_20260907.md`.
->>>>>>> 916b3f3cec9cf2bc213928b410b7cafbf7b6199a
+> `docs/modelo_datos_cambios_mascota_20260907.md`. También `docs/prompts botones/admin_catalogos.md`.
 
 ### Entidad: `Especie`
 - **id**: integer, PK.
