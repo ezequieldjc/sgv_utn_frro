@@ -26,6 +26,7 @@
 
 ## Nota sobre el diccionario de datos
 
+
 El alcance de *código* de esta iteración no incluye el módulo Mascotas, pero el diccionario
 canónico (`docs/modelo_datos_v1.md`) refleja el estado real de la BD (incluidos catálogos y
 mascota). No uses el viejo campo libre `mascota.estado`.
