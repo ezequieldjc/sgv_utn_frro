@@ -7,6 +7,7 @@ import LoginPage from "./pages/login";
 import ShellHome from "./pages/shell-home";
 import UsuariosPage from "./pages/admin/usuarios-page";
 import UsuarioFormPage from "./pages/admin/usuario-form-page";
+import CatalogosPage from "./pages/admin/catalogos-page";
 import ClientesPage from "./pages/clientes/clientes-page";
 import ClienteFormPage from "./pages/clientes/cliente-form-page";
 import {
@@ -33,6 +34,7 @@ export default function App() {
             <Route index element={<ShellHome />} />
             <Route path="admin/usuarios" element={<UsuariosPage />} />
             <Route path="admin/usuarios/nuevo" element={<UsuarioFormPage mode="create" />} />
+            <Route path="admin/catalogos" element={<CatalogosPage />} />
             <Route path="clientes" element={<ClientesPage />} />
             <Route path="clientes/nuevo" element={<ClienteFormPage />} />
             <Route path="clientes/:id" element={<ClienteDetallePage />} />

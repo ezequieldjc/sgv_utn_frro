@@ -105,6 +105,37 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 ---
 
 ## Módulo: Catalogo (`catalogo`)
+<<<<<<< HEAD
+
+> Tablas paramétricas para combos (Admin → Catálogos). Script DBA de baja lógica:
+> `scripts/base/catalogo_add_activo.sql`. Spec de pantalla:
+> `docs/prompts botones/admin_catalogos.md`.
+
+Campos comunes a todas (salvo donde se indique):
+- **id**: integer, PK.
+- **nombre**: varchar(50), Obligatorio.
+- **descripcion**: varchar(255), Opcional.
+- **activo**: boolean, Obligatorio. *Default: True*. Baja lógica (no se borran filas).
+
+### Entidades con `especie_id` (filtro por especie)
+
+`EstadoReproductivo`, `Habitat`, `Tamanio`, `Pelaje`, `Temperamento`:
+
+- **especie_id**: integer, Opcional a nivel BD (nullable histórico). *Idealmente FK a
+  `clinica.especie.id`.* En la UI de Admin Catálogos, para altas/ediciones nuevas, se
+  exige seleccionar especie (ver spec).
+
+### Entidad: `MascotaEstado` (`catalogo.mascota_estado`)
+
+Catálogo **global** (sin `especie_id`): estado operativo de la mascota.
+
+---
+
+## Módulo: Clinica
+
+> Las tablas de clínica/catálogo pueden existir ya en PostgreSQL aunque la UI de mascotas
+> aún no esté cableada. Ver también `docs/prompts botones/admin_catalogos.md`.
+=======
 
 > Tablas paramétricas para combos del alta/edición de mascota. Las tablas específicas de
 > especie incluyen `especie_id` para filtrar en frontend. En BD ya existen; el cableado de
@@ -156,6 +187,7 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 > mascotas y del motor de predisposición puede estar fuera del alcance de la iteración de
 > app actual; ver `docs/alcance_iteracion_uno.md` y
 > `docs/modelo_datos_cambios_mascota_20260907.md`.
+>>>>>>> 916b3f3cec9cf2bc213928b410b7cafbf7b6199a
 
 ### Entidad: `Especie`
 - **id**: integer, PK.

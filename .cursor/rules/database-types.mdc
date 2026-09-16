@@ -7,7 +7,8 @@ alwaysApply: false
 - Multi-Schema PostgreSQL: La base de datos usa schemas separados, NO todo vive en `public`.
   Schemas actuales:
   - `core` (persona, domicilio)
-  - `catalogo` (estado_reproductivo, habitat, tamanio, pelaje, temperamento, mascota_estado)
+  - `catalogo` (estado_reproductivo, habitat, tamanio, pelaje, temperamento,
+    mascota_estado; todos con `activo` para baja lógica)
   - `clinica` (especie, raza, mascota, historial_peso, patologia, patologia_predisposicion)
   - `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login)
   - `sys` (config)

@@ -45,6 +45,12 @@ INSERT INTO auth.permiso (nombre, descripcion) VALUES
 ('roles:eliminar', 'Permite eliminar roles del sistema'),
 ('parametros:ver', 'Permite consultar la configuración global del sistema'),
 ('parametros:editar', 'Permite modificar parámetros generales del sistema'),
-('auditoria:ver', 'Permite consultar el registro de eventos y auditoría del sistema')
+('auditoria:ver', 'Permite consultar el registro de eventos y auditoría del sistema'),
+
+-- 11. Catálogos (Admin)
+('catalogos:ver', 'Permite consultar catálogos paramétricos (schema catalogo)'),
+('catalogos:crear', 'Permite crear registros en catálogos paramétricos'),
+('catalogos:editar', 'Permite modificar registros de catálogos paramétricos'),
+('catalogos:eliminar', 'Permite dar de baja lógica registros de catálogos')
 
 ON CONFLICT (nombre) DO NOTHING;

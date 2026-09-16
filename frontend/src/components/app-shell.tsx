@@ -143,6 +143,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: "/admin/usuarios", label: "Usuarios", permiso: "usuarios:ver" },
       { to: "/admin/roles", label: "Roles y Permisos", permiso: "roles:ver" },
+      { to: "/admin/catalogos", label: "Catálogos", permiso: "catalogos:ver" },
       { to: "/admin/parametros", label: "Parámetros", permiso: "parametros:ver" },
       { to: "/admin/auditoria", label: "Auditoría", permiso: "auditoria:ver" },
     ],
@@ -166,6 +167,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   analisis: "Análisis",
   admin: "Admin",
   usuarios: "Usuarios",
+  catalogos: "Catálogos",
   roles: "Roles y Permisos",
   parametros: "Parámetros",
   auditoria: "Auditoría",
