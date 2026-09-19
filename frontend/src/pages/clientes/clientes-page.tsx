@@ -70,7 +70,7 @@ function matchesSearch(cliente: ClienteListItem, query: string): boolean {
   return (
     cliente.nombre.toLowerCase().includes(normalized) ||
     cliente.apellido.toLowerCase().includes(normalized) ||
-    cliente.dni.toLowerCase().includes(normalized)
+    (cliente.dni ?? "").toLowerCase().includes(normalized)
   );
 }
 
@@ -81,9 +81,9 @@ function compareClientes(a: ClienteListItem, b: ClienteListItem, sortKey: SortKe
     case "apellido":
       return a.apellido.toLowerCase().localeCompare(b.apellido.toLowerCase(), "es");
     case "dni":
-      return a.dni.localeCompare(b.dni, "es");
+      return (a.dni ?? "").localeCompare(b.dni ?? "", "es");
     case "sexo":
-      return a.sexo.localeCompare(b.sexo, "es");
+      return (a.sexo ?? "").localeCompare(b.sexo ?? "", "es");
     case "celular":
       return a.celular.localeCompare(b.celular, "es");
     case "fecha_alta":
@@ -94,7 +94,7 @@ function compareClientes(a: ClienteListItem, b: ClienteListItem, sortKey: SortKe
       return ciudadA.localeCompare(ciudadB, "es");
     }
     case "edad":
-      return a.edad - b.edad;
+      return (a.edad ?? -1) - (b.edad ?? -1);
     default:
       return 0;
   }
@@ -390,9 +390,9 @@ export default function ClientesPage() {
                       <TableCell className="font-medium">{cliente.nombre}</TableCell>
                       <TableCell className="font-medium">{cliente.apellido}</TableCell>
                       <TableCell className="tabular-nums text-muted-foreground">
-                        {cliente.dni}
+                        {cliente.dni ?? "-"}
                       </TableCell>
-                      <TableCell>{cliente.sexo}</TableCell>
+                      <TableCell>{cliente.sexo ?? "-"}</TableCell>
                       <TableCell className="tabular-nums text-muted-foreground">
                         {cliente.celular}
                       </TableCell>
@@ -402,7 +402,7 @@ export default function ClientesPage() {
                       <TableCell className="text-muted-foreground">
                         {cliente.ciudad ?? "-"}
                       </TableCell>
-                      <TableCell className="tabular-nums">{cliente.edad}</TableCell>
+                      <TableCell className="tabular-nums">{cliente.edad ?? "-"}</TableCell>
                       <TableCell className="text-left">
                         <div className="flex items-center justify-start gap-1">
                           {canEdit ? (

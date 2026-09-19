@@ -12,29 +12,32 @@ class ClienteListItem(BaseModel):
     id: int
     nombre: str
     apellido: str
-    dni: str
-    sexo: str
+    dni: str | None = None
+    sexo: str | None = None
     celular: str
     fecha_alta: datetime
     ciudad: str | None = Field(default=None)
-    edad: int
+    edad: int | None = None
 
 
 class ClienteCreate(BaseModel):
     nombre: str = Field(min_length=1, max_length=100)
     apellido: str = Field(min_length=1, max_length=100)
-    dni: str = Field(min_length=1, max_length=20)
-    fecha_nacimiento: date
-    sexo: Literal["M", "F", "X"]
+    dni: str | None = Field(default=None, max_length=20)
+    fecha_nacimiento: date | None = None
+    sexo: Literal["M", "F", "X"] | None = None
     celular: str = Field(min_length=1, max_length=30)
     mail: str | None = Field(default=None, max_length=100)
-    domicilio: DomicilioCreate
+    domicilio: DomicilioCreate | None = None
     crear_usuario: bool = False
     habilitado: bool = True
 
     @field_validator("dni")
     @classmethod
-    def dni_solo_digitos(cls, value: str) -> str:
+    def dni_solo_digitos(cls, value: str | None) -> str | None:
+        if value is None or value.strip() == "":
+            return None
+        value = value.strip()
         if not value.isdigit():
             raise ValueError("El DNI debe contener solo números")
         return value
@@ -62,7 +65,7 @@ class ClienteCreateResponse(BaseModel):
     id: int
     nombre: str
     apellido: str
-    dni: str
+    dni: str | None = None
     usuario_creado: bool
     username: str | None = None
     password_temporal: str | None = None

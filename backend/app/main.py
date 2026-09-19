@@ -6,6 +6,7 @@ from app.api.auth import router as auth_router
 from app.api.catalogos import router as catalogos_router
 from app.api.clientes import router as clientes_router
 from app.api.config import router as config_router
+from app.api.mascotas import router as mascotas_router
 from app.api.roles import router as roles_router
 from app.api.usuarios import router as usuarios_router
 from app.core.errors import APIError
@@ -40,3 +41,4 @@ app.include_router(roles_router)
 app.include_router(usuarios_router)
 app.include_router(catalogos_router)
 app.include_router(clientes_router)
+app.include_router(mascotas_router)

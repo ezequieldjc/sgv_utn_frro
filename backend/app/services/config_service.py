@@ -42,3 +42,20 @@ def get_access_token_expiration_minutes() -> int:
 def get_refresh_token_expiration_minutes() -> int:
     return int(get_config_value(1, 2, default="1440"))
 
+
+def get_parametro_valor_por_nombre(
+    session: Session, parametro_nombre: str, *, default: str | None = None
+) -> str:
+    row = session.exec(
+        select(Config).where(Config.parametro_nombre == parametro_nombre)
+    ).first()
+    if row is None:
+        if default is None:
+            raise APIError(
+                500,
+                "CONFIG_NO_ENCONTRADA",
+                f"No se encontró el parámetro de configuración '{parametro_nombre}'",
+            )
+        return default
+    return row.parametro_valor
+
