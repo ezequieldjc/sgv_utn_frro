@@ -411,6 +411,7 @@ export default function MascotasPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Especie</TableHead>
                 <TableHead>Raza</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Tutor</TableHead>
                 <TableHead>DNI Tutor</TableHead>
                 <TableHead className="text-left">Acciones</TableHead>
@@ -419,7 +420,7 @@ export default function MascotasPage() {
             <TableBody>
               {!data || data.items.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={6} className="h-28 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="h-28 text-center text-sm text-muted-foreground">
                     No hay mascotas para mostrar con los filtros actuales.
                   </TableCell>
                 </TableRow>
@@ -429,6 +430,7 @@ export default function MascotasPage() {
                     <TableCell className="font-medium">{mascota.nombre}</TableCell>
                     <TableCell>{mascota.especie_nombre}</TableCell>
                     <TableCell>{mascota.raza_nombre}</TableCell>
+                    <TableCell>{mascota.mascota_estado_nombre}</TableCell>
                     <TableCell>
                       {mascota.tutor_nombre} {mascota.tutor_apellido}
                     </TableCell>

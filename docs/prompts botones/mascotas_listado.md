@@ -84,7 +84,7 @@ En **una misma fila horizontal** (responsive: stack en mobile):
 - Implementación: `useSelectTypeahead` en listado y en alta (especie/raza/sexo/estado).
 
 ### Tabla
-Nombre, Especie, Raza, Tutor, DNI Tutor, Acciones.
+Nombre, Especie, Raza, **Estado**, Tutor, DNI Tutor, Acciones.
 
 ### Editar
 Solo UI → `console.log("TODO: Editar")` si tiene `mascotas:editar`. Sin pantalla de edición.
