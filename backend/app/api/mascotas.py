@@ -5,25 +5,36 @@ from sqlmodel import Session
 
 from app.core.errors import APIError
 from app.db.session import get_session
+from app.models.catalogo.estado_reproductivo import EstadoReproductivo
+from app.models.catalogo.habitat import Habitat
+from app.models.catalogo.pelaje import Pelaje
+from app.models.catalogo.tamanio import Tamanio
+from app.models.catalogo.temperamento import Temperamento
 from app.schemas.mascotas import (
+    CatalogoClinicoOpcion,
     EspecieOpcionMascota,
     MascotaCreate,
     MascotaCreateResponse,
+    MascotaDetail,
     MascotaEstadoOpcion,
     MascotaListResponse,
+    MascotaUpdate,
     RazaOpcionMascota,
     TutorOpcion,
 )
-from app.services.authorization_service import require_permission
+from app.services.authorization_service import require_any_permission, require_permission
 from app.services.mascota_service import (
     buscar_tutores,
     create_mascota,
+    get_mascota,
     get_raza_default_nombre,
     get_tutor_by_id,
+    list_catalogo_clinico_por_especie,
     list_especies_activas,
     list_mascota_estados,
     list_mascotas,
     list_razas_por_especie,
+    update_mascota,
 )
 
 router = APIRouter(prefix="/api/mascotas", tags=["mascotas"])
@@ -69,7 +80,9 @@ def get_especies(
     access_token: str | None = Cookie(default=None),
     session: Session = Depends(get_session),
 ) -> list[EspecieOpcionMascota]:
-    require_permission(session, access_token, "mascotas:ver_listado")
+    require_any_permission(
+        session, access_token, "mascotas:ver_listado", "mascotas:crear", "mascotas:editar"
+    )
     return list_especies_activas(session)
 
 
@@ -79,7 +92,9 @@ def get_razas(
     access_token: str | None = Cookie(default=None),
     session: Session = Depends(get_session),
 ) -> list[RazaOpcionMascota]:
-    require_permission(session, access_token, "mascotas:ver_listado")
+    require_any_permission(
+        session, access_token, "mascotas:ver_listado", "mascotas:crear", "mascotas:editar"
+    )
     return list_razas_por_especie(session, especie_id)
 
 
@@ -88,7 +103,9 @@ def get_estados(
     access_token: str | None = Cookie(default=None),
     session: Session = Depends(get_session),
 ) -> list[MascotaEstadoOpcion]:
-    require_permission(session, access_token, "mascotas:ver_listado")
+    require_any_permission(
+        session, access_token, "mascotas:ver_listado", "mascotas:crear", "mascotas:editar"
+    )
     return list_mascota_estados(session)
 
 
@@ -98,7 +115,7 @@ def get_tutores(
     access_token: str | None = Cookie(default=None),
     session: Session = Depends(get_session),
 ) -> list[TutorOpcion]:
-    require_permission(session, access_token, "mascotas:crear")
+    require_any_permission(session, access_token, "mascotas:crear", "mascotas:editar")
     return buscar_tutores(session, q)
 
 
@@ -108,7 +125,7 @@ def get_tutor(
     access_token: str | None = Cookie(default=None),
     session: Session = Depends(get_session),
 ) -> TutorOpcion:
-    require_permission(session, access_token, "mascotas:crear")
+    require_any_permission(session, access_token, "mascotas:crear", "mascotas:editar")
     tutor = get_tutor_by_id(session, persona_id)
     if tutor is None:
         raise APIError(404, "TUTOR_NO_ENCONTRADO", "No se encontró el tutor indicado")
@@ -120,5 +137,80 @@ def get_raza_default(
     access_token: str | None = Cookie(default=None),
     session: Session = Depends(get_session),
 ) -> dict[str, str]:
-    require_permission(session, access_token, "mascotas:crear")
+    require_any_permission(session, access_token, "mascotas:crear", "mascotas:editar")
     return {"nombre": get_raza_default_nombre(session)}
+
+
+@router.get("/catalogos/pelajes", response_model=list[CatalogoClinicoOpcion])
+def get_pelajes(
+    especie_id: int = Query(...),
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> list[CatalogoClinicoOpcion]:
+    require_permission(session, access_token, "mascotas:editar")
+    return list_catalogo_clinico_por_especie(session, model=Pelaje, especie_id=especie_id)
+
+
+@router.get("/catalogos/tamanios", response_model=list[CatalogoClinicoOpcion])
+def get_tamanios(
+    especie_id: int = Query(...),
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> list[CatalogoClinicoOpcion]:
+    require_permission(session, access_token, "mascotas:editar")
+    return list_catalogo_clinico_por_especie(session, model=Tamanio, especie_id=especie_id)
+
+
+@router.get("/catalogos/habitats", response_model=list[CatalogoClinicoOpcion])
+def get_habitats(
+    especie_id: int = Query(...),
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> list[CatalogoClinicoOpcion]:
+    require_permission(session, access_token, "mascotas:editar")
+    return list_catalogo_clinico_por_especie(session, model=Habitat, especie_id=especie_id)
+
+
+@router.get("/catalogos/estados-reproductivos", response_model=list[CatalogoClinicoOpcion])
+def get_estados_reproductivos(
+    especie_id: int = Query(...),
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> list[CatalogoClinicoOpcion]:
+    require_permission(session, access_token, "mascotas:editar")
+    return list_catalogo_clinico_por_especie(
+        session, model=EstadoReproductivo, especie_id=especie_id
+    )
+
+
+@router.get("/catalogos/temperamentos", response_model=list[CatalogoClinicoOpcion])
+def get_temperamentos(
+    especie_id: int = Query(...),
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> list[CatalogoClinicoOpcion]:
+    require_permission(session, access_token, "mascotas:editar")
+    return list_catalogo_clinico_por_especie(
+        session, model=Temperamento, especie_id=especie_id
+    )
+
+
+@router.get("/{mascota_id}", response_model=MascotaDetail)
+def get_mascota_by_id(
+    mascota_id: int,
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> MascotaDetail:
+    require_permission(session, access_token, "mascotas:editar")
+    return get_mascota(session, mascota_id)
+
+
+@router.patch("/{mascota_id}", response_model=MascotaDetail)
+def patch_mascota(
+    mascota_id: int,
+    body: MascotaUpdate,
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> MascotaDetail:
+    require_permission(session, access_token, "mascotas:editar")
+    return update_mascota(session, mascota_id, body)

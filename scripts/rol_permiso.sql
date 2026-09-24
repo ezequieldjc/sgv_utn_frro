@@ -1,4 +1,7 @@
 INSERT INTO auth.permiso (nombre, descripcion) VALUES
+-- 0. Comodín (acceso total; pensado para el rol ADMIN)
+('*', 'Acceso total al sistema (comodín)'),
+
 -- 1. Consultas
 ('consultas:crear', 'Permite registrar una nueva consulta médica'),
 ('consultas:ver_historial', 'Permite ver el historial general de consultas'),

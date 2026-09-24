@@ -5,19 +5,27 @@ from sqlmodel import Session, col, select
 
 from app.core.errors import APIError
 from app.core.time_utils import utc_now
+from app.models.catalogo.estado_reproductivo import EstadoReproductivo
+from app.models.catalogo.habitat import Habitat
 from app.models.catalogo.mascota_estado import MascotaEstado
+from app.models.catalogo.pelaje import Pelaje
+from app.models.catalogo.tamanio import Tamanio
+from app.models.catalogo.temperamento import Temperamento
 from app.models.clinica.especie import Especie
 from app.models.clinica.historial_peso import HistorialPeso
 from app.models.clinica.mascota import Mascota
 from app.models.clinica.raza import Raza
 from app.models.core.persona import Persona
 from app.schemas.mascotas import (
+    CatalogoClinicoOpcion,
     EspecieOpcionMascota,
     MascotaCreate,
     MascotaCreateResponse,
+    MascotaDetail,
     MascotaEstadoOpcion,
     MascotaListItem,
     MascotaListResponse,
+    MascotaUpdate,
     RazaOpcionMascota,
     TutorOpcion,
 )
@@ -283,3 +291,248 @@ def create_mascota(session: Session, payload: MascotaCreate) -> MascotaCreateRes
         mascota_estado_id=mascota.mascota_estado_id,
         peso_registrado=peso_registrado,
     )
+
+
+def _tutor_eventual_id(session: Session) -> int | None:
+    raw = get_parametro_valor_por_nombre(session, PARAM_TUTOR_EVENTUAL, default="")
+    if not raw or not str(raw).strip():
+        return None
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        return None
+
+
+def _to_mascota_detail(session: Session, mascota: Mascota) -> MascotaDetail:
+    raza = session.get(Raza, mascota.raza_id)
+    if raza is None:
+        raise APIError(500, "RAZA_NO_ENCONTRADA", "La mascota no tiene una raza válida")
+    especie = session.get(Especie, raza.especie_id)
+    if especie is None:
+        raise APIError(500, "ESPECIE_NO_ENCONTRADA", "La mascota no tiene una especie válida")
+    persona = session.get(Persona, mascota.persona_id)
+    if persona is None:
+        raise APIError(500, "TUTOR_NO_ENCONTRADO", "La mascota no tiene un tutor válido")
+    estado = session.get(MascotaEstado, mascota.mascota_estado_id)
+    if estado is None:
+        raise APIError(500, "ESTADO_NO_ENCONTRADO", "La mascota no tiene un estado válido")
+
+    sexo: str | None = mascota.sexo
+    if sexo not in (None, "M", "H", "U"):
+        sexo = None
+
+    return MascotaDetail(
+        id=mascota.id or 0,
+        nombre=mascota.nombre,
+        especie_id=especie.id or 0,
+        especie_nombre=especie.nombre,
+        raza_id=raza.id or 0,
+        raza_nombre=raza.nombre,
+        persona_id=persona.id or 0,
+        tutor_nombre=persona.nombre,
+        tutor_apellido=persona.apellido,
+        tutor_dni=persona.dni,
+        mascota_estado_id=estado.id or 0,
+        mascota_estado_nombre=estado.nombre,
+        sexo=sexo,  # type: ignore[arg-type]
+        fecha_nacimiento=mascota.fecha_nacimiento,
+        microchip=mascota.microchip,
+        alertas_medicas=mascota.alertas_medicas,
+        pelaje_id=mascota.pelaje_id,
+        tamanio_id=mascota.tamanio_id,
+        habitat_id=mascota.habitat_id,
+        estado_reproductivo_id=mascota.estado_reproductivo_id,
+        temperamento_id=mascota.temperamento_id,
+    )
+
+
+def get_mascota(session: Session, mascota_id: int) -> MascotaDetail:
+    mascota = session.get(Mascota, mascota_id)
+    if mascota is None:
+        raise APIError(404, "MASCOTA_NO_ENCONTRADA", "No se encontró la mascota indicada")
+    return _to_mascota_detail(session, mascota)
+
+
+def _validate_catalogo_especie(
+    session: Session,
+    *,
+    model: type,
+    item_id: int | None,
+    especie_id: int,
+    error_code: str,
+    label: str,
+) -> None:
+    if item_id is None:
+        return
+    row = session.get(model, item_id)
+    if row is None or not getattr(row, "activo", False):
+        raise APIError(400, error_code, f"No se encontró {label} activo indicado")
+    row_especie = getattr(row, "especie_id", None)
+    if row_especie is not None and row_especie != especie_id:
+        raise APIError(
+            400,
+            error_code,
+            f"El {label} no pertenece a la especie de la mascota",
+        )
+
+
+def update_mascota(session: Session, mascota_id: int, payload: MascotaUpdate) -> MascotaDetail:
+    mascota = session.get(Mascota, mascota_id)
+    if mascota is None:
+        raise APIError(404, "MASCOTA_NO_ENCONTRADA", "No se encontró la mascota indicada")
+
+    data = payload.model_dump(exclude_unset=True)
+    current_raza = session.get(Raza, mascota.raza_id)
+    if current_raza is None:
+        raise APIError(500, "RAZA_NO_ENCONTRADA", "La mascota no tiene una raza válida")
+    especie_id = current_raza.especie_id
+
+    if "persona_id" in data:
+        new_persona_id = data["persona_id"]
+        if new_persona_id is None:
+            raise APIError(400, "TUTOR_REQUERIDO", "Debe indicar un tutor")
+        persona = session.get(Persona, new_persona_id)
+        if persona is None or not persona.es_cliente:
+            raise APIError(404, "TUTOR_NO_ENCONTRADO", "No se encontró el tutor indicado")
+        eventual_id = _tutor_eventual_id(session)
+        if (
+            eventual_id is not None
+            and new_persona_id == eventual_id
+            and mascota.persona_id != eventual_id
+        ):
+            raise APIError(
+                400,
+                "TUTOR_EVENTUAL_NO_PERMITIDO",
+                "No se puede pasar una mascota con tutor registrado al tutor eventual",
+            )
+        mascota.persona_id = new_persona_id
+
+    if "raza_id" in data:
+        raza_id = data["raza_id"]
+        if raza_id is None:
+            raise APIError(400, "RAZA_REQUERIDA", "Debe indicar una raza")
+        raza = session.get(Raza, raza_id)
+        if raza is None or raza.especie_id != especie_id:
+            raise APIError(
+                400,
+                "RAZA_INVALIDA",
+                "La raza no pertenece a la especie de la mascota",
+            )
+        mascota.raza_id = raza_id
+
+    if "mascota_estado_id" in data:
+        estado_id = data["mascota_estado_id"]
+        if estado_id is None:
+            raise APIError(400, "ESTADO_REQUERIDO", "Debe indicar un estado")
+        estado = session.get(MascotaEstado, estado_id)
+        if estado is None or not estado.activo:
+            raise APIError(400, "ESTADO_INVALIDO", "No se encontró el estado indicado")
+        mascota.mascota_estado_id = estado_id
+
+    if "nombre" in data and data["nombre"] is not None:
+        mascota.nombre = data["nombre"]
+
+    if "sexo" in data:
+        mascota.sexo = data["sexo"]
+
+    if "fecha_nacimiento" in data:
+        mascota.fecha_nacimiento = data["fecha_nacimiento"]
+
+    if "microchip" in data:
+        chip = data["microchip"]
+        if chip:
+            existing_chip = session.exec(
+                select(Mascota).where(
+                    Mascota.microchip == chip,
+                    Mascota.id != mascota_id,
+                )
+            ).first()
+            if existing_chip is not None:
+                raise APIError(
+                    409, "MICROCHIP_DUPLICADO", "Ya existe una mascota con ese microchip"
+                )
+        mascota.microchip = chip
+
+    if "alertas_medicas" in data:
+        mascota.alertas_medicas = data["alertas_medicas"]
+
+    if "pelaje_id" in data:
+        _validate_catalogo_especie(
+            session,
+            model=Pelaje,
+            item_id=data["pelaje_id"],
+            especie_id=especie_id,
+            error_code="PELAJE_INVALIDO",
+            label="pelaje",
+        )
+        mascota.pelaje_id = data["pelaje_id"]
+
+    if "tamanio_id" in data:
+        _validate_catalogo_especie(
+            session,
+            model=Tamanio,
+            item_id=data["tamanio_id"],
+            especie_id=especie_id,
+            error_code="TAMANIO_INVALIDO",
+            label="tamaño",
+        )
+        mascota.tamanio_id = data["tamanio_id"]
+
+    if "habitat_id" in data:
+        _validate_catalogo_especie(
+            session,
+            model=Habitat,
+            item_id=data["habitat_id"],
+            especie_id=especie_id,
+            error_code="HABITAT_INVALIDO",
+            label="hábitat",
+        )
+        mascota.habitat_id = data["habitat_id"]
+
+    if "estado_reproductivo_id" in data:
+        _validate_catalogo_especie(
+            session,
+            model=EstadoReproductivo,
+            item_id=data["estado_reproductivo_id"],
+            especie_id=especie_id,
+            error_code="ESTADO_REPRODUCTIVO_INVALIDO",
+            label="estado reproductivo",
+        )
+        mascota.estado_reproductivo_id = data["estado_reproductivo_id"]
+
+    if "temperamento_id" in data:
+        _validate_catalogo_especie(
+            session,
+            model=Temperamento,
+            item_id=data["temperamento_id"],
+            especie_id=especie_id,
+            error_code="TEMPERAMENTO_INVALIDO",
+            label="temperamento",
+        )
+        mascota.temperamento_id = data["temperamento_id"]
+
+    session.add(mascota)
+    session.commit()
+    session.refresh(mascota)
+    return _to_mascota_detail(session, mascota)
+
+
+def list_catalogo_clinico_por_especie(
+    session: Session,
+    *,
+    model: type,
+    especie_id: int,
+) -> list[CatalogoClinicoOpcion]:
+    rows = session.exec(
+        select(model)
+        .where(model.especie_id == especie_id, model.activo.is_(True))  # type: ignore[attr-defined]
+        .order_by(model.nombre)  # type: ignore[attr-defined]
+    ).all()
+    return [
+        CatalogoClinicoOpcion(
+            id=getattr(row, "id") or 0,
+            nombre=getattr(row, "nombre"),
+            especie_id=getattr(row, "especie_id"),
+        )
+        for row in rows
+    ]

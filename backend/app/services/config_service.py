@@ -2,11 +2,47 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.errors import APIError
 from app.db.session import get_engine
 from app.models.sys.config import Config
+from app.schemas.config import ConfigItem, ConfigValorUpdate
+
+INTEGER_PARAMETROS = frozenset(
+    {
+        "ACCESS_TOKEN_EXPIRACION",
+        "REFRESH_TOKEN_EXPIRACION",
+        "PERSONA_ID_TUTOR_EVENTUAL",
+    }
+)
+
+
+def normalize_and_validate_parametro_valor(parametro_nombre: str, raw_valor: str) -> str:
+    valor = raw_valor.strip()
+    if not valor:
+        raise APIError(400, "VALOR_INVALIDO", "El valor del parámetro no puede estar vacío")
+    if len(valor) > 255:
+        raise APIError(400, "VALOR_INVALIDO", "El valor del parámetro supera los 255 caracteres")
+
+    if parametro_nombre in INTEGER_PARAMETROS:
+        try:
+            numero = int(valor)
+        except ValueError as exc:
+            raise APIError(
+                400,
+                "VALOR_INVALIDO",
+                f"El parámetro '{parametro_nombre}' debe ser un entero positivo",
+            ) from exc
+        if numero < 1:
+            raise APIError(
+                400,
+                "VALOR_INVALIDO",
+                f"El parámetro '{parametro_nombre}' debe ser un entero >= 1",
+            )
+        return str(numero)
+
+    return valor
 
 
 @lru_cache(maxsize=1)
@@ -59,3 +95,34 @@ def get_parametro_valor_por_nombre(
         return default
     return row.parametro_valor
 
+
+def _to_item(row: Config) -> ConfigItem:
+    return ConfigItem(
+        id=row.id or 0,
+        config_id=row.config_id,
+        config_nombre=row.config_nombre,
+        parametro_id=row.parametro_id,
+        parametro_nombre=row.parametro_nombre,
+        parametro_valor=row.parametro_valor,
+    )
+
+
+def list_all_configs(session: Session) -> list[ConfigItem]:
+    rows = session.exec(
+        select(Config).order_by(col(Config.config_nombre), col(Config.parametro_id))
+    ).all()
+    return [_to_item(row) for row in rows]
+
+
+def update_config_valor(session: Session, config_pk: int, payload: ConfigValorUpdate) -> ConfigItem:
+    row = session.get(Config, config_pk)
+    if row is None:
+        raise APIError(404, "CONFIG_NO_ENCONTRADA", "No se encontró la configuración solicitada")
+
+    normalized = normalize_and_validate_parametro_valor(row.parametro_nombre, payload.parametro_valor)
+    row.parametro_valor = normalized
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    clear_config_cache()
+    return _to_item(row)
