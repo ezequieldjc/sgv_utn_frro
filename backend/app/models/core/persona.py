@@ -1,8 +1,10 @@
 from datetime import date, datetime
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Column, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped
 from sqlmodel import Field, Relationship, SQLModel
+
+from app.core.time_utils import utc_now
 
 
 class Persona(SQLModel, table=True):
@@ -21,7 +23,10 @@ class Persona(SQLModel, table=True):
     domicilio_id: int | None = Field(default=None, foreign_key="core.domicilio.id")
     mail: str | None = Field(default=None, max_length=100)
     celular: str = Field(max_length=30, nullable=False)
-    fecha_alta: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    fecha_alta: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
     es_cliente: bool = Field(default=True, nullable=False)
 
     domicilio: Mapped["Domicilio"] = Relationship(back_populates="personas")

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import APIError
 from app.core.security import hash_password, verify_password
+from app.core.time_utils import utc_now
 from app.models.auth.historial_contrasena import HistorialContrasena
 from app.models.auth.login import Login
 from app.models.auth.usuario import Usuario
@@ -83,7 +83,7 @@ def create_login_audit(
     login = Login(
         usuario_id=user_id,
         username_ingresado=username_ingresado,
-        fecha=datetime.utcnow(),
+        fecha=utc_now(),
         exito=success,
         ip=ip,
         razon_fallo=failure_reason,

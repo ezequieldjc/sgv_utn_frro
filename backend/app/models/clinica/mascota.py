@@ -2,9 +2,11 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import CheckConstraint, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped
 from sqlmodel import Field, Relationship, SQLModel
+
+from app.core.time_utils import utc_now
 
 
 class Mascota(SQLModel, table=True):
@@ -24,7 +26,10 @@ class Mascota(SQLModel, table=True):
     sexo: str | None = Field(default=None, max_length=1)
     microchip: str | None = Field(default=None, max_length=15)
     alertas_medicas: str | None = Field(default=None)
-    fecha_alta: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    fecha_alta: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
     pelaje_id: int | None = Field(default=None, foreign_key="catalogo.pelaje.id")
     tamanio_id: int | None = Field(default=None, foreign_key="catalogo.tamanio.id")
     habitat_id: int | None = Field(default=None, foreign_key="catalogo.habitat.id")

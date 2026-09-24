@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from sqlmodel import select
 
 from app.core.security import hash_password
+from app.core.time_utils import utc_now
 from app.models.auth.historial_contrasena import HistorialContrasena
 from app.models.auth.login import Login
 from app.models.auth.permiso import Permiso
@@ -160,7 +161,7 @@ def test_list_usuarios_con_permiso_devuelve_200_y_ultimo_inicio(client, session)
         rol_nombre="ADMIN",
     )
 
-    login_fecha = datetime.utcnow() - timedelta(hours=1)
+    login_fecha = utc_now() - timedelta(hours=1)
     session.add(
         Login(
             usuario_id=admin.id,
