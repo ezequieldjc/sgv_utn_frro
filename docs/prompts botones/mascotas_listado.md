@@ -26,7 +26,7 @@ Estado: **implementado** (no reimplementar desde cero; esta spec describe el as-
 | Types | `frontend/src/types/mascotas.ts` |
 | Typeahead selects | `frontend/src/lib/select-typeahead.ts` + `frontend/src/hooks/use-select-typeahead.ts` |
 | Tests typeahead | `frontend/src/lib/select-typeahead.test.ts` |
-| Rutas | `frontend/src/App.tsx` → `/mascotas`, `/mascotas/nuevo` (stub removido) |
+| Rutas | `frontend/src/App.tsx` → `/mascotas`, `/mascotas/nuevo`, `/mascotas/:id/editar` |
 | Seed raza default | `scripts/base/raza_sin_raza_definida.sql` (DBA ya ejecutado) |
 | **Sesión DB** | `backend/app/db/session.py` → `get_session` **debe** ser generator `yield` + close |
 
@@ -46,7 +46,8 @@ Estado: **implementado** (no reimplementar desde cero; esta spec describe el as-
 |--------|---------|
 | Ver listado `/mascotas` | `mascotas:ver_listado` o `*` |
 | Botón / alta Nueva Mascota | `mascotas:crear` o `*` |
-| Botón Editar (UI stub) | `mascotas:editar` o `*` |
+| Botón Editar | `mascotas:editar` o `*` → `/mascotas/:id/editar` |
+| Botón Historial de consultas | `consultas:ver_historial` o `*` → `/consultas/historial?mascota_id=` |
 
 No usar `mascotas:create` / `mascotas:update`.
 
@@ -87,7 +88,10 @@ En **una misma fila horizontal** (responsive: stack en mobile):
 Nombre, Especie, Raza, **Estado**, Tutor, DNI Tutor, Acciones.
 
 ### Editar
-Solo UI → `console.log("TODO: Editar")` si tiene `mascotas:editar`. Sin pantalla de edición.
+Con `mascotas:editar` → `/mascotas/:id/editar` (ver `mascotas_listado_editar.md`).
+
+### Historial de consultas
+Con `consultas:ver_historial` → `/consultas/historial?mascota_id={id}` (stub de pantalla por ahora).
 
 ### Paginación
 - `page_size = 50` (fijo en v1).
@@ -269,7 +273,7 @@ Nunca volver a `return Session(get_engine())` sin `yield`/`close`.
 3. `?cliente_id=` filtra por tutor.
 4. Alta con tutor o tutor eventual; raza default “Sin raza definida”; estado ACTIVA interno.
 5. Peso inicial genera fila en `historial_peso` sin tocar `ultimo_peso` en el insert.
-6. Editar visible solo con `mascotas:editar`, stub TODO.
+6. Editar visible solo con `mascotas:editar`; historial con `consultas:ver_historial`.
 7. Búsqueda tutor: encuentra por nombre/DNI (con/sin formato); no ensancha el form con el
    mensaje vacío; no congela la API (sesiones cerradas).
 8. Tests backend (`test_mascotas.py`): 401/403, listado/filtros, create tutor / eventual / peso,

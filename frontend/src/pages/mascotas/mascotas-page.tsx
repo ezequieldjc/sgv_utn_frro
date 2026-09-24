@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   PawPrint,
   Pencil,
   Plus,
@@ -67,6 +68,34 @@ function AccessDenied() {
   );
 }
 
+function ActionIconButton({
+  label,
+  to,
+  children,
+}: {
+  label: string;
+  to: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8 text-muted-foreground hover:text-foreground"
+          aria-label={label}
+          asChild
+        >
+          <Link to={to}>{children}</Link>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 export default function MascotasPage() {
   const { permisos } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -74,6 +103,7 @@ export default function MascotasPage() {
   const canView = hasPermission(permisos, "mascotas:ver_listado");
   const canCreate = hasPermission(permisos, "mascotas:crear");
   const canEdit = hasPermission(permisos, "mascotas:editar");
+  const canViewHistorial = hasPermission(permisos, "consultas:ver_historial");
 
   const clienteIdParam = searchParams.get("cliente_id");
   const especieFromUrl = searchParams.get("especie_id");
@@ -438,25 +468,27 @@ export default function MascotasPage() {
                       {mascota.tutor_dni ?? "-"}
                     </TableCell>
                     <TableCell className="text-left">
-                      {canEdit ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  console.log("TODO: Editar", mascota.id);
-                                }}
-                              >
-                                <Pencil className="size-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Editar</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : null}
+                      <TooltipProvider>
+                        <div className="flex items-center justify-start gap-1">
+                          {canEdit ? (
+                            <ActionIconButton
+                              label="Editar"
+                              to={`/mascotas/${mascota.id}/editar`}
+                            >
+                              <Pencil className="size-4" />
+                            </ActionIconButton>
+                          ) : null}
+
+                          {canViewHistorial ? (
+                            <ActionIconButton
+                              label="Historial de consultas"
+                              to={`/consultas/historial?mascota_id=${mascota.id}`}
+                            >
+                              <ClipboardList className="size-4" />
+                            </ActionIconButton>
+                          ) : null}
+                        </div>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))

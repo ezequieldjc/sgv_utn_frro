@@ -39,3 +39,17 @@ def require_permission(
     if not has_permission(current_session.permisos, required_permission):
         raise APIError(403, "PERMISOS_INSUFICIENTES", "No tenés permisos para ejecutar esta acción")
     return current_session
+
+
+def require_any_permission(
+    session: Session,
+    token: str | None,
+    *required_permissions: str,
+) -> AuthSessionResponse:
+    current_session = get_current_authenticated_session(session, token)
+    if not any(
+        has_permission(current_session.permisos, permission)
+        for permission in required_permissions
+    ):
+        raise APIError(403, "PERMISOS_INSUFICIENTES", "No tenés permisos para ejecutar esta acción")
+    return current_session

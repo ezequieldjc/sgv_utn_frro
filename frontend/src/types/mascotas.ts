@@ -66,3 +66,45 @@ export interface RazaOpcion {
   nombre: string;
   especie_id: number;
 }
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface MascotaDetail {
+  id: number;
+  nombre: string;
+  especie_id: number;
+  especie_nombre: string;
+  raza_id: number;
+  raza_nombre: string;
+  persona_id: number;
+  tutor_nombre: string;
+  tutor_apellido: string;
+  tutor_dni: string | null;
+  mascota_estado_id: number;
+  mascota_estado_nombre: string;
+  sexo: "M" | "H" | "U" | null;
+  fecha_nacimiento: string | null;
+  microchip: string | null;
+  alertas_medicas: string | null;
+  pelaje_id: number | null;
+  tamanio_id: number | null;
+  habitat_id: number | null;
+  estado_reproductivo_id: number | null;
+  temperamento_id: number | null;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface MascotaUpdatePayload {
+  nombre?: string;
+  persona_id?: number;
+  raza_id?: number;
+  mascota_estado_id?: number;
+  sexo?: "M" | "H" | "U" | null;
+  fecha_nacimiento?: string | null;
+  microchip?: string | null;
+  alertas_medicas?: string | null;
+  pelaje_id?: number | null;
+  tamanio_id?: number | null;
+  habitat_id?: number | null;
+  estado_reproductivo_id?: number | null;
+  temperamento_id?: number | null;
+}
