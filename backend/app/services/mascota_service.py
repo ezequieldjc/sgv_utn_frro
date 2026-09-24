@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlalchemy import func, or_
 from sqlmodel import Session, col, select
 
 from app.core.errors import APIError
+from app.core.time_utils import utc_now
 from app.models.catalogo.mascota_estado import MascotaEstado
 from app.models.clinica.especie import Especie
 from app.models.clinica.historial_peso import HistorialPeso
@@ -267,7 +266,7 @@ def create_mascota(session: Session, payload: MascotaCreate) -> MascotaCreateRes
         session.add(
             HistorialPeso(
                 mascota_id=mascota.id or 0,
-                fecha=datetime.utcnow(),
+                fecha=utc_now(),
                 peso_kg=payload.peso_inicial_kg,
             )
         )
