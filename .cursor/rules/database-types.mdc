@@ -62,10 +62,18 @@ alwaysApply: false
   ajustables sin redeploy (ej: expiración de tokens JWT, razón social de la clínica). Nunca
   pongas estos valores como constantes en el código ni en `.env` — `.env` es para secretos
   de infraestructura (API keys), no para configuración de negocio. Todo acceso a `sys.config`
-  pasa por un servicio centralizado (ej: `services/config_service.py`) con cache en memoria
-  (`@lru_cache` o similar), nunca un SELECT directo en cada request. Al agregar un
-  `config_nombre`/`parametro_nombre` nuevo (dato, no DDL), dejá documentado cuál es para no
-  duplicar configs equivalentes con nombres distintos.
+  pasa por `services/config_service.py` con cache en memoria (`@lru_cache` / índice), nunca
+  un SELECT suelto en cada request “porque sí”.
+  - **Tras cualquier UPDATE de `parametro_valor`** (Admin → Parámetros u otro escritorio):
+    llamar **obligatoriamente** `clear_config_cache()`. Si no, JWT / `RAZON_SOCIAL` / tutor
+    eventual / raza default quedan stale.
+  - Nombres canónicos ya usados en código/docs (no reinventar strings):
+    `ACCESS_TOKEN_EXPIRACION`, `REFRESH_TOKEN_EXPIRACION`, `RAZON_SOCIAL`,
+    `PERSONA_ID_TUTOR_EVENTUAL`, `RAZA_NOMBRE_DEFAULT`. Seed de permisos UI:
+    `parametros:ver` / `parametros:editar`. Admin de parámetros: solo edita
+    `parametro_valor` (sin POST/DELETE de filas).
+  - Al agregar un `config_nombre`/`parametro_nombre` nuevo (dato, no DDL), documentalo
+    (diccionario o script SQL DBA) para no duplicar configs equivalentes.
 
 - Alembic: no se usa para crear tablas ni columnas en la DB de la app. Si el DBA lo pide,
   una revisión de Alembic puede existir solo como historial de los `models/` (y docs). Nunca

@@ -13,55 +13,62 @@ alwaysApply: false
 - Permission-First Security: Nunca compares el string de rol crudo (ej:
   `rol.nombre == "VETERINARIO"`) para mostrar u ocultar elementos de UI o autorizar una
   acción. Usá códigos de permiso explícitos y atómicos desde `auth.permiso.nombre`, con
-  formato `recurso:accion` (ej: `pacientes:read`, `pacientes:create`, `turnos:update`,
-  `reportes:read`).
+  formato `recurso:accion`.
+
+- Convención de nombres (seed canónico `scripts/rol_permiso.sql`): preferí acciones en
+  español del dominio ya sembrado — `ver`, `ver_listado`, `crear`, `editar`, `eliminar`,
+  etc. (ej: `mascotas:ver_listado`, `roles:editar`, `parametros:ver`, `catalogos:crear`).
+  **No** inventes variantes inglesas tipo `read`/`create`/`update` si el seed ya tiene el
+  código. El comodín `*` = acceso total (UI y backend vía `has_permission`). Catálogo de
+  permisos: solo seed/DBA; la UI de Roles no da de alta permisos nuevos.
+
+- Excepción documentada (protección de rol de sistema): para **autorizar al usuario
+  logueado** nunca uses el nombre del rol. Sí está permitido detectar el rol *objetivo*
+  `ADMIN` (nombre case-insensitive) en Admin → Roles y Permisos para hacerlo **inmutable**
+  (solo lectura; no editar `rol_permiso`; no recrear `ADMIN`). El comodín `*` no se asigna
+  manualmente a roles operativos desde la UI/API de mapeo.
 
 - Los roles, sus permisos y la visibilidad de los menús se resuelven desde la base de datos
   al iniciar sesión. El backend carga `auth.usuario`, su `rol` y sus `permisos`, los incluye
-  en el payload del JWT (que viaja en cookie HttpOnly) Y los devuelve además como JSON plano
-  en la respuesta de login y en `GET /api/auth/me` — el frontend no puede leer el JWT
-  directamente porque es HttpOnly, por eso necesita ese JSON aparte. El frontend dibuja el
-  sidebar en base a esos permisos, sin hardcodear matrices de rol en el código ni en los
-  documentos.
+  en el payload del JWT (cookie HttpOnly) Y los devuelve como JSON en login y
+  `GET /api/auth/me` (el frontend no lee el JWT). El frontend dibuja el sidebar en base a
+  esos permisos, sin hardcodear matrices de rol.
 
 - Conditional Rendering:
   - Ocultá ítems del menú/sidebar si el usuario no tiene el permiso de lectura de ese módulo.
-  - Para esta versión, si el usuario tiene `*`, debe ver todos los menús del sidebar.
-  - Deshabilitá u ocultá botones de acción (crear, editar, eliminar) si el usuario no tiene
-    el permiso específico de esa acción.
+  - Si el usuario tiene `*`, debe ver todos los menús del sidebar.
+  - Deshabilitá u ocultá botones de acción (crear, editar, eliminar) si no tiene el permiso
+    específico. Helper UI: `permisos.includes("*") || permisos.includes(required)`.
 
-- Backend Enforcement: Ocultar cosas en la UI es solo por UX, nunca es la medida de
-  seguridad real. TODO endpoint de FastAPI debe validar el permiso correspondiente en el
-  backend (vía dependency de FastAPI que decodifica el JWT, resuelve rol → rol_permiso →
-  permiso, y valida) antes de ejecutar cualquier lógica. Nunca confíes en que el frontend
-  ya filtró algo.
+- Backend Enforcement: Ocultar en la UI es solo UX. TODO endpoint protegido valida el
+  permiso en backend (`get_current_authenticated_session` + `has_permission` /
+  `require_permission`) antes de la lógica. Nunca confíes en que el frontend ya filtró.
 
-- Invalidación de sesiones (`version_token`): `auth.usuario.version_token` es un contador
-  que se incluye dentro del payload del JWT al generarlo. Cada vez que cambian los permisos,
-  el rol, o se fuerza un logout de un usuario (ej: cambio de contraseña, usuario deshabilitado),
-  incrementá `version_token` en la base de datos. En cada request autenticado, el backend
-  debe comparar el `version_token` del JWT contra el valor actual en `auth.usuario`: si no
-  coinciden, el token es inválido aunque no haya expirado, y se debe rechazar con 401.
+- Invalidación de sesiones (`version_token`): contador en `auth.usuario` incluido en el JWT.
+  Incrementalo (+1) cuando cambien permisos efectivos o el acceso del usuario, entre otros:
+  - cambio de `rol_id` del usuario
+  - sync de `auth.rol_permiso` del rol que tiene asignado (todos los usuarios con ese
+    `rol_id`)
+  - cambio de contraseña / restablecimiento
+  - inhabilitar usuario
+  En cada request autenticado, compará JWT vs DB; si difieren → 401 aunque el token no
+  haya expirado.
 
-- Rotación de contraseña (`auth.historial_contrasena`): Nunca sobrescribas el hash de
-  contraseña en el lugar; cada cambio de contraseña genera un nuevo registro en
-  `auth.historial_contrasena` (con `hashed_password` vía bcrypt/argon2). El campo
-  `debe_cambiar` en `True` obliga al usuario a cambiar su contraseña en el próximo login
-  antes de dejarlo acceder a cualquier otra funcionalidad: `POST /api/auth/login` responde
-  `403 DEBE_CAMBIAR_CONTRASENA` y no emite JWT; el cambio se hace en
-  `POST /api/auth/cambiar-contrasena-obligatorio` (público, sin auto-login).
+- Errores de autorización: preferí `APIError` con códigos estables (ej.
+  `PERMISOS_INSUFICIENTES`, `ROL_ADMIN_INMUTABLE`, `COMODIN_NO_PERMITIDO`) y detalle en
+  español; no inventes middleware paralelo.
 
-- Auditoría de login (`auth.login`): Todo intento de login (exitoso o fallido) se registra
-  en `auth.login`, incluyendo `username_ingresado` (texto literal, incluso si no existe el
-  usuario), `ip`, `exito` y `razon_fallo` cuando corresponda: `USUARIO_INEXISTENTE`,
-  `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`, `SIN_HISTORIAL_CONTRASENA` (usuario existe y
-  habilitado pero sin registros en `auth.historial_contrasena`), `DEBE_CAMBIAR_CONTRASENA`
-  (credenciales válidas pero el historial vigente exige cambio). `USUARIO_DESHABILITADO` y
-  `DEBE_CAMBIAR_CONTRASENA` responden 403 al frontend; el resto de fallos de login se
-  agrupan como HTTP 401 / `Credenciales incorrectas` — la distinción granular es solo para
-  auditoría interna, nunca se expone al usuario. Esta
-  tabla es la base para detectar fuerza bruta — si vas a implementar bloqueo por intentos
-  fallidos, la lógica de conteo se apoya en esta tabla, no en una tabla nueva.
+- Rotación de contraseña (`auth.historial_contrasena`): Nunca sobrescribas el hash en el
+  lugar; cada cambio genera un nuevo registro (bcrypt/argon2). Si el vigente tiene
+  `debe_cambiar=true`, el login responde `403 DEBE_CAMBIAR_CONTRASENA` sin JWT; el cambio
+  es `POST /api/auth/cambiar-contrasena-obligatorio` (público, sin auto-login).
+
+- Auditoría de login (`auth.login`): Todo intento (ok/fallo) se registra con
+  `username_ingresado`, `ip`, `exito` y `razon_fallo` cuando aplique:
+  `USUARIO_INEXISTENTE`, `USUARIO_DESHABILITADO`, `CLAVE_INCORRECTA`,
+  `SIN_HISTORIAL_CONTRASENA`, `DEBE_CAMBIAR_CONTRASENA`. `USUARIO_DESHABILITADO` y
+  `DEBE_CAMBIAR_CONTRASENA` → 403 al frontend; el resto de fallos de login → 401 genérico
+  al usuario. La granularidad es solo para auditoría interna.
 
 - Auditoría sensible: Acciones sobre historia clínica, recetas electrónicas y datos
   personales del cliente (`core.persona`) deben quedar trazadas (quién, qué, cuándo).
