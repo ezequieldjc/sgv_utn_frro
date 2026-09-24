@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from functools import lru_cache
 
 from sqlalchemy import create_engine
@@ -18,7 +19,6 @@ SCHEMA_TRANSLATION_MAP = {
 }
 
 
-
 @lru_cache(maxsize=1)
 def get_engine() -> Engine:
     database_url = get_settings().database_url
@@ -30,9 +30,18 @@ def get_engine() -> Engine:
         )
         return engine.execution_options(schema_translate_map=SCHEMA_TRANSLATION_MAP)
 
-    return create_engine(database_url, pool_pre_ping=True)
+    # pool_pre_ping evita conexiones muertas; pool acotado para fallar rápido
+    # en vez de colgar toda la API si algo retiene conexiones.
+    return create_engine(
+        database_url,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+    )
 
 
-def get_session() -> Session:
-    return Session(get_engine())
-
+def get_session() -> Generator[Session, None, None]:
+    """Sesión por request: siempre se cierra al terminar (evita agotar el pool)."""
+    with Session(get_engine()) as session:
+        yield session

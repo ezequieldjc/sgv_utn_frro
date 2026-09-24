@@ -4,7 +4,9 @@ Spec de implementación del formulario de alta de cliente y `POST /api/clientes`
 
 ## Objetivo
 
-Permitir crear un cliente (`core.persona` con `es_cliente = true` + `core.domicilio`), con un check opcional **“Crear usuario”** que además inserta `auth.usuario` con rol fijo `CLIENTE` y contraseña temporal.
+Permitir crear rápidamente un cliente (`core.persona` con `es_cliente = true`), con
+domicilio opcional y un check opcional **“Crear usuario”** que además inserta
+`auth.usuario` con rol fijo `CLIENTE` y contraseña temporal.
 
 ## Permisos
 
@@ -22,15 +24,20 @@ Si falta el permiso: estado de acceso denegado (mismo patrón visual que Usuario
 - Ruta: `/clientes/nuevo` → `ClienteFormPage` (modo create).
 - Cancelar → `navigate(-1)`.
 - Misma UX de formulario que `usuario-form-page.tsx`:
-  - Secciones **Persona** + **Domicilio**.
+  - Obligatorios: Nombre, Apellido y Celular.
+  - Opcionales: DNI, Sexo, Fecha de nacimiento, Email y Domicilio.
+  - Checkbox **“Agregar domicilio”**, apagado por defecto. Al activarlo exige país,
+    provincia, ciudad, CP, calle y altura.
   - Máscara de fecha `dd/mm/yyyy`.
-  - Validaciones DNI (solo dígitos), CP numérico, mail opcional, celular sanitizado a dígitos al enviar.
+  - Validaciones DNI (solo dígitos, si se informa), CP numérico, mail opcional y celular
+    sanitizado a dígitos al enviar.
   - Scroll + foco al primer campo con error; borde `border-destructive`.
+  - Si DNI queda vacío, el submit abre una confirmación antes de crear con `dni = null`.
 
 ### Check “Crear usuario”
 
 - Por defecto **off**.
-- Off → solo domicilio + persona (`es_cliente=true` en backend).
+- Off → solo persona (`es_cliente=true` en backend).
 - On → muestra:
   - **Username** (solo lectura, preview con fórmula `primera_letra_nombre + apellido_sin_espacios`, minúsculas, sin acentos).
   - **Rol** fijo texto “CLIENTE” (solo lectura; no hay select).
@@ -44,11 +51,21 @@ Si falta el permiso: estado de acceso denegado (mismo patrón visual que Usuario
 {
   "nombre": "string",
   "apellido": "string",
-  "dni": "string",
-  "fecha_nacimiento": "YYYY-MM-DD",
-  "sexo": "M" | "F" | "X",
+  "dni": "string | null",
+  "fecha_nacimiento": "YYYY-MM-DD | null",
+  "sexo": "M" | "F" | "X" | null,
   "celular": "string",
   "mail": "string | null",
+  "domicilio": null,
+  "crear_usuario": false,
+  "habilitado": true
+}
+```
+
+Con domicilio:
+
+```json
+{
   "domicilio": {
     "pais": "string",
     "provincia": "string",
@@ -58,9 +75,7 @@ Si falta el permiso: estado de acceso denegado (mismo patrón visual que Usuario
     "cp": "string",
     "departamento": "string | null",
     "notas": "string | null"
-  },
-  "crear_usuario": false,
-  "habilitado": true
+  }
 }
 ```
 
@@ -71,7 +86,7 @@ Si falta el permiso: estado de acceso denegado (mismo patrón visual que Usuario
   "id": 1,
   "nombre": "string",
   "apellido": "string",
-  "dni": "string",
+  "dni": "string | null",
   "usuario_creado": false,
   "username": null,
   "password_temporal": null
@@ -86,13 +101,13 @@ Si `crear_usuario=true` y el alta de usuario OK: `usuario_creado=true`, `usernam
 |--------|--------|--------|
 | 401 | — | Sin sesión |
 | 403 | — | Sin `clientes:crear` |
-| 409 | `DNI_DUPLICADO` | Ya existe persona con ese DNI |
 | 404 | `ROL_NO_ENCONTRADO` | `crear_usuario=true` y no existe `auth.rol.nombre = 'CLIENTE'` |
 
 ## Backend — reglas
 
-1. Si DNI ya existe → `409 DNI_DUPLICADO`.
-2. INSERT `domicilio` + INSERT `persona` con **`es_cliente = true`**.
+1. DNI puede ser nulo o repetido; no se rechaza por duplicidad.
+2. INSERT `domicilio` solo si fue informado + INSERT `persona` con
+   **`es_cliente = true`**.
 3. Si `crear_usuario`:
    - Buscar rol `CLIENTE` → si falta, `404 ROL_NO_ENCONTRADO`.
    - `allocate_username` + `generate_temp_password` (reutilizar `usuario_service`).
@@ -109,17 +124,19 @@ Si `crear_usuario=true` y el alta de usuario OK: `usuario_creado=true`, `usernam
 - Con usuario: mismo título + mensaje con `@username` + caja con `password_temporal`.
 - Al cerrar / “Ir al listado” → navegar a `/clientes`.
 
-### DNI duplicado
+### DNI nulo
 
-- Dialog “El DNI ya existe”.
-- Al cerrar el dialog, el formulario permanece **completo**; el campo DNI queda en rojo con mensaje.
+- Dialog “Crear cliente sin DNI”.
+- “Volver” mantiene el formulario completo.
+- “Crear sin DNI” confirma el alta con `dni = null`.
 
 ## Tests (backend)
 
 - 401 / 403 sin permiso.
 - 201 solo cliente (`usuario_creado=false`, `es_cliente=true`, sin historial).
 - 201 con `crear_usuario=true` (rol CLIENTE seed, password temporal, historial `debe_cambiar`).
-- 409 DNI duplicado.
+- 201 sin DNI, datos opcionales ni domicilio.
+- 201 con DNI repetido.
 - 404 si falta rol CLIENTE y `crear_usuario=true`.
 
 ## Fuera de alcance

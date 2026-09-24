@@ -79,17 +79,19 @@ La misma `core.persona` puede:
 Las pantallas de destino pueden ser stubs mínimos en esta iteración; las rutas deben existir para no romper la navegación.
 
 ### Importante sobre alta de cliente
-- La validación de DNI duplicado (`409 DNI_DUPLICADO`) se implementa en el alta
-  (`POST /api/clientes`); ver [`clientes_crear.md`](./clientes_crear.md).
-- El unique `UQ_Persona_DNI` en Postgres sigue existiendo a nivel DB.
+- DNI es opcional y puede repetirse; ya no existe `UQ_Persona_DNI`.
+- El alta con DNI nulo requiere confirmación explícita en frontend; ver
+  [`clientes_crear.md`](./clientes_crear.md).
 
 ### Buscador
 - Filtrado en frontend (mismo patrón que Usuarios) por **nombre**, **apellido** o **DNI**
   (coincidencia no sensible a mayúsculas/minúsculas).
+- Si DNI es nulo, se muestra `-` y la búsqueda/ordenamiento no falla.
 
 ### Edad
 - Campo `edad` en el DTO, calculado en **backend**.
 - Años **truncados** desde `fecha_nacimiento` (ej.: 36,9 años → **36**; todavía no cumplió 37).
+- Si `fecha_nacimiento` es nula, `edad` también es nula y se muestra `-`.
 
 ---
 

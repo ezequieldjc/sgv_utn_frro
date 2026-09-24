@@ -19,7 +19,7 @@ import { useAuth } from "@/context/auth-context";
 import { apiFetch } from "@/lib/api";
 import type { ClienteCreatePayload, ClienteCreateResponse } from "@/types/clientes";
 
-interface FormState {
+export interface FormState {
   nombre: string;
   apellido: string;
   dni: string;
@@ -35,13 +35,14 @@ interface FormState {
   cp: string;
   departamento: string;
   notas: string;
+  incluir_domicilio: boolean;
   crear_usuario: boolean;
   habilitado: boolean;
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
 
-const INITIAL_FORM: FormState = {
+export const INITIAL_FORM: FormState = {
   nombre: "",
   apellido: "",
   dni: "",
@@ -57,6 +58,7 @@ const INITIAL_FORM: FormState = {
   cp: "",
   departamento: "",
   notas: "",
+  incluir_domicilio: false,
   crear_usuario: false,
   habilitado: true,
 };
@@ -130,7 +132,7 @@ function sanitizeCelular(value: string): string {
   return value.replace(/[^\d]/g, "");
 }
 
-function validateForm(form: FormState): FormErrors {
+export function validateForm(form: FormState): FormErrors {
   const errors: FormErrors = {};
 
   if (!form.nombre.trim()) {
@@ -139,18 +141,11 @@ function validateForm(form: FormState): FormErrors {
   if (!form.apellido.trim()) {
     errors.apellido = "El apellido es obligatorio.";
   }
-  if (!form.dni.trim()) {
-    errors.dni = "El DNI es obligatorio.";
-  } else if (!/^\d+$/.test(form.dni.trim())) {
+  if (form.dni.trim() && !/^\d+$/.test(form.dni.trim())) {
     errors.dni = "El DNI debe contener solo números.";
   }
-  if (!form.fecha_nacimiento.trim()) {
-    errors.fecha_nacimiento = "La fecha de nacimiento es obligatoria.";
-  } else if (!fechaToIso(form.fecha_nacimiento)) {
+  if (form.fecha_nacimiento.trim() && !fechaToIso(form.fecha_nacimiento)) {
     errors.fecha_nacimiento = "Usá el formato dd/mm/yyyy con una fecha válida.";
-  }
-  if (!form.sexo) {
-    errors.sexo = "Seleccioná el sexo.";
   }
   if (!form.celular.trim()) {
     errors.celular = "El celular es obligatorio.";
@@ -160,22 +155,52 @@ function validateForm(form: FormState): FormErrors {
   if (form.mail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.mail.trim())) {
     errors.mail = "Ingresá un email válido.";
   }
-  if (!form.ciudad.trim()) {
-    errors.ciudad = "La ciudad es obligatoria.";
-  }
-  if (!form.calle.trim()) {
-    errors.calle = "La calle es obligatoria.";
-  }
-  if (!form.altura.trim()) {
-    errors.altura = "La altura es obligatoria.";
-  }
-  if (!form.cp.trim()) {
-    errors.cp = "El código postal es obligatorio.";
-  } else if (!/^\d+$/.test(form.cp.trim())) {
-    errors.cp = "El código postal debe ser numérico.";
+  if (form.incluir_domicilio) {
+    if (!form.ciudad.trim()) {
+      errors.ciudad = "La ciudad es obligatoria.";
+    }
+    if (!form.calle.trim()) {
+      errors.calle = "La calle es obligatoria.";
+    }
+    if (!form.altura.trim()) {
+      errors.altura = "La altura es obligatoria.";
+    }
+    if (!form.cp.trim()) {
+      errors.cp = "El código postal es obligatorio.";
+    } else if (!/^\d+$/.test(form.cp.trim())) {
+      errors.cp = "El código postal debe ser numérico.";
+    }
   }
 
   return errors;
+}
+
+export function buildClientePayload(form: FormState): ClienteCreatePayload {
+  return {
+    nombre: form.nombre.trim(),
+    apellido: form.apellido.trim(),
+    dni: form.dni.trim() || null,
+    fecha_nacimiento: form.fecha_nacimiento.trim()
+      ? fechaToIso(form.fecha_nacimiento)
+      : null,
+    sexo: form.sexo || null,
+    celular: sanitizeCelular(form.celular),
+    mail: form.mail.trim() ? form.mail.trim() : null,
+    domicilio: form.incluir_domicilio
+      ? {
+          pais: form.pais,
+          provincia: form.provincia,
+          ciudad: form.ciudad.trim(),
+          calle: form.calle.trim(),
+          altura: form.altura.trim(),
+          cp: form.cp.trim(),
+          departamento: form.departamento.trim() ? form.departamento.trim() : null,
+          notas: form.notas.trim() ? form.notas.trim() : null,
+        }
+      : null,
+    crear_usuario: form.crear_usuario,
+    habilitado: form.habilitado,
+  };
 }
 
 function fieldClass(hasError: boolean): string {
@@ -209,7 +234,7 @@ export default function ClienteFormPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<ClienteCreateResponse | null>(null);
-  const [dniDuplicadoOpen, setDniDuplicadoOpen] = React.useState(false);
+  const [confirmarSinDniOpen, setConfirmarSinDniOpen] = React.useState(false);
 
   const fieldRefs = React.useRef<Partial<Record<keyof FormState, HTMLElement | null>>>({});
 
@@ -243,6 +268,30 @@ export default function ClienteFormPage() {
     }
   }
 
+  async function createCliente(payload: ClienteCreatePayload) {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const created = await apiFetch<ClienteCreateResponse>("/api/clientes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setSuccess(created);
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      if (status === 404) {
+        setSubmitError("No se encontró el rol CLIENTE en el sistema.");
+      } else if (status === 403) {
+        setSubmitError("No tenés permisos para crear clientes.");
+      } else {
+        setSubmitError("No se pudo crear el cliente. Intentá de nuevo.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (isSubmitting) {
@@ -258,63 +307,17 @@ export default function ClienteFormPage() {
       return;
     }
 
-    const isoFecha = fechaToIso(form.fecha_nacimiento);
-    if (!isoFecha || !form.sexo) {
+    if (!form.dni.trim()) {
+      setConfirmarSinDniOpen(true);
       return;
     }
 
-    const payload: ClienteCreatePayload = {
-      nombre: form.nombre.trim(),
-      apellido: form.apellido.trim(),
-      dni: form.dni.trim(),
-      fecha_nacimiento: isoFecha,
-      sexo: form.sexo,
-      celular: sanitizeCelular(form.celular),
-      mail: form.mail.trim() ? form.mail.trim() : null,
-      domicilio: {
-        pais: form.pais,
-        provincia: form.provincia,
-        ciudad: form.ciudad.trim(),
-        calle: form.calle.trim(),
-        altura: form.altura.trim(),
-        cp: form.cp.trim(),
-        departamento: form.departamento.trim() ? form.departamento.trim() : null,
-        notas: form.notas.trim() ? form.notas.trim() : null,
-      },
-      crear_usuario: form.crear_usuario,
-      habilitado: form.habilitado,
-    };
+    await createCliente(buildClientePayload(form));
+  }
 
-    setIsSubmitting(true);
-    try {
-      const created = await apiFetch<ClienteCreateResponse>("/api/clientes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      setSuccess(created);
-    } catch (error) {
-      const status = (error as { status?: number }).status;
-      if (status === 409) {
-        setDniDuplicadoOpen(true);
-        setErrors((prev) => ({ ...prev, dni: "El DNI ya existe." }));
-        window.setTimeout(() => {
-          const el = fieldRefs.current.dni;
-          if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-            el.focus();
-          }
-        }, 0);
-      } else if (status === 404) {
-        setSubmitError("No se encontró el rol CLIENTE en el sistema.");
-      } else if (status === 403) {
-        setSubmitError("No tenés permisos para crear clientes.");
-      } else {
-        setSubmitError("No se pudo crear el cliente. Intentá de nuevo.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+  async function confirmCreateSinDni() {
+    setConfirmarSinDniOpen(false);
+    await createCliente(buildClientePayload(form));
   }
 
   return (
@@ -328,8 +331,7 @@ export default function ClienteFormPage() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Nuevo Cliente</h1>
         <p className="text-sm text-muted-foreground">
-          Completá los datos de la persona y el domicilio. Opcionalmente podés crear una
-          cuenta de acceso con rol CLIENTE.
+          Completá los datos básicos. El domicilio y la cuenta de acceso son opcionales.
         </p>
       </div>
 
@@ -370,7 +372,7 @@ export default function ClienteFormPage() {
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dni">DNI</Label>
+              <Label htmlFor="dni">DNI (opcional)</Label>
               <Input
                 id="dni"
                 ref={(el) => {
@@ -386,7 +388,7 @@ export default function ClienteFormPage() {
               {errors.dni ? <p className="text-xs text-destructive">{errors.dni}</p> : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="fecha_nacimiento">Fecha de nacimiento</Label>
+              <Label htmlFor="fecha_nacimiento">Fecha de nacimiento (opcional)</Label>
               <Input
                 id="fecha_nacimiento"
                 ref={(el) => {
@@ -405,7 +407,7 @@ export default function ClienteFormPage() {
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="sexo">Sexo</Label>
+              <Label htmlFor="sexo">Sexo (opcional)</Label>
               <select
                 id="sexo"
                 ref={(el) => {
@@ -463,10 +465,22 @@ export default function ClienteFormPage() {
         </section>
 
         <section className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Domicilio
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="incluir_domicilio"
+              checked={form.incluir_domicilio}
+              onCheckedChange={(checked) =>
+                updateField("incluir_domicilio", checked === true)
+              }
+            />
+            <Label htmlFor="incluir_domicilio">Agregar domicilio</Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Activá esta opción únicamente si querés registrar el domicilio ahora.
+          </p>
+
+          {form.incluir_domicilio ? (
+            <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pais">País</Label>
               <select
@@ -573,7 +587,8 @@ export default function ClienteFormPage() {
                 onChange={(e) => updateField("notas", e.target.value)}
               />
             </div>
-          </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm">
@@ -655,22 +670,37 @@ export default function ClienteFormPage() {
       </form>
 
       <Dialog
-        open={dniDuplicadoOpen}
-        onOpenChange={(open) => {
-          setDniDuplicadoOpen(open);
-        }}
+        open={confirmarSinDniOpen}
+        onOpenChange={setConfirmarSinDniOpen}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>El DNI ya existe</DialogTitle>
+            <DialogTitle>Crear cliente sin DNI</DialogTitle>
             <DialogDescription>
-              Ya hay una persona registrada con ese DNI. Revisá el campo y corregilo para
-              continuar.
+              El DNI quedó vacío. ¿Querés dar de alta al cliente igualmente?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" onClick={() => setDniDuplicadoOpen(false)}>
-              Entendido
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmarSinDniOpen(false)}
+            >
+              Volver
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void confirmCreateSinDni()}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Guardando…
+                </>
+              ) : (
+                "Crear sin DNI"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -13,8 +13,9 @@ import ClienteFormPage from "./pages/clientes/cliente-form-page";
 import {
   ClienteDetallePage,
   ClienteEditarPage,
-  MascotasStubPage,
 } from "./pages/clientes/stubs";
+import MascotasPage from "./pages/mascotas/mascotas-page";
+import MascotaFormPage from "./pages/mascotas/mascota-form-page";
 
 export default function App() {
   return (
@@ -39,7 +40,8 @@ export default function App() {
             <Route path="clientes/nuevo" element={<ClienteFormPage />} />
             <Route path="clientes/:id" element={<ClienteDetallePage />} />
             <Route path="clientes/:id/editar" element={<ClienteEditarPage />} />
-            <Route path="mascotas" element={<MascotasStubPage />} />
+            <Route path="mascotas" element={<MascotasPage />} />
+            <Route path="mascotas/nuevo" element={<MascotaFormPage />} />
           </Route>
         </Routes>
       </AuthProvider>

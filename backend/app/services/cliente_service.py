@@ -17,7 +17,11 @@ from app.services.usuario_service import allocate_username, generate_temp_passwo
 ROL_CLIENTE_NOMBRE = "CLIENTE"
 
 
-def calcular_edad_truncada(fecha_nacimiento: date, hoy: date | None = None) -> int:
+def calcular_edad_truncada(
+    fecha_nacimiento: date | None, hoy: date | None = None
+) -> int | None:
+    if fecha_nacimiento is None:
+        return None
     referencia = hoy or date.today()
     años = referencia.year - fecha_nacimiento.year
     if (referencia.month, referencia.day) < (fecha_nacimiento.month, fecha_nacimiento.day):
@@ -62,22 +66,21 @@ def list_clientes(session: Session) -> list[ClienteListItem]:
 
 
 def create_cliente(session: Session, payload: ClienteCreate) -> ClienteCreateResponse:
-    existing_dni = session.exec(select(Persona).where(Persona.dni == payload.dni)).first()
-    if existing_dni is not None:
-        raise APIError(409, "DNI_DUPLICADO", "Ya existe una persona con ese DNI")
-
-    domicilio = Domicilio(
-        pais=payload.domicilio.pais,
-        provincia=payload.domicilio.provincia,
-        ciudad=payload.domicilio.ciudad,
-        cp=payload.domicilio.cp,
-        calle=payload.domicilio.calle,
-        altura=payload.domicilio.altura,
-        departamento=payload.domicilio.departamento,
-        notas=payload.domicilio.notas,
-    )
-    session.add(domicilio)
-    session.flush()
+    domicilio_id: int | None = None
+    if payload.domicilio is not None:
+        domicilio = Domicilio(
+            pais=payload.domicilio.pais,
+            provincia=payload.domicilio.provincia,
+            ciudad=payload.domicilio.ciudad,
+            cp=payload.domicilio.cp,
+            calle=payload.domicilio.calle,
+            altura=payload.domicilio.altura,
+            departamento=payload.domicilio.departamento,
+            notas=payload.domicilio.notas,
+        )
+        session.add(domicilio)
+        session.flush()
+        domicilio_id = domicilio.id
 
     persona = Persona(
         nombre=payload.nombre.strip(),
@@ -85,7 +88,7 @@ def create_cliente(session: Session, payload: ClienteCreate) -> ClienteCreateRes
         dni=payload.dni,
         sexo=payload.sexo,
         fecha_nacimiento=payload.fecha_nacimiento,
-        domicilio_id=domicilio.id,
+        domicilio_id=domicilio_id,
         mail=payload.mail,
         celular=payload.celular,
         es_cliente=True,
