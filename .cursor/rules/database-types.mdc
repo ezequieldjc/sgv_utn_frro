@@ -16,7 +16,8 @@ alwaysApply: false
   `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
   schema `public` por default.
   Nota: `core.persona` incluye `fecha_nacimiento`, `domicilio_id` (FK a `core.domicilio`) y
-  `es_cliente`. El diccionario canónico está en `docs/modelo_datos_v1.md`.
+  `es_cliente`; `dni`, `sexo`, `fecha_nacimiento`, `mail` y `domicilio_id` admiten NULL.
+  `dni` no es unique. El diccionario canónico está en `docs/modelo_datos_v1.md`.
 
 - Single Source of Truth: PostgreSQL (el DBA) es la fuente de la verdad estructural. Los
   modelos SQLModel en `models/<schema>/` (ej. `models/clinica/mascota.py`) deben reflejar

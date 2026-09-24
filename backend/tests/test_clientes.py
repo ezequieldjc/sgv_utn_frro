@@ -273,7 +273,7 @@ def test_list_clientes_con_wildcard_devuelve_200(client, session) -> None:
 
 def _cliente_create_payload(
     *,
-    dni: str = "60111222",
+    dni: str | None = "60111222",
     crear_usuario: bool = False,
     habilitado: bool = True,
 ) -> dict:
@@ -424,7 +424,7 @@ def test_create_cliente_con_usuario_devuelve_201_y_password(client, session) -> 
     assert verify_password(payload["password_temporal"], historial.hashed_password)
 
 
-def test_create_cliente_dni_duplicado_devuelve_409(client, session) -> None:
+def test_create_cliente_dni_duplicado_permite_crear_otra_persona(client, session) -> None:
     _seed_jwt_config(session)
     seed_usuario_con_permiso(
         session,
@@ -450,8 +450,52 @@ def test_create_cliente_dni_duplicado_devuelve_409(client, session) -> None:
     assert login_response.status_code == 200
 
     response = client.post("/api/clientes", json=_cliente_create_payload(dni="60111222"))
-    assert response.status_code == 409
-    assert response.json()["error"] == "DNI_DUPLICADO"
+    assert response.status_code == 201
+    personas = session.exec(select(Persona).where(Persona.dni == "60111222")).all()
+    assert len(personas) == 2
+
+
+def test_create_cliente_sin_dni_datos_opcionales_ni_domicilio_persiste_nulls(
+    client, session
+) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="clientes:crear",
+    )
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+
+    payload = {
+        "nombre": "Cliente",
+        "apellido": "Rápido",
+        "celular": "341 555-0000",
+        "crear_usuario": False,
+        "habilitado": True,
+    }
+    response = client.post("/api/clientes", json=payload)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["dni"] is None
+    persona = session.get(Persona, body["id"])
+    assert persona is not None
+    assert persona.dni is None
+    assert persona.sexo is None
+    assert persona.fecha_nacimiento is None
+    assert persona.mail is None
+    assert persona.domicilio_id is None
+    assert persona.celular == "3415550000"
+    assert persona.es_cliente is True
 
 
 def test_create_cliente_sin_rol_cliente_devuelve_404(client, session) -> None:

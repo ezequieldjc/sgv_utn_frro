@@ -3,12 +3,12 @@ export interface ClienteListItem {
   id: number;
   nombre: string;
   apellido: string;
-  dni: string;
-  sexo: string;
+  dni: string | null;
+  sexo: string | null;
   celular: string;
   fecha_alta: string;
   ciudad: string | null;
-  edad: number;
+  edad: number | null;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
@@ -27,12 +27,12 @@ export interface DomicilioCreatePayload {
 export interface ClienteCreatePayload {
   nombre: string;
   apellido: string;
-  dni: string;
-  fecha_nacimiento: string;
-  sexo: "M" | "F" | "X";
+  dni: string | null;
+  fecha_nacimiento: string | null;
+  sexo: "M" | "F" | "X" | null;
   celular: string;
   mail: string | null;
-  domicilio: DomicilioCreatePayload;
+  domicilio: DomicilioCreatePayload | null;
   crear_usuario: boolean;
   habilitado: boolean;
 }
@@ -42,7 +42,7 @@ export interface ClienteCreateResponse {
   id: number;
   nombre: string;
   apellido: string;
-  dni: string;
+  dni: string | null;
   usuario_creado: boolean;
   username: string | null;
   password_temporal: string | null;
