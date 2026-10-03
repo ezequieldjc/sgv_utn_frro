@@ -28,14 +28,25 @@ alwaysApply: true
   Return clean, production-ready code. Explanations, if needed, go outside the code block,
   in Spanish.
 
+- Specs vs Rules: Las reglas de este directorio (`.cursor/rules/*.mdc`) son la fuente de
+  verdad de patrones transversales (stack, DBA-first, RBAC, UI). Las specs de pantalla viven
+  en `docs/prompts botones/` y deben enfocarse en objetivo, permisos del módulo, contrato
+  API y reglas de negocio de *esa* feature — no reexplicar layout/AccessDenied/validación
+  manual (eso está en `ui-layout.mdc`). Catálogo de permisos sembrados:
+  `scripts/rol_permiso.sql`.
+
+- Errores de API: usá `app.core.errors.APIError` + handler existente; códigos `SCREAMING_SNAKE`
+  estables y `detalle` en español. No inventes formatos de error ad hoc.
+
 - Testing & Quality Control (Mandatory Rules):
   - Proactive Testing: Como asistente de IA, SIEMPRE debes generar la suite de tests correspondiente al escribir o modificar una funcionalidad. El código sin tests se considera incompleto.
   - Self-Documenting Tests: NUNCA generes archivos externos (como `TESTS.md` o planillas) para listar tests. Los tests se documentan en el propio código usando nombres de función ultra-descriptivos bajo el patrón `test_<feature>_<condicion>_<resultado_esperado>` (ej. `test_crear_turno_fecha_pasada_devuelve_error_400`). Usa `docstrings` en Python únicamente para explicar la lógica detrás de reglas de negocio complejas.
   - What MUST be Tested:
     1. Reglas de Negocio y Lógica Crítica: Cálculos de inventario unificado (Pet Shop + Farmacia), descuento de stock, cálculo de agenda y alertas.
-    2. Autorización y Permisos (RBAC): Validar explícitamente que un usuario sin el permiso requerido (ej. `MASCOTAS_CREAR`) reciba una respuesta `403 Forbidden`.
+    2. Autorización y Permisos (RBAC): Validar explícitamente que un usuario sin el permiso requerido (ej. `mascotas:crear`, `roles:editar`) reciba `403 Forbidden`.
     3. Endpoints de API: Validar respuestas exitosas (`200`/`201`) y errores controlados (`400`, `403`, `404`, `500`).
     4. Integración con BD: Persistencia real de entidades (Historias Clínicas, Mascotas, Turnos) mediante la BD de pruebas.
+    5. Efectos de sesión/config cuando apliquen: bumpeo de `version_token` al cambiar permisos de un rol; `clear_config_cache()` tras editar `sys.config`.
   - What MUST NOT be Tested (Mocks & Restrictions):
     1. APIs Externas (OpenAI / WhatsApp API): NUNCA realices llamadas HTTP reales a servicios externos en los tests. SIEMPRE utiliza `Mocks` / `Patches` para simular las respuestas del agente de IA y las notificaciones.
     2. Librerías de Terceros: No testees si FastAPI, SQLModel o React funcionan.

@@ -22,3 +22,8 @@ alwaysApply: true
 
 El usuario de conexión de la app es `fastapi_app` (solo DML). Todo el código debe ser
 síncrono o asíncrono según el proyecto actual; respetá las dependencias existentes.
+
+3. Specs de pantalla: al implementar desde `docs/prompts botones/`, no dupliques en el
+   prompt (ni en la respuesta) reglas ya cubiertas por `.cursor/rules/` (UI, RBAC, DBA,
+   tipado). Pedile al DBA datos/seeds faltantes (ej. permiso `*`, filas `sys.config`) como
+   INSERT de datos, nunca como DDL estructural desde la app.

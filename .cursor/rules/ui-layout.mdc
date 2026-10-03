@@ -1,6 +1,6 @@
 ---
-description: Reglas de UI, diseño y componentes visuales
-globs: **/*.tsx,**/components/**
+description: Reglas de UI, diseño, layout de pantallas y patrones UX reutilizables
+globs: **/*.tsx,**/components/**,frontend/src/pages/**
 alwaysApply: false
 ---
 
@@ -21,23 +21,92 @@ alwaysApply: false
 
 - Layouts de referencia:
   - Pantalla de login: ocupa toda la viewport, centra el formulario y usa fondo con imagen + overlay oscuro.
-  - Shell autenticado: sidebar fijo a la izquierda, topbar superior y área principal vacía por ahora.
+  - Shell autenticado: sidebar fijo a la izquierda, topbar superior y área de contenido.
   - La visibilidad de los botones del sidebar depende de permisos; nunca de nombres de rol hardcodeados.
 
 - Dark/Light Mode: Este proyecto es una SPA con Vite, sin server-side rendering, por lo
-  tanto NO usar el paquete `next-themes` (está pensado para evitar el flash de hidratación
-  de Next.js, que acá no existe). Implementar el cambio de tema con un Context de React
-  simple (`ThemeProvider` propio) que guarde la preferencia en `localStorage` y togglee la
-  clase `dark` en el elemento raíz, usando las mismas variables CSS de Shadcn.
+  tanto NO usar el paquete `next-themes`. Implementar el cambio de tema con un Context de
+  React simple (`ThemeProvider` propio) que guarde la preferencia en `localStorage` y
+  togglee la clase `dark` en el elemento raíz, usando las mismas variables CSS de Shadcn.
 
-- Aesthetic Theme: Paleta de colores basada en **Slate** para tonos neutros/fondos y **Emerald** para elementos primarios/botones/acentos.
-- Login Styling: Tarjeta central sobre `/login_background.jpg` con efecto glassmorphism (`backdrop-blur-md` + transparencia `bg-card/80`), bordes suavemente iluminados y sombra elevada.
+- Aesthetic Theme: Paleta de colores basada en **Slate** para tonos neutros/fondos y
+  **Emerald** para elementos primarios/botones/acentos.
+- Login Styling: Tarjeta central sobre `/login_background.jpg` con efecto glassmorphism
+  (`backdrop-blur-md` + transparencia `bg-card/80`), bordes suavemente iluminados y sombra
+  elevada.
 
 - Sistema de Diseño y Paleta de Colores:
-  - Paleta Neutra: Slate (para fondos, tarjetas, bordes y textos secundarios).
-  - Paleta Primaria: Emerald (para botones de acción principal, estados activos del sidebar y acentos).
-  - Componentes: Modales y tarjetas con bordes suavizados (`rounded-2xl`) y sombras sutiles (`shadow-md`).
+  - Paleta Neutra: Slate (fondos, tarjetas, bordes y textos secundarios).
+  - Paleta Primaria: Emerald (acciones principales, sidebar activo, acentos).
+  - Contenedores: bordes suavizados `rounded-2xl` y sombras sutiles (`shadow-sm` / `shadow-md`).
 
 - Estilizado de la Pantalla de Login:
   - Imagen de Fondo: `/login_background.jpg` con cobertura total (`bg-cover bg-center`).
-  - Tarjeta Central: Efecto glassmorphism (`backdrop-blur-md` + `bg-card/80` o `bg-slate-900/80`), bordes sutiles y sombra profunda (`shadow-2xl`).
+  - Tarjeta Central: glassmorphism (`backdrop-blur-md` + `bg-card/80` o `bg-slate-900/80`),
+    bordes sutiles y sombra profunda (`shadow-2xl`).
+
+---
+
+## Patrones UX de pantallas (¡no reexplicar en cada prompt!)
+
+Referencias canónicas as-built (copiá estructura, no reinventes):
+- Forms: `frontend/src/pages/mascotas/mascota-form-page.tsx`,
+  `frontend/src/pages/clientes/cliente-form-page.tsx`,
+  `frontend/src/pages/admin/usuario-form-page.tsx`
+- Listados / hubs Admin: `frontend/src/pages/admin/catalogos-page.tsx`,
+  `frontend/src/pages/admin/roles-page.tsx`,
+  `frontend/src/pages/admin/parametros-page.tsx`,
+  `frontend/src/pages/admin/usuarios-page.tsx`,
+  `frontend/src/pages/mascotas/mascotas-page.tsx`
+
+### Stack de forms — prohibido / permitido
+- **NO** uses React Hook Form, Zod, ni librerías de toast (sonner, react-hot-toast, etc.).
+- Validación **manual** en el módulo (helpers exportados + `FormErrors`).
+- Confirmar acciones sensibles con **Dialog** Shadcn (no `window.confirm`).
+- Feedback de éxito/error de página: **banners inline**
+  (`rounded-2xl border … px-4 py-3 text-sm`), verdes para éxito y destructive para error.
+  No toasts.
+
+### AccessDenied
+- Sin el permiso de *ver* de la pantalla (ni `*`): early return con bloque centrado,
+  ícono `ShieldOff` en caja `rounded-2xl bg-muted`, título “Acceso denegado” y mensaje
+  muted específico del módulo.
+- Misma pieza visual en listados y forms.
+
+### Header de página
+- Listados / hubs: eyebrow opcional (ej. `Admin` + ícono Lucide) → `h1` → subtítulo
+  `text-sm text-muted-foreground`.
+- Forms de alta/edición: link/botón volver (`ArrowLeft`) + título + subtítulo; CTA
+  primario de guardar en la barra superior o al pie, consistente con el form hermano.
+
+### Forms (alta / edición en página)
+- Agrupar campos en **secciones** `section` con
+  `rounded-2xl border bg-card p-5 shadow-sm` (una sección = un bloque temático).
+- Cada campo: `Label` + control Shadcn (`Input` / `Textarea` / `Checkbox` / select tipado).
+- Error de campo: clase `border-destructive focus-visible:ring-destructive` + mensaje
+  `text-sm text-destructive` debajo.
+- Al fallar validación: foco (y scroll si hace falta) al **primer** campo con error.
+- Botones: primario para persistir; `variant="outline"` para cancelar/volver.
+- Loading de submit: `Loader2` con `animate-spin` en el botón; deshabilitar controles
+  mientras guarda.
+- Selects con typeahead por teclado: reutilizar `useSelectTypeahead` /
+  `@/lib/select-typeahead` (mismo patrón que mascotas).
+
+### Listados y hubs Admin
+- Barra de controles en una fila (stack en mobile): buscador izquierda, filtros, CTA
+  primario a la derecha condicionado al permiso de crear/editar.
+- Tabla o matriz dentro de contenedor `rounded-2xl border bg-card shadow-sm`.
+- Estados: `Skeleton` mientras carga; empty copy clara; banner destructive recuperable
+  si falla el fetch.
+- Badges Activo/Inactivo: verde (`bg-green-100 text-green-800` + dark equivalente) /
+  rojo (`bg-destructive/10 text-destructive`) — no `variant="default"` genérico.
+- Hubs con nav lateral (Catálogos, Roles): nav vertical desktop + `Select` mobile; alinear
+  tope del nav con la barra de controles (evitar `space-y` en wrappers que rompan la
+  línea base con el select `lg:hidden`).
+- Solo lectura: si hay permiso de ver pero no de editar → inputs `disabled`/`readOnly` y
+  sin botón Guardar.
+
+### RBAC en UI
+- `hasPermission(permisos, required)` = `permisos.includes("*") || permisos.includes(required)`.
+- Ocultar o deshabilitar CTAs según el permiso de la acción (`*:crear`, `*:editar`, etc.).
+- La seguridad real es del backend; la UI solo refleja permisos.
