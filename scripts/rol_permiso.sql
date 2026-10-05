@@ -17,6 +17,7 @@ INSERT INTO auth.permiso (nombre, descripcion) VALUES
 ('agenda:crear_turno', 'Permite agendar un nuevo turno'),
 ('agenda:editar_turno', 'Permite modificar datos de un turno agendado'),
 ('agenda:cancelar_turno', 'Permite cancelar un turno existente'),
+('agenda:atender', 'Permite ser asignado como veterinario en la agenda de turnos'),
 
 -- 4. Mascotas
 ('mascotas:ver_listado', 'Permite ver el listado general de mascotas'),

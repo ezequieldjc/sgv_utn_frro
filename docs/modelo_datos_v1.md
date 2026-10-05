@@ -205,6 +205,40 @@ antiguo campo libre `clinica.mascota.estado`.
 
 ---
 
+## Módulo: Agenda (`agenda`)
+
+> DDL en `scripts/agenda/001_agenda_turno.sql` (lo aplica el DBA; `fastapi_app` solo DML).
+> Fechas en `timestamptz` (UTC). El horario de atención vive en `sys.config` (`config_id = 4`).
+
+### Entidad: `TipoTurno` (`agenda.tipo_turno`)
+- **id**: integer, PK.
+- **nombre**: varchar(50), Obligatorio. *Unique (`UQ_TipoTurno_Nombre`)*.
+- **duracion_min**: integer, Obligatorio. *CHECK (`CK_TipoTurno_Duracion`): `> 0` y múltiplo de 30 (módulos de agenda).*
+- **activo**: boolean, Obligatorio. *Default: True*.
+
+### Entidad: `Turno` (`agenda.turno`)
+- **id**: integer, PK.
+- **mascota_id**: integer, Obligatorio. *FK a `clinica.mascota.id`*.
+- **veterinario_id**: integer, Obligatorio. *FK a `auth.usuario.id`*. Debe ser un usuario
+  habilitado cuyo rol tenga el permiso explícito `agenda:atender` (el comodín `*` no cuenta).
+- **tipo_turno_id**: integer, Obligatorio. *FK a `agenda.tipo_turno.id`*.
+- **fecha_hora_inicio**: timestamptz, Obligatorio.
+- **fecha_hora_fin**: timestamptz, Obligatorio. *Lo calcula el backend: inicio + `tipo_turno.duracion_min`.*
+- **estado**: varchar(20), Obligatorio. *Default: `'solicitado'`. CHECK (`CK_Turno_Estado`):
+  `'solicitado' | 'confirmado' | 'realizado' | 'cancelado' | 'no_asistio'`.*
+- **canal_origen**: varchar(20), Obligatorio. *Default: `'mostrador'`. CHECK (`CK_Turno_Canal`):
+  `'mostrador' | 'telefono' | 'whatsapp' | 'portal'`.*
+- *CHECK (`CK_Turno_Rango`): `fecha_hora_fin > fecha_hora_inicio`.*
+- *Exclusión (`EX_Turno_SinSuperposicion`, requiere `btree_gist`): un veterinario no puede tener
+  dos turnos activos (`solicitado`, `confirmado`, `realizado`) que se superpongan.*
+- *Exclusión (`EX_Turno_MascotaSinSuperposicion`): ídem por mascota.*
+
+> Transiciones válidas: `solicitado → confirmado`; `confirmado → realizado | no_asistio` (solo si
+> el turno ya comenzó); `solicitado | confirmado → cancelado`. Solo se reprograman turnos
+> `solicitado` o `confirmado` y conservan su estado.
+
+---
+
 ## Módulo: sys
 
 ### Entidad: `Config`
@@ -223,3 +257,7 @@ antiguo campo libre `clinica.mascota.estado`.
 | 1 | 1 | JWT      | ACCESS_TOKEN_EXPIRACION  | Expiración del Access Token — `select parametro_valor from sys.config where config_id = 1 and parametro_id = 1` |
 | 1 | 2 | JWT      | REFRESH_TOKEN_EXPIRACION | Expiración del Refresh Token — `config_id = 1 and parametro_id = 2` |
 | 2 | 1 | BRANDING | RAZON_SOCIAL             | Nombre de la clínica, expuesto en `GET /api/config/public` como `razon_social` — `config_id = 2 and parametro_id = 1` |
+| 4 | 1 | AGENDA   | HORARIO_LUNES_A_VIERNES  | Franjas de atención L–V, formato `HH:MM-HH:MM` separadas por coma (ej. `08:00-12:00,15:00-20:00`) |
+| 4 | 2 | AGENDA   | HORARIO_SABADO           | Franjas de atención del sábado (ej. `08:00-12:00`). Domingo sin parámetro = cerrado |
+| 4 | 3 | AGENDA   | DURACION_MODULO_MIN      | Tamaño del módulo de agenda en minutos (`30`) |
+| 4 | 4 | AGENDA   | ZONA_HORARIA             | Zona horaria de la clínica (`America/Argentina/Buenos_Aires`) |

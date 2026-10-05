@@ -1,3 +1,5 @@
+from app.models.agenda.tipo_turno import TipoTurno
+from app.models.agenda.turno import Turno
 from app.models.auth.historial_contrasena import HistorialContrasena
 from app.models.auth.login import Login
 from app.models.auth.permiso import Permiso

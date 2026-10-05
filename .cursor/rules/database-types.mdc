@@ -12,6 +12,7 @@ alwaysApply: false
   - `clinica` (especie, raza, mascota, historial_peso, patologia, patologia_predisposicion)
   - `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login)
   - `sys` (config)
+  - `agenda` (tipo_turno, turno)
   Cada modelo SQLModel debe declarar su schema explícitamente:
   `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
   schema `public` por default.
