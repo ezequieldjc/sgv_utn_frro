@@ -628,54 +628,93 @@ def test_horario_devuelve_franjas_por_defecto(client, session) -> None:
     assert dias[6] == []
 
 
-def test_disponibilidad_excluye_horarios_ocupados_del_veterinario(client, session) -> None:
+def _disponibilidad(client, s: dict, *, fecha, tipo: str = "consulta", **extra):
+    response = client.get(
+        "/api/agenda/disponibilidad",
+        params={
+            "veterinario_id": s["vet1"].id,
+            "fecha": fecha.isoformat(),
+            "tipo_turno_id": s["tipos"][tipo].id,
+            **extra,
+        },
+    )
+    assert response.status_code == 200
+    return response.json()["franjas"]
+
+
+def _por_inicio(franjas: list[dict]) -> dict[datetime, dict]:
+    return {_dt(f["fecha_hora_inicio"]): f for f in franjas}
+
+
+def test_disponibilidad_devuelve_todos_los_modulos_y_marca_ocupado_por_veterinario(
+    client, session
+) -> None:
     s = _setup(client, session)
     _crear(client, s, inicio=_proximo(0, 9))
-    fecha = _proximo(0, 0).date()
-    response = client.get(
-        "/api/agenda/disponibilidad",
-        params={
-            "veterinario_id": s["vet1"].id,
-            "fecha": fecha.isoformat(),
-            "tipo_turno_id": s["tipos"]["consulta"].id,
-        },
-    )
-    assert response.status_code == 200
-    inicios = [_dt(f["fecha_hora_inicio"]) for f in response.json()["franjas"]]
-    # 8 módulos a la mañana + 10 a la tarde, menos el de las 09:00 ocupado.
-    assert len(inicios) == 17
-    assert _proximo(0, 9) not in inicios
-    assert _proximo(0, 8, 30) in inicios
+    franjas = _disponibilidad(client, s, fecha=_proximo(0, 0).date())
+    # 8 módulos a la mañana + 10 a la tarde: se devuelven todos, libres o no.
+    assert len(franjas) == 18
+    assert sum(f["disponible"] for f in franjas) == 17
+    ocupada = _por_inicio(franjas)[_proximo(0, 9)]
+    assert ocupada["disponible"] is False
+    assert ocupada["motivo"] == "OCUPADO_VETERINARIO"
+    assert "Firulais" in ocupada["detalle"] and "Laura Perez" in ocupada["detalle"]
+    libre = _por_inicio(franjas)[_proximo(0, 8, 30)]
+    assert libre["disponible"] is True and libre["motivo"] is None
 
 
-def test_disponibilidad_cirugia_solo_ofrece_inicios_que_entran_en_la_franja(client, session) -> None:
+def test_disponibilidad_cirugia_marca_inicios_que_exceden_la_franja(client, session) -> None:
     s = _setup(client, session)
-    fecha = _proximo(0, 0).date()
-    response = client.get(
-        "/api/agenda/disponibilidad",
-        params={
-            "veterinario_id": s["vet1"].id,
-            "fecha": fecha.isoformat(),
-            "tipo_turno_id": s["tipos"]["cirugia"].id,
-        },
+    franjas = _disponibilidad(client, s, fecha=_proximo(0, 0).date(), tipo="cirugia")
+    assert len(franjas) == 18
+    # Mañana: 08:00..10:30 entran (6). Tarde: 15:00..18:30 entran (8).
+    assert sum(f["disponible"] for f in franjas) == 14
+    excede = _por_inicio(franjas)[_proximo(0, 11)]
+    assert excede["motivo"] == "EXCEDE_HORARIO"
+    assert "12:30" in excede["detalle"] and "12:00" in excede["detalle"]
+
+
+def test_disponibilidad_con_mascota_marca_turno_de_la_mascota_con_otro_veterinario(
+    client, session
+) -> None:
+    s = _setup(client, session)
+    _crear(client, s, inicio=_proximo(0, 10), vet="vet2")
+    franjas = _disponibilidad(
+        client, s, fecha=_proximo(0, 0).date(), mascota_id=s["m1"].id
     )
-    assert response.status_code == 200
-    inicios = [_dt(f["fecha_hora_inicio"]) for f in response.json()["franjas"]]
-    # Mañana: 08:00..10:30 (6). Tarde: 15:00..18:30 (8).
-    assert len(inicios) == 14
-    assert _proximo(0, 11) not in inicios
+    ocupada = _por_inicio(franjas)[_proximo(0, 10)]
+    assert ocupada["motivo"] == "OCUPADO_MASCOTA"
+    assert "Firulais" in ocupada["detalle"] and "Martin Diaz" in ocupada["detalle"]
+
+
+def test_disponibilidad_sin_mascota_no_considera_turnos_de_otros_veterinarios(
+    client, session
+) -> None:
+    s = _setup(client, session)
+    _crear(client, s, inicio=_proximo(0, 10), vet="vet2")
+    franjas = _disponibilidad(client, s, fecha=_proximo(0, 0).date())
+    assert _por_inicio(franjas)[_proximo(0, 10)]["disponible"] is True
+
+
+def test_disponibilidad_excluir_turno_libera_su_propio_horario(client, session) -> None:
+    s = _setup(client, session)
+    turno_id = _crear(client, s, inicio=_proximo(0, 9)).json()["id"]
+    franjas = _disponibilidad(
+        client, s, fecha=_proximo(0, 0).date(), excluir_turno_id=turno_id
+    )
+    assert _por_inicio(franjas)[_proximo(0, 9)]["disponible"] is True
+
+
+def test_disponibilidad_dia_pasado_marca_todo_como_pasado(client, session) -> None:
+    s = _setup(client, session)
+    dia = datetime.now(TZ).date() - timedelta(days=1)
+    while dia.weekday() > 4:  # último día hábil (lunes a viernes) anterior a hoy
+        dia -= timedelta(days=1)
+    franjas = _disponibilidad(client, s, fecha=dia)
+    assert len(franjas) == 18
+    assert {f["motivo"] for f in franjas} == {"PASADO"}
 
 
 def test_disponibilidad_domingo_devuelve_lista_vacia(client, session) -> None:
     s = _setup(client, session)
-    fecha = _proximo(6, 0).date()
-    response = client.get(
-        "/api/agenda/disponibilidad",
-        params={
-            "veterinario_id": s["vet1"].id,
-            "fecha": fecha.isoformat(),
-            "tipo_turno_id": s["tipos"]["consulta"].id,
-        },
-    )
-    assert response.status_code == 200
-    assert response.json()["franjas"] == []
+    assert _disponibilidad(client, s, fecha=_proximo(6, 0).date()) == []

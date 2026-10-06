@@ -106,9 +106,18 @@ class HorarioAtencion(BaseModel):
     dias: list[HorarioDia]
 
 
+MotivoNoDisponible = Literal["PASADO", "EXCEDE_HORARIO", "OCUPADO_VETERINARIO", "OCUPADO_MASCOTA"]
+
+
 class FranjaDisponible(BaseModel):
+    """Módulo del horario de atención. Si no está disponible, `motivo` indica por qué y
+    `detalle` lo explica en un texto listo para mostrar."""
+
     fecha_hora_inicio: datetime
     fecha_hora_fin: datetime
+    disponible: bool = True
+    motivo: MotivoNoDisponible | None = None
+    detalle: str | None = None
 
 
 class DisponibilidadResponse(BaseModel):

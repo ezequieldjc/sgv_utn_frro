@@ -522,6 +522,30 @@ def buscar_mascotas(session: Session, q: str, *, limit: int = 20) -> list[Mascot
     ]
 
 
+def _items_activos_superpuestos(
+    session: Session,
+    *,
+    inicio: datetime,
+    fin: datetime,
+    veterinario_id: int | None = None,
+    mascota_id: int | None = None,
+    excluir_turno_id: int | None = None,
+) -> list[TurnoItem]:
+    """Igual que `_turnos_activos_superpuestos` pero con los datos para mostrar."""
+    stmt = _turno_items_query().where(
+        col(Turno.estado).in_(ESTADOS_ACTIVOS),
+        Turno.fecha_hora_inicio < fin,
+        Turno.fecha_hora_fin > inicio,
+    )
+    if veterinario_id is not None:
+        stmt = stmt.where(Turno.veterinario_id == veterinario_id)
+    if mascota_id is not None:
+        stmt = stmt.where(Turno.mascota_id == mascota_id)
+    if excluir_turno_id is not None:
+        stmt = stmt.where(Turno.id != excluir_turno_id)
+    return [_row_to_item(row) for row in session.execute(stmt.order_by(Turno.fecha_hora_inicio)).all()]
+
+
 def get_disponibilidad(
     session: Session,
     *,
@@ -531,9 +555,10 @@ def get_disponibilidad(
     mascota_id: int | None = None,
     excluir_turno_id: int | None = None,
 ) -> DisponibilidadResponse:
-    """Inicios posibles para un turno de ese tipo con ese veterinario en esa fecha:
-    dentro del horario, en módulos exactos, en el futuro y sin superposición con
-    turnos activos del veterinario (y de la mascota, si se indica)."""
+    """Todos los módulos del horario de atención de esa fecha para un turno de ese tipo
+    con ese veterinario. Cada módulo indica si está disponible y, si no, el motivo
+    (en este orden de prioridad): ya pasó, no entra completo en la franja, el
+    veterinario tiene otro turno, o la mascota (si se indica) tiene otro turno."""
     _validar_veterinario(session, veterinario_id)
     tipo = _get_tipo_turno_activo(session, tipo_turno_id)
     duracion = timedelta(minutes=tipo.duracion_min)
@@ -542,41 +567,75 @@ def get_disponibilidad(
 
     dia_inicio = datetime.combine(fecha, time.min, tzinfo=tz).astimezone(timezone.utc)
     dia_fin = dia_inicio + timedelta(days=1)
-    ocupados = [
-        (_from_db(t.fecha_hora_inicio), _from_db(t.fecha_hora_fin))
-        for t in _turnos_activos_superpuestos(
+    ocupados_vet = _items_activos_superpuestos(
+        session,
+        inicio=dia_inicio,
+        fin=dia_fin,
+        veterinario_id=veterinario_id,
+        excluir_turno_id=excluir_turno_id,
+    )
+    ocupados_mascota = (
+        _items_activos_superpuestos(
             session,
             inicio=dia_inicio,
             fin=dia_fin,
-            veterinario_id=veterinario_id,
+            mascota_id=mascota_id,
             excluir_turno_id=excluir_turno_id,
         )
-    ]
-    if mascota_id is not None:
-        ocupados += [
-            (_from_db(t.fecha_hora_inicio), _from_db(t.fecha_hora_fin))
-            for t in _turnos_activos_superpuestos(
-                session,
-                inicio=dia_inicio,
-                fin=dia_fin,
-                mascota_id=mascota_id,
-                excluir_turno_id=excluir_turno_id,
-            )
-        ]
+        if mascota_id is not None
+        else []
+    )
+
+    def hhmm(value: datetime) -> str:
+        return value.astimezone(tz).strftime("%H:%M")
+
+    def superpuesto(items: list[TurnoItem], inicio: datetime, fin: datetime) -> TurnoItem | None:
+        return next(
+            (t for t in items if t.fecha_hora_inicio < fin and t.fecha_hora_fin > inicio), None
+        )
 
     ahora = utc_now()
-    franjas_libres: list[FranjaDisponible] = []
+    franjas: list[FranjaDisponible] = []
     for franja in get_franjas_por_dia().get(fecha.weekday(), []):
         cursor = datetime.combine(fecha, franja.desde, tzinfo=tz)
         limite = datetime.combine(fecha, franja.hasta, tzinfo=tz)
-        while cursor + duracion <= limite:
+        while cursor < limite:
             inicio = cursor.astimezone(timezone.utc)
             fin = inicio + duracion
-            libre = inicio > ahora and not any(
-                o_inicio < fin and o_fin > inicio for o_inicio, o_fin in ocupados
+            motivo: str | None = None
+            detalle: str | None = None
+            if inicio <= ahora:
+                motivo, detalle = "PASADO", "Horario ya pasado"
+            elif fin > limite.astimezone(timezone.utc):
+                motivo = "EXCEDE_HORARIO"
+                detalle = (
+                    f"No entra en el horario: {tipo.nombre} ({tipo.duracion_min} min) a las "
+                    f"{hhmm(inicio)} terminaría {hhmm(fin)} y la atención cierra a las "
+                    f"{franja.hasta.strftime('%H:%M')}"
+                )
+            elif (t := superpuesto(ocupados_vet, inicio, fin)) is not None:
+                motivo = "OCUPADO_VETERINARIO"
+                detalle = (
+                    f"Ocupado: {t.veterinario_nombre} {t.veterinario_apellido} atiende a "
+                    f"{t.mascota_nombre} ({t.tipo_turno_nombre} "
+                    f"{hhmm(t.fecha_hora_inicio)}–{hhmm(t.fecha_hora_fin)})"
+                )
+            elif (t := superpuesto(ocupados_mascota, inicio, fin)) is not None:
+                motivo = "OCUPADO_MASCOTA"
+                detalle = (
+                    f"{t.mascota_nombre} ya tiene un turno: {t.tipo_turno_nombre} con "
+                    f"{t.veterinario_nombre} {t.veterinario_apellido}, "
+                    f"{hhmm(t.fecha_hora_inicio)}–{hhmm(t.fecha_hora_fin)}"
+                )
+            franjas.append(
+                FranjaDisponible(
+                    fecha_hora_inicio=inicio,
+                    fecha_hora_fin=fin,
+                    disponible=motivo is None,
+                    motivo=motivo,
+                    detalle=detalle,
+                )
             )
-            if libre:
-                franjas_libres.append(FranjaDisponible(fecha_hora_inicio=inicio, fecha_hora_fin=fin))
             cursor += paso
 
     return DisponibilidadResponse(
@@ -584,7 +643,7 @@ def get_disponibilidad(
         veterinario_id=veterinario_id,
         tipo_turno_id=tipo_turno_id,
         duracion_min=tipo.duracion_min,
-        franjas=franjas_libres,
+        franjas=franjas,
     )
 
 
