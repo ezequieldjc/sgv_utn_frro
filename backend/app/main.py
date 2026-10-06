@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.agenda import router as agenda_router
 from app.api.auth import router as auth_router
 from app.api.catalogos import router as catalogos_router
 from app.api.clientes import router as clientes_router
@@ -44,3 +45,4 @@ app.include_router(usuarios_router)
 app.include_router(catalogos_router)
 app.include_router(clientes_router)
 app.include_router(mascotas_router)
+app.include_router(agenda_router)

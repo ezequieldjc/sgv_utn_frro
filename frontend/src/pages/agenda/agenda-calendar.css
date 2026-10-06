@@ -1,0 +1,188 @@
+/*
+ * Tema de react-big-calendar para la Agenda.
+ * Usa solo variables de Shadcn (hsl(var(--...))) y clases de Tailwind vía @apply:
+ * sin colores hex, respeta modo claro/oscuro.
+ */
+
+.agenda-calendar .rbc-calendar {
+  @apply font-sans text-sm text-foreground;
+}
+
+/* Todos los bordes del calendario toman el color de borde del tema. */
+.agenda-calendar *,
+.agenda-calendar *::before,
+.agenda-calendar *::after {
+  border-color: hsl(var(--border));
+}
+
+/* Reglas de la librería más específicas que la anterior (gutter y header con scroll). */
+.agenda-calendar .rbc-time-view .rbc-time-header,
+.agenda-calendar .rbc-time-view .rbc-time-gutter,
+.agenda-calendar .rbc-time-view .rbc-time-header-gutter {
+  border-color: hsl(var(--border));
+}
+
+.agenda-calendar .rbc-time-view,
+.agenda-calendar .rbc-agenda-view {
+  @apply overflow-hidden rounded-xl border;
+}
+
+.agenda-calendar .rbc-header,
+.agenda-calendar .rbc-row-resource .rbc-header {
+  @apply py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+}
+
+.agenda-calendar .rbc-row-resource .rbc-header {
+  @apply normal-case text-sm text-foreground;
+}
+
+.agenda-calendar .rbc-time-header-gutter,
+.agenda-calendar .rbc-time-gutter {
+  @apply bg-card;
+}
+
+.agenda-calendar .rbc-time-gutter .rbc-label {
+  @apply px-2 text-xs tabular-nums text-muted-foreground;
+}
+
+.agenda-calendar .rbc-allday-cell {
+  display: none;
+}
+
+.agenda-calendar .rbc-today {
+  background-color: hsl(var(--primary) / 0.05);
+}
+
+.agenda-calendar .rbc-off-range-bg {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.agenda-calendar .rbc-current-time-indicator {
+  height: 2px;
+  background-color: hsl(var(--destructive));
+}
+
+.agenda-calendar .rbc-day-slot .rbc-time-slot {
+  border-top-color: hsl(var(--border) / 0.5);
+}
+
+/* Horas fuera de atención: rayado suave. */
+.rbc-slot-cerrado {
+  background-image: repeating-linear-gradient(
+    135deg,
+    hsl(var(--muted)) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+.agenda-calendar .rbc-slot-selecting,
+.agenda-calendar .rbc-slot-selection {
+  background-color: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+
+/* Turnos */
+.agenda-calendar .rbc-event.turno-evento,
+.agenda-calendar .rbc-day-slot .rbc-event.turno-evento {
+  @apply rounded-lg border-0 border-l-4 px-2 py-1 shadow-sm transition-shadow;
+  border-left-style: solid;
+}
+
+.agenda-calendar .rbc-event.turno-evento:hover {
+  @apply shadow-md;
+}
+
+.agenda-calendar .rbc-event.rbc-selected {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.6);
+}
+
+.agenda-calendar .rbc-event-label {
+  @apply mb-0.5 text-[11px] tabular-nums opacity-70;
+}
+
+.agenda-calendar .rbc-event.turno-solicitado,
+.turno-dot.turno-solicitado,
+.turno-chip.turno-solicitado {
+  @apply border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-500/20 dark:text-amber-50;
+}
+
+.agenda-calendar .rbc-event.turno-confirmado,
+.turno-dot.turno-confirmado,
+.turno-chip.turno-confirmado {
+  @apply border-emerald-500 bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-50;
+}
+
+.agenda-calendar .rbc-event.turno-realizado,
+.turno-dot.turno-realizado,
+.turno-chip.turno-realizado {
+  @apply border-sky-500 bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-50;
+}
+
+.agenda-calendar .rbc-event.turno-no-asistio,
+.turno-dot.turno-no-asistio,
+.turno-chip.turno-no-asistio {
+  @apply border-rose-500 bg-rose-100 text-rose-950 dark:bg-rose-500/20 dark:text-rose-50;
+}
+
+.agenda-calendar .rbc-event.turno-cancelado,
+.turno-dot.turno-cancelado,
+.turno-chip.turno-cancelado {
+  @apply border-slate-400 bg-muted text-muted-foreground line-through opacity-70;
+}
+
+.turno-dot {
+  @apply inline-block size-3 rounded-full border-2;
+}
+
+.turno-chip {
+  @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium;
+}
+
+/* Vista Lista */
+.agenda-calendar .rbc-agenda-view table.rbc-agenda-table {
+  @apply border-0;
+}
+
+.agenda-calendar .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+  @apply bg-muted/50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+}
+
+.agenda-calendar .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  @apply px-3 py-2 align-middle;
+}
+
+.agenda-calendar .rbc-agenda-view table.rbc-agenda-table tbody > tr {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.agenda-calendar .rbc-agenda-view table.rbc-agenda-table tbody > tr:hover {
+  background-color: hsl(var(--muted) / 0.5) !important;
+}
+
+.agenda-calendar .rbc-agenda-empty {
+  @apply p-6 text-center text-muted-foreground;
+}
+
+/* Drag & drop */
+.agenda-calendar .rbc-addons-dnd .rbc-addons-dnd-drag-preview {
+  @apply opacity-80;
+}
+
+.agenda-calendar .rbc-addons-dnd-dragged-event {
+  @apply opacity-40;
+}
+
+/* Grilla de horarios: módulos no disponibles (formulario y reprogramar). */
+.franja-no-disponible {
+  cursor: help;
+  background-image: repeating-linear-gradient(
+    135deg,
+    hsl(var(--muted)) 0 5px,
+    transparent 5px 10px
+  );
+}
+
+.franja-no-disponible:hover {
+  background-color: hsl(var(--muted) / 0.6);
+}
