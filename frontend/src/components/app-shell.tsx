@@ -12,6 +12,7 @@ import {
   Search,
   Settings,
   Shield,
+  ShoppingCart,
   Stethoscope,
   User,
   Users,
@@ -69,7 +70,8 @@ import { useAuth } from "@/context/auth-context";
 interface NavLink {
   to: string;
   label: string;
-  permiso: string;
+  /** Un permiso, o varios: el link se muestra si el usuario tiene cualquiera de ellos. */
+  permiso: string | string[];
 }
 
 interface NavSection {
@@ -128,13 +130,32 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Stock",
     icon: Package,
     items: [
+      {
+        to: "/stock",
+        label: "Inventario",
+        permiso: [
+          "stock:crear_insumo",
+          "stock:editar_insumo",
+          "stock:registrar_movimiento",
+          "stock:ver_movimientos",
+          "stock:ver_analisis",
+        ],
+      },
       { to: "/stock/alta", label: "Alta de Insumos", permiso: "stock:crear_insumo" },
       {
         to: "/stock/movimientos",
         label: "Movimientos",
-        permiso: "stock:registrar_movimiento",
+        permiso: ["stock:registrar_movimiento", "stock:ver_movimientos"],
       },
       { to: "/stock/analisis", label: "Análisis de Stock", permiso: "stock:ver_analisis" },
+    ],
+  },
+  {
+    title: "Ventas",
+    icon: ShoppingCart,
+    items: [
+      { to: "/ventas/nueva", label: "Nueva Venta", permiso: "ventas:registrar" },
+      { to: "/ventas", label: "Historial de Ventas", permiso: "ventas:ver" },
     ],
   },
   {
@@ -162,6 +183,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   clientes: "Clientes",
   nuevo: "Nuevo",
   stock: "Stock",
+  ventas: "Ventas",
+  editar: "Editar",
   alta: "Alta",
   movimientos: "Movimientos",
   analisis: "Análisis",
@@ -183,7 +206,15 @@ function hasPermission(permisos: string[], permiso: string): boolean {
 }
 
 function getVisibleItems(section: NavSection, permisos: string[]): NavLink[] {
-  return section.items.filter((item) => hasPermission(permisos, item.permiso));
+  return section.items.filter((item) =>
+    Array.isArray(item.permiso)
+      ? item.permiso.some((p) => hasPermission(permisos, p))
+      : hasPermission(permisos, item.permiso),
+  );
+}
+
+function coincideRuta(pathname: string, to: string): boolean {
+  return pathname === to || pathname.startsWith(`${to}/`);
 }
 
 function AppBreadcrumb() {
@@ -270,9 +301,11 @@ function NavSectionItem({
         <CollapsibleContent>
           <SidebarMenuSub>
             {visibleItems.map((item) => {
-              const isActive =
-                location.pathname === item.to ||
-                location.pathname.startsWith(`${item.to}/`);
+              // Solo el link más específico queda activo (ej. /stock/alta no marca también /stock).
+              const masEspecifico = visibleItems
+                .filter((i) => coincideRuta(location.pathname, i.to))
+                .sort((a, b) => b.to.length - a.to.length)[0];
+              const isActive = masEspecifico?.to === item.to;
 
               return (
                 <SidebarMenuSubItem key={item.to}>

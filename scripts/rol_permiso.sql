@@ -38,6 +38,10 @@ INSERT INTO auth.permiso (nombre, descripcion) VALUES
 ('stock:ver_movimientos', 'Permite ver el historial de movimientos de stock'),
 ('stock:ver_analisis', 'Permite consultar reportes y análisis del estado de stock'),
 
+-- 6. Ventas de mostrador
+('ventas:registrar', 'Permite registrar ventas de mostrador'),
+('ventas:ver', 'Permite consultar el historial de ventas'),
+
 -- 10. Administración (Admin)
 ('usuarios:ver', 'Permite ver el listado de usuarios del sistema'),
 ('usuarios:crear', 'Permite dar de alta a un nuevo usuario del sistema'),
