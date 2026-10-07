@@ -239,6 +239,64 @@ antiguo campo libre `clinica.mascota.estado`.
 
 ---
 
+## Módulo: Stock (`stock`) y Comercial (`comercial`)
+
+> DDL en `scripts/stock/001_stock_ventas.sql` (lo aplica el DBA; `fastapi_app` solo DML).
+> Inventario único para consultorio y pet shop. El stock solo cambia a través de movimientos;
+> el backend actualiza los saldos del producto en la misma transacción que el movimiento.
+
+### Entidad: `Rubro` (`catalogo.rubro`)
+- Catálogo global (sin `especie_id`): **id**, **nombre** varchar(50) *Unique (`UQ_Rubro_Nombre`)*,
+  **descripcion** varchar(255) opcional, **activo** boolean. Administrable desde Admin → Catálogos.
+
+### Entidad: `Producto` (`stock.producto`)
+- **id**: integer, PK.
+- **nombre**: varchar(100), Obligatorio. *Unique (`UQ_Producto_Nombre`)*. Incluye la presentación ("Ivermectina 1% 50 ml").
+- **rubro_id**: integer, Obligatorio. *FK a `catalogo.rubro.id`*.
+- **proveedor**: varchar(100), Opcional (texto libre).
+- **unidad**: varchar(20), Obligatorio. *CHECK: `'unidad' | 'ml' | 'comprimido' | 'g' | 'kg'`*. Unidad en la que se mide lo abierto.
+- **contenido_envase**: numeric(10,3), Obligatorio. *Default: 1. CHECK > 0*. Ej.: 50 (ml por frasco).
+- **fraccionable**: boolean, Obligatorio. *Default: False*. Si es False no puede tener cantidad abierta (`CK_Producto_Fraccion`).
+- **envases_cerrados**: integer, Obligatorio. *Default: 0. CHECK >= 0*. Lo único que se vende.
+- **cantidad_abierta**: numeric(12,3), Obligatorio. *Default: 0. CHECK >= 0*. Remanente de envases abiertos, en `unidad`.
+- **stock_minimo**: integer, Obligatorio. *Default: 0*. En envases cerrados.
+- **precio_costo** / **precio_venta**: numeric(12,2), Opcionales. `precio_venta` NULL = no se vende en pet shop.
+- **activo**: boolean, Obligatorio. *Default: True*. Un producto inactivo solo admite ajustes.
+- **requiere_revision**: boolean, Obligatorio. *Default: False*. Se activa cuando una salida superó lo registrado; se limpia con un ajuste por recuento.
+
+### Entidad: `MovimientoStock` (`stock.movimiento_stock`)
+- **id**: integer, PK.
+- **producto_id**: integer, Obligatorio. *FK a `stock.producto.id`*.
+- **tipo**: varchar(30), Obligatorio. *CHECK: `'compra' | 'venta' | 'consumo_clinico' | 'vencimiento_rotura' | 'ajuste'`*.
+  El destino sale del tipo: `venta` = pet shop, `consumo_clinico` = consultorio.
+- **delta_envases_cerrados**: integer y **delta_cantidad_abierta**: numeric(12,3). Cuánto cambió cada saldo.
+  *CHECK: al menos uno distinto de 0 (`CK_Movimiento_Delta`).*
+- **fecha**: timestamptz, Obligatorio. *Default: now()*.
+- **usuario_id**: integer, Obligatorio. *FK a `auth.usuario.id`* (quién lo registró).
+- **venta_id**: integer, Opcional. *FK a `comercial.venta.id`*. *CHECK: obligatorio sí y solo sí `tipo = 'venta'`.*
+- **fecha_vencimiento**: date, Opcional (en compras). **observaciones**: varchar(255), Opcional.
+- *Pendiente: `consulta_id` (FK a Consulta) cuando exista la Historia Clínica (US-09).*
+
+> Consumo clínico: se indica la cantidad (en `unidad` si es fraccionable, en envases si no) y cuántos
+> envases se abrieron para ese consumo (0 = de uno ya abierto). El sistema nunca abre envases por su cuenta.
+> Ninguna salida se bloquea por falta de stock: si supera lo registrado, el movimiento se guarda con la cantidad
+> real, el saldo queda en 0, se agrega un `ajuste` automático por el faltante y el producto queda
+> `requiere_revision` (alerta "Revisar stock"). Ajuste: se informan los valores reales del
+> recuento y se calcula la diferencia. El alta de producto puede registrar un ajuste "Stock inicial".
+
+### Entidad: `Venta` (`comercial.venta`)
+- **id**: integer, PK. **persona_id**: integer, Opcional, *FK a `core.persona.id`* (cliente).
+- **usuario_id**: integer, Obligatorio, *FK a `auth.usuario.id`*. **fecha**: timestamptz, *Default: now()*.
+- **total**: numeric(12,2), Obligatorio, *CHECK >= 0*.
+- **medio_pago**: varchar(20), Obligatorio. *CHECK: `'efectivo' | 'debito' | 'credito' | 'transferencia'`*.
+
+### Entidad: `DetalleVenta` (`comercial.detalle_venta`)
+- **id**: integer, PK. **venta_id**: *FK a `comercial.venta.id`*. **producto_id**: *FK a `stock.producto.id`*.
+- **cantidad**: integer (envases completos), *CHECK > 0*. **precio_unitario**: numeric(12,2), precio al momento de la venta.
+- *Unique (`venta_id`, `producto_id`) = `UQ_DetalleVenta_Producto`.*
+
+---
+
 ## Módulo: sys
 
 ### Entidad: `Config`
@@ -261,3 +319,4 @@ antiguo campo libre `clinica.mascota.estado`.
 | 4 | 2 | AGENDA   | HORARIO_SABADO           | Franjas de atención del sábado (ej. `08:00-12:00`). Domingo sin parámetro = cerrado |
 | 4 | 3 | AGENDA   | DURACION_MODULO_MIN      | Tamaño del módulo de agenda en minutos (`30`) |
 | 4 | 4 | AGENDA   | ZONA_HORARIA             | Zona horaria de la clínica (`America/Argentina/Buenos_Aires`) |
+| 5 | 1 | STOCK    | DIAS_ALERTA_VENCIMIENTO  | Días de anticipación para alertar vencimientos de compras en Análisis de Stock (`30`) |

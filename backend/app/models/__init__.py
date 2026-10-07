@@ -9,10 +9,13 @@ from app.models.auth.usuario import Usuario
 from app.models.catalogo.estado_reproductivo import EstadoReproductivo
 from app.models.catalogo.habitat import Habitat
 from app.models.catalogo.mascota_estado import MascotaEstado
+from app.models.catalogo.rubro import Rubro
 from app.models.catalogo.pelaje import Pelaje
 from app.models.catalogo.tamanio import Tamanio
 from app.models.catalogo.temperamento import Temperamento
 from app.models.clinica.especie import Especie
+from app.models.comercial.detalle_venta import DetalleVenta
+from app.models.comercial.venta import Venta
 from app.models.clinica.historial_peso import HistorialPeso
 from app.models.clinica.mascota import Mascota
 from app.models.clinica.patologia import Patologia
@@ -20,4 +23,6 @@ from app.models.clinica.patologia_predisposicion import PatologiaPredisposicion
 from app.models.clinica.raza import Raza
 from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
+from app.models.stock.movimiento_stock import MovimientoStock
+from app.models.stock.producto import Producto
 from app.models.sys.config import Config

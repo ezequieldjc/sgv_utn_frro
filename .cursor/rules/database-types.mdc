@@ -8,11 +8,13 @@ alwaysApply: false
   Schemas actuales:
   - `core` (persona, domicilio)
   - `catalogo` (estado_reproductivo, habitat, tamanio, pelaje, temperamento,
-    mascota_estado; todos con `activo` para baja lógica)
+    mascota_estado, rubro; todos con `activo` para baja lógica)
   - `clinica` (especie, raza, mascota, historial_peso, patologia, patologia_predisposicion)
   - `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login)
   - `sys` (config)
   - `agenda` (tipo_turno, turno)
+  - `stock` (producto, movimiento_stock)
+  - `comercial` (venta, detalle_venta)
   Cada modelo SQLModel debe declarar su schema explícitamente:
   `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
   schema `public` por default.
