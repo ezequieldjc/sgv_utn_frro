@@ -63,3 +63,7 @@ cypress/screenshots/
 *.bak
 *.tmp
 .cache/
+
+# --- Secretos locales (no versionar) ---
+cookies.txt
+scripts/secretkey.txt
