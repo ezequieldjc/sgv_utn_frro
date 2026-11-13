@@ -1,53 +1,77 @@
 ---
 name: extraccion-ficha-clinica
-description: Formato de la ficha clínica estructurada, reglas para extraerla de la transcripción de un dictado veterinario con Claude, prompt de extracción y casos de ejemplo para tests. Usar al trabajar en el módulo de dictado por voz, en el schema Pydantic de la ficha o en sus tests.
+description: Cómo el NLP convierte un dictado veterinario (perros) en la ficha del contrato 1.0 y cómo el backend la guarda en clinica.consulta, clinica.dictado y clinica.consulta_sintoma. Usar al trabajar en el módulo de dictado por voz, en el schema de la ficha, en el guardado de signos o en sus tests.
 ---
 
 # Extracción de la ficha clínica desde un dictado
 
-Esta skill define cómo convertir la transcripción de un dictado veterinario (perros) en una
-ficha clínica estructurada. Se usa para escribir el service de extracción, el schema Pydantic
-de la ficha y los tests del módulo.
+El diseño acordado por el equipo está en `docs/flujo_de_los_datos.md`. Esta skill resume la
+parte del NLP y la convierte en reglas para programar y testear. Si algo de acá contradice
+ese documento, manda el documento.
 
-> **Estado: borrador.** La historia clínica todavía no tiene tablas en Postgres (figura como
-> pendiente en `docs/modelo_datos_v1.md`, US-09). El formato de
-> [ficha-schema.md](./ficha-schema.md) es una propuesta para acordar con quien desarrolla la
-> historia clínica y con el DBA. Cuando exista la estructura real, el schema de la ficha tiene
-> que coincidir con ella.
+> **Pendiente:** las claves exactas del JSON salen del contrato 1.0 del prototipo del NLP
+> (carpeta `yacanvet_ia`, fuera de este repo). [contrato-ficha.md](./contrato-ficha.md)
+> tiene la estructura según el documento de flujo, con claves provisorias. Cuando el
+> prototipo entre al repo, reemplazá esa sección por el contrato real.
 
 ## Recursos
 
-- [ficha-schema.md](./ficha-schema.md): campos de la ficha, tipos, unidades y validaciones.
-- [prompt-extraccion.md](./prompt-extraccion.md): el prompt de sistema que se manda a Claude.
-- [ejemplos.md](./ejemplos.md): transcripciones de ejemplo con la ficha esperada. Son la base
-  de los tests y de los ejemplos del prompt.
+- [contrato-ficha.md](./contrato-ficha.md): qué trae la ficha y a qué tabla y columna va
+  cada parte.
+- [prompt-extraccion.md](./prompt-extraccion.md): principios del prompt de extracción.
+- [ejemplos.md](./ejemplos.md): dictados de ejemplo con la ficha esperada, para tests.
 
-## Reglas de extracción (las más importantes)
+## El recorrido de un dictado
 
-1. **Nunca inventar.** Si el veterinario no dictó un dato, el campo va `null` o lista vacía.
-   Una ficha incompleta es correcta; una ficha con datos inventados es un error grave.
-2. **Normalizar unidades** a las del schema (kg, °C, lpm, rpm, segundos) y números con punto
-   decimal. "Treinta y ocho y medio de temperatura" → `38.5`.
-3. **Marcar la duda.** Todo dato ambiguo, que se contradiga o que la transcripción haya
-   entendido mal (por ejemplo, un medicamento que no existe) va en `campos_inciertos`, con el
-   campo y el motivo. El frontend los resalta para que el veterinario los revise.
-4. **Los hallazgos variables van en `hallazgos`** (JSONB), como pares sistema → descripción,
-   no como campos nuevos del schema.
-5. **El diagnóstico es presuntivo** y lo dicta el veterinario. La extracción no sugiere
-   diagnósticos propios: eso es otro módulo (asistencia diagnóstica).
-6. **La identidad de la mascota no se extrae del audio.** El `mascota_id` viene de la pantalla.
-   Si el dictado menciona un nombre que no coincide con la mascota elegida, se marca en
-   `campos_inciertos`.
-7. **Salida solo JSON** que valide contra el schema. El backend valida con Pydantic y, si
-   falla, devuelve un `APIError` (`FICHA_INVALIDA`) en vez de guardar.
+1. Hay una consulta en `borrador` (se abrió desde el turno). El dictado siempre pertenece a
+   una consulta: la mascota y el veterinario salen de ella, nunca del audio.
+2. Whisper.cpp transcribe los tramos de audio. **Si la transcripción falla, no se guarda
+   nada**: el error vuelve a la pantalla y el veterinario repite. El audio nunca se guarda.
+3. El extractor arma la ficha. Primero intenta con Claude; si Claude falla, sigue con el
+   extractor por reglas y `modelo_llm` queda nulo.
+4. El backend guarda, en una transacción:
+   - `INSERT` en `clinica.dictado`, con la transcripción, la ficha entera en
+     `extraccion_json` y los metadatos (`modelo_stt`, `modelo_llm`, `version_prompt`,
+     duración y latencias). Esa fila **nunca se edita**.
+   - `UPDATE` de los textos, el peso y la temperatura de `clinica.consulta`.
+   - `INSERT` o `UPDATE` en `clinica.consulta_sintoma`, una fila por signo, con
+     `origen = 'nlp'`, `dictado_id` y `confirmado = false`.
+5. Después, el backend le pide el top 3 al motor. Eso no es parte del NLP.
+
+## Reglas de extracción
+
+1. **Nunca inventar.** Lo que no se dictó va nulo. Una ficha incompleta es correcta.
+2. **Signos con código del catálogo.** Cada signo se mapea a un `codigo` de
+   `catalogo_signos.csv` (97 códigos, con las formas de decirlos en rioplatense). Los módulos
+   se pasan códigos, nunca ids.
+3. **Negado no es lo mismo que no mencionado.** "No vomita" genera una fila con
+   `presente = false`. Un signo que no se nombró no genera fila. El motor usa las dos cosas
+   distinto, así que confundirlas cambia el diagnóstico.
+4. **Lo que no se puede mapear se guarda igual**, con código nulo y el `texto_original`, para
+   que el veterinario lo resuelva antes de firmar.
+5. **Peso y temperatura dentro de rango** (peso mayor a 0 y hasta 150 kg, temperatura entre
+   30 y 45 °C). Un valor imposible, típico de un error de transcripción ("380 grados"), va
+   nulo y la frase queda en el texto del examen físico. El backend vuelve a validar con
+   Pydantic antes del `UPDATE`, porque la base lo rechazaría.
+6. **El NLP no diagnostica.** Las sugerencias son del motor y la decisión es del veterinario.
+7. **Un dictado nunca pisa lo que el veterinario ya revisó.** Un signo con
+   `confirmado = true` no se toca.
+
+## Decisiones que el documento todavía no cierra
+
+- Qué pasa con los textos cuando hay un segundo dictado: ¿se reemplazan o se agregan al
+  final? ¿Y si el veterinario ya los había corregido a mano?
+- Si un segundo dictado contradice a uno anterior no confirmado ("vomita" y después "no
+  vomita"), lo esperable es que se actualice `presente` en la fila existente. Confirmarlo.
+
+Hasta que el equipo lo decida, no lo implementes por tu cuenta: preguntá.
 
 ## Cómo se testea
 
-- Cada caso de [ejemplos.md](./ejemplos.md) se convierte en un test parametrizado: la
-  transcripción es la entrada y la llamada a Claude se mockea para devolver la ficha esperada.
-  Lo que se testea es el código propio: armado del prompt, validación, normalización y manejo
-  de errores.
-- Casos obligatorios: dictado completo, dictado mínimo (casi todo `null`), dictado con datos
-  dudosos (que llenan `campos_inciertos`) y respuesta inválida de Claude (que termina en
-  `FICHA_INVALIDA`).
-- Nunca se llama a la API de Claude ni a Whisper.cpp en los tests.
+- Los casos de [ejemplos.md](./ejemplos.md) se convierten en tests parametrizados. La llamada
+  a Claude y a Whisper.cpp **siempre** se mockea: lo que se testea es el código propio
+  (mapeo de códigos, rangos, guardado y reglas de actualización).
+- Casos obligatorios: dictado completo; signo negado (fila con `presente = false`); signo no
+  mapeable (código nulo); valor fuera de rango (va nulo); Claude falla (se usa el extractor
+  por reglas y `modelo_llm` queda nulo); Whisper falla (no se guarda nada); dictado posterior
+  sobre un signo confirmado (no se pisa).
