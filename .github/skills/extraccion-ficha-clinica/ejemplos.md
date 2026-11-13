@@ -1,168 +1,152 @@
 # Casos de ejemplo
 
-Datos ficticios para tests y para ajustar el prompt. No son indicaciones clínicas. Las
-transcripciones imitan la salida de Whisper: sin mayúsculas, con números a veces en letras y
-algún error de reconocimiento.
+Datos ficticios para tests, no indicaciones clínicas. Las transcripciones imitan la salida de
+Whisper: sin mayúsculas ni puntuación y con números en letras. Las claves del JSON son
+provisorias (ver [contrato-ficha.md](./contrato-ficha.md)).
 
-## Caso 1: dictado completo
+Los códigos de signos usados en el caso 1 son los que aparecen en `docs/flujo_de_los_datos.md`.
+Antes de usar otro código en un test, verificá que exista en `catalogo_signos.csv`.
+
+## Caso 1: dictado completo, con un signo negado (Coco, bulldog francés)
 
 Transcripción:
 
 ```text
-paciente macho de cuatro años viene por vómitos desde hace dos días la dueña cuenta que
-comió basura del patio y que está decaído peso veintiocho coma cuatro kilos temperatura
-treinta y nueve con dos frecuencia cardíaca ciento diez respiratoria veinticuatro mucosas
-rosadas llenado capilar menos de dos segundos condición corporal cinco de nueve
-deshidratación leve abdomen con dolor a la palpación craneal sin masas palpables
-diagnóstico presuntivo gastroenteritis por indiscreción alimentaria indico dieta blanda por
-tres días y maropitant uno miligramo por kilo subcutáneo cada veinticuatro horas por dos días
-control en tres días
+coco viene porque ronca mucho y se cansa enseguida cuando sale a caminar la dueña cuenta
+que a veces devuelve la comida sin esfuerzo después de comer y que tose de noche nunca se
+desmayó peso trece coma dos kilos temperatura treinta y ocho con nueve respira con
+dificultad y las mucosas se ponen azuladas cuando se agita se ausculta un soplo leve indico
+reposo y evitar el calor control en diez días
 ```
 
 Ficha esperada:
 
 ```json
 {
-  "motivo_consulta": "Vómitos desde hace dos días",
-  "anamnesis": "Comió basura del patio. Decaído según la tutora.",
-  "examen_fisico": {
-    "peso_kg": 28.4,
-    "temperatura_c": 39.2,
-    "frecuencia_cardiaca_lpm": 110,
-    "frecuencia_respiratoria_rpm": 24,
-    "mucosas": "rosadas",
-    "tiempo_llenado_capilar_s": null,
-    "condicion_corporal": 5,
-    "hidratacion": "deshidratación leve"
-  },
-  "hallazgos": {
-    "abdomen": "dolor a la palpación craneal, sin masas palpables"
-  },
-  "diagnostico_presuntivo": ["Gastroenteritis por indiscreción alimentaria"],
-  "tratamiento": [
-    {
-      "medicamento": "maropitant",
-      "dosis": "1 mg/kg",
-      "via": "subcutánea",
-      "frecuencia": "cada 24 horas",
-      "duracion_dias": 2
-    }
-  ],
-  "estudios_solicitados": [],
-  "proximo_control_dias": 3,
-  "observaciones": "Dieta blanda por tres días.",
-  "campos_inciertos": [
-    {
-      "campo": "examen_fisico.tiempo_llenado_capilar_s",
-      "motivo": "Se dictó 'menos de dos segundos', sin un valor exacto."
-    }
-  ]
-}
-```
-
-## Caso 2: dictado mínimo
-
-Transcripción:
-
-```text
-control de vacunas está todo bien peso doce kilos
-```
-
-Ficha esperada:
-
-```json
-{
-  "motivo_consulta": "Control de vacunas",
-  "anamnesis": null,
-  "examen_fisico": {
-    "peso_kg": 12.0,
-    "temperatura_c": null,
-    "frecuencia_cardiaca_lpm": null,
-    "frecuencia_respiratoria_rpm": null,
-    "mucosas": null,
-    "tiempo_llenado_capilar_s": null,
-    "condicion_corporal": null,
-    "hidratacion": null
-  },
-  "hallazgos": {},
-  "diagnostico_presuntivo": [],
-  "tratamiento": [],
-  "estudios_solicitados": [],
-  "proximo_control_dias": null,
-  "observaciones": "Sin hallazgos según el veterinario.",
-  "campos_inciertos": []
-}
-```
-
-## Caso 3: datos dudosos
-
-Transcripción:
-
-```text
-viene por picazón hace un mes se rasca las orejas temperatura trescientos ochenta y cinco
-otitis externa bilateral con secreción marrón le indico limpiador ótico y otomax dos gotas
-en cada oído cada doce horas pido citología de oído
-```
-
-Ficha esperada:
-
-```json
-{
-  "motivo_consulta": "Picazón desde hace un mes",
-  "anamnesis": "Se rasca las orejas.",
-  "examen_fisico": {
-    "peso_kg": null,
-    "temperatura_c": 38.5,
-    "frecuencia_cardiaca_lpm": null,
-    "frecuencia_respiratoria_rpm": null,
-    "mucosas": null,
-    "tiempo_llenado_capilar_s": null,
-    "condicion_corporal": null,
-    "hidratacion": null
-  },
-  "hallazgos": {
-    "oídos": "otitis externa bilateral con secreción marrón"
-  },
-  "diagnostico_presuntivo": ["Otitis externa bilateral"],
-  "tratamiento": [
-    {
-      "medicamento": "limpiador ótico",
-      "dosis": null,
-      "via": "ótica",
-      "frecuencia": null,
-      "duracion_dias": null
-    },
-    {
-      "medicamento": "otomax",
-      "dosis": "2 gotas en cada oído",
-      "via": "ótica",
-      "frecuencia": "cada 12 horas",
-      "duracion_dias": null
-    }
-  ],
-  "estudios_solicitados": ["Citología de oído"],
-  "proximo_control_dias": null,
+  "version": "1.0",
+  "motivo": "Ronca mucho y se cansa enseguida al caminar",
+  "anamnesis": "A veces devuelve la comida sin esfuerzo después de comer. Tose de noche. Nunca se desmayó.",
+  "examen_fisico": "Respira con dificultad. Mucosas azuladas al agitarse. Soplo leve a la auscultación.",
+  "peso_kg": 13.2,
+  "temperatura_c": 38.9,
+  "tratamiento": "Reposo y evitar el calor. Control en diez días.",
   "observaciones": null,
-  "campos_inciertos": [
-    {
-      "campo": "examen_fisico.temperatura_c",
-      "motivo": "Se transcribió 'trescientos ochenta y cinco'; se interpretó como 38,5 °C."
-    },
-    {
-      "campo": "tratamiento[0]",
-      "motivo": "No se dictaron dosis, frecuencia ni duración del limpiador ótico."
-    }
+  "signos": [
+    {"codigo": "estertor_ronquido", "texto_original": "ronca mucho", "presente": true},
+    {"codigo": "intolerancia_ejercicio", "texto_original": "se cansa enseguida cuando sale a caminar", "presente": true},
+    {"codigo": "regurgitacion", "texto_original": "devuelve la comida sin esfuerzo después de comer", "presente": true},
+    {"codigo": "tos", "texto_original": "tose de noche", "presente": true},
+    {"codigo": "sincope", "texto_original": "nunca se desmayó", "presente": false},
+    {"codigo": "disnea", "texto_original": "respira con dificultad", "presente": true},
+    {"codigo": "cianosis", "texto_original": "las mucosas se ponen azuladas cuando se agita", "presente": true},
+    {"codigo": "soplo_cardiaco", "texto_original": "se ausculta un soplo leve", "presente": true}
   ]
 }
 ```
 
-## Caso 4: respuesta inválida de Claude
+Qué se testea: ocho filas en `consulta_sintoma`, con `sincope` en `presente = false`; peso y
+temperatura en `consulta`; una fila en `dictado` con la ficha entera.
 
-Sirve para testear el manejo de errores, no la extracción. El mock de Claude devuelve:
+## Caso 2: un signo que no se puede mapear
+
+Para el test se supone que "se chupa las patas" no tiene código en el catálogo.
+
+Transcripción:
 
 ```text
-Claro, acá tenés la ficha: {"motivo_consulta": "Vómitos", "examen_fisico": {"peso_kg": "mucho"}}
+viene porque tose desde hace una semana y se chupa las patas todo el tiempo
 ```
 
-Resultado esperado: el service no guarda nada y responde `APIError` con código
-`FICHA_INVALIDA` (status 422 o el que acuerde el equipo) y `detalle` en español.
+Ficha esperada:
+
+```json
+{
+  "version": "1.0",
+  "motivo": "Tos desde hace una semana",
+  "anamnesis": "Se chupa las patas todo el tiempo.",
+  "examen_fisico": null,
+  "peso_kg": null,
+  "temperatura_c": null,
+  "tratamiento": null,
+  "observaciones": null,
+  "signos": [
+    {"codigo": "tos", "texto_original": "tose desde hace una semana", "presente": true},
+    {"codigo": null, "texto_original": "se chupa las patas todo el tiempo", "presente": true}
+  ]
+}
+```
+
+Qué se testea: la fila sin código se guarda con `sintoma_id` nulo y el texto original, y la
+vista del motor no la usa.
+
+## Caso 3: dictado mínimo
+
+Transcripción:
+
+```text
+control está todo bien pesa doce kilos
+```
+
+Ficha esperada:
+
+```json
+{
+  "version": "1.0",
+  "motivo": "Control",
+  "anamnesis": null,
+  "examen_fisico": "Sin hallazgos según el veterinario.",
+  "peso_kg": 12.0,
+  "temperatura_c": null,
+  "tratamiento": null,
+  "observaciones": null,
+  "signos": []
+}
+```
+
+Qué se testea: ninguna fila en `consulta_sintoma`, y la consulta se actualiza igual.
+
+## Caso 4: valor fuera de rango
+
+Transcripción:
+
+```text
+temperatura trescientos ochenta grados tose
+```
+
+Ficha esperada:
+
+```json
+{
+  "version": "1.0",
+  "motivo": null,
+  "anamnesis": null,
+  "examen_fisico": "Temperatura dictada: trescientos ochenta grados (fuera de rango).",
+  "peso_kg": null,
+  "temperatura_c": null,
+  "tratamiento": null,
+  "observaciones": null,
+  "signos": [
+    {"codigo": "tos", "texto_original": "tose", "presente": true}
+  ]
+}
+```
+
+Qué se testea: `temperatura_c` queda nula y la frase se conserva en el texto. Si el extractor
+devolviera 380, la validación Pydantic del backend lo tiene que frenar antes del `UPDATE`.
+
+## Caso 5: falla Claude
+
+El mock de Claude lanza una excepción (o devuelve un JSON que no valida). Resultado esperado:
+el NLP usa el extractor por reglas, la ficha cumple el mismo contrato y la fila de `dictado`
+queda con `modelo_llm` nulo.
+
+## Caso 6: falla Whisper
+
+El mock de Whisper.cpp lanza una excepción. Resultado esperado: no se inserta nada en
+`dictado`, `consulta` ni `consulta_sintoma`, y la API devuelve un `APIError` con código
+estable y detalle en español para que el veterinario repita el dictado.
+
+## Caso 7: un dictado posterior no pisa lo confirmado
+
+Partiendo del caso 1 con la fila de `tos` en `confirmado = true`, llega un dictado que dice
+"no tose". Resultado esperado: la fila de `tos` no cambia.

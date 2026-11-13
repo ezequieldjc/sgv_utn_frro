@@ -89,9 +89,7 @@ JSON todavía son provisorias: las definitivas son las del contrato 1.0 del prot
 ## Herramientas externas (MCP)
 
 Cada uno configura en su máquina, en `.vscode/mcp.json` (no se versiona), los servidores MCP
-que quiera usar. Recomendamos dos. **Context7** le da a Copilot la documentación actualizada
-de FastAPI, SQLModel, Shadcn y el resto del stack, y no necesita configuración. El servidor
-de **Postgres** le permite consultar la estructura real de la base. Va siempre con el usuario
+que quiera usar. El que usamos es el de **Postgres**, que le permite consultar la estructura real de la base. Va siempre con el usuario
 `mcp_readonly` (script en `scripts/mcp/001_usuario_mcp_readonly.sql`, que aplica el DBA en
 las bases de desarrollo) y en modo restringido, así no puede escribir nada ni leer los hashes
 de contraseñas. Para usarlo hace falta tener instalado `uv` (en Windows,
