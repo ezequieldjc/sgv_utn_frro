@@ -5,7 +5,9 @@ Desktop.ini
 
 # --- Editores / IDE ---
 .idea/
-.vscode/
+.vscode/*
+# Recomendaciones de extensiones compartidas por el equipo (settings.json y mcp.json quedan personales)
+!.vscode/extensions.json
 *.swp
 *.swo
 *~
