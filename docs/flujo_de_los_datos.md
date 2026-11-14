@@ -1,3 +1,17 @@
+## Implementación en la base (14/11/2026)
+
+Esta sección registra en qué se aplicó la base distinto a lo que describe este documento. El resto del documento no se modificó. La estructura vigente está en `docs/modelo_datos_v2.md` y los scripts en `scripts/clinica/` y `scripts/agenda/002_turno_atendido.sql`.
+
+| Tema | Qué dice este documento | Cómo quedó en la base |
+| --- | --- | --- |
+| Castración | `clinica.mascota.castrado` | No se agregó. La castración se registra con `estado_reproductivo_id`. |
+| Historial de peso | No lo menciona | Se eliminó `clinica.historial_peso` con su trigger. El historial de peso es la serie de `consulta.peso_kg`; `mascota.ultimo_peso` quedó sin actualización automática. |
+| Estado del turno | Al firmar, el turno pasa a `atendido` | Igual, y además se eliminó el estado `realizado`. |
+| Diagnósticos | Se guarda el top 3 con `estado_diagnostico` (`pendiente`, `aceptado`, `rechazado`), `es_principal` y `fecha_decision` | Solo se guardan los diagnósticos que el veterinario acepta. `tipo_diagnostico` vale `principal` (uno por consulta) o `secundario`. No existen `estado_diagnostico`, `es_principal` ni `fecha_decision`. `confirmado_por_usuario_id` es obligatorio. La misma patología no se repite en una consulta. |
+| Signos | `sistema` sin valores definidos | `sintoma.sistema` acepta 13 valores: `general`, `piel`, `oido`, `ojo`, `boca`, `respiratorio`, `cardiovascular`, `digestivo`, `urinario`, `reproductor`, `musculoesqueletico`, `neurologico`, `conducta`. |
+| Nombres de restricciones | En minúsculas (`ck_dx_ia`, `uq_dx_principal`) | Con el estilo del repo (`CK_ConsultaDx_IA`, `UQ_ConsultaDx_Principal`). |
+| Permiso para firmar | No lo menciona | Se creó `consultas:firmar`; falta asignarlo a roles. |
+
 ## Tablas
 
 | Tabla | Grupo | Qué guarda | Quién la escribe y cuándo |

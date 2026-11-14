@@ -9,7 +9,7 @@ antes de que abra el PR.
 Chequeá, archivo por archivo, contra las instrucciones del repo:
 
 1. DBA-first: nada de DDL, `create_all()` fuera de tests ni `alembic upgrade`; ningún campo
-   que no esté en `docs/modelo_datos_v1.md`.
+   que no esté en `docs/modelo_datos_v2.md`.
 2. Seguridad: todo endpoint nuevo llama a `require_permission` antes de la lógica; no se
    compara el nombre de un rol; no hay secretos ni credenciales en código, tests o docs.
 3. Tipado: sin `any` en TypeScript, type hints en Python y sin `dict` crudos en la API.

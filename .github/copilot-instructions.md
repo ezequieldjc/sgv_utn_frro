@@ -40,7 +40,7 @@ dictado por voz con NLP y asistencia diagnóstica). La visión completa está en
 - `frontend/src/pages/<modulo>/`: pantallas (`*-page.tsx`, `*-form-page.tsx`) con sus tests
   `*.test.tsx`. `frontend/src/components/ui/`: Shadcn. `frontend/src/lib/api.ts`: cliente HTTP.
   `frontend/src/types/`: tipos de la API.
-- `docs/modelo_datos_v1.md`: diccionario de datos canónico. `docs/prompts botones/`: specs de
+- `docs/modelo_datos_v2.md`: diccionario de datos canónico. `docs/prompts botones/`: specs de
   pantalla/feature. `scripts/`: SQL que aplica el DBA (seeds, permisos, DDL manual).
 
 Antes de crear algo nuevo, buscá el módulo hermano más parecido y copiá su estructura.
@@ -51,7 +51,7 @@ Antes de crear algo nuevo, buscá el módulo hermano más parecido y copiá su e
    que solo tiene DML. Nunca escribas ni ejecutes DDL desde la app, nunca uses
    `metadata.create_all()` fuera de los tests y nunca corras `alembic upgrade` contra la DB de
    la app. Si falta una tabla o columna, **frená** y redactá el pedido al DBA.
-2. **No inventes campos**: todo campo tiene que existir en `docs/modelo_datos_v1.md`.
+2. **No inventes campos**: todo campo tiene que existir en `docs/modelo_datos_v2.md`.
 3. **Tipado estricto**: nunca `any` en TypeScript; type hints en todo Python; nunca aceptes ni
    devuelvas `dict` crudos en la API, siempre schemas Pydantic/SQLModel.
 4. **RBAC por permiso, nunca por nombre de rol**: códigos `recurso:accion` en español

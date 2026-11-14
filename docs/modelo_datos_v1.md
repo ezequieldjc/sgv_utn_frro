@@ -1,5 +1,8 @@
 # Modelo de Datos (Diccionario v1)
 
+> **Reemplazado por [`modelo_datos_v2.md`](./modelo_datos_v2.md) el 14/11/2026.** Este archivo se
+> conserva como historial y ya no refleja la base (módulo Clinica y estados de `agenda.turno`).
+
 > Alcance de esta iteración: ver `docs/alcance_iteracion_uno.md`. Este diccionario
 > documenta el modelo completo del proyecto (incluye módulos futuros como Clínica); no todo
 > se migra ahora.

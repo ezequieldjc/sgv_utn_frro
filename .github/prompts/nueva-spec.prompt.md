@@ -10,7 +10,7 @@ No escribas código de la aplicación; el único archivo que creás es la spec.
 
 1. Leé `docs/prompts botones/clientes_crear.md` y `docs/prompts botones/mascotas_listado.md`
    como modelo de formato y nivel de detalle.
-2. Leé `docs/modelo_datos_v1.md` y usá solo tablas y columnas que existan. Si la feature
+2. Leé `docs/modelo_datos_v2.md` y usá solo tablas y columnas que existan. Si la feature
    necesita estructura nueva, agregá una sección "Prerrequisitos DBA" con lo que hay que
    pedir, en vez de inventar campos.
 3. Revisá `scripts/rol_permiso.sql` para reutilizar códigos de permiso existentes; si hacen

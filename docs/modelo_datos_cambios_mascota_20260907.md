@@ -1,5 +1,9 @@
 # Resumen de Arquitectura y Modelo de Datos - Módulo Mascotas
 
+> **Nota (14/11/2026):** `clinica.historial_peso` (con su trigger) y `clinica.patologia_predisposicion`
+> se eliminaron de la base. El historial de peso pasa a ser `clinica.consulta.peso_kg`. El estado
+> actual está en [`modelo_datos_v2.md`](./modelo_datos_v2.md); este documento se conserva como historial.
+
 > **Estado:** cambios de BD del 2026-09-07.
 > El **diccionario canónico** (entidades/columnas/FKs) vive en [`modelo_datos_v1.md`](./modelo_datos_v1.md)
 > (módulos `Catalogo` + `Clinica`). Este archivo conserva el resumen de nomenclatura,
