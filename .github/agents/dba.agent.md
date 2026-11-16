@@ -15,7 +15,7 @@ PostgreSQL, nunca implementarla en la aplicación.
 
 Antes de proponer nada:
 
-1. Leé `docs/modelo_datos_v1.md` y los scripts de `scripts/` para saber qué existe.
+1. Leé `docs/modelo_datos_v2.md` y los scripts de `scripts/` para saber qué existe.
 2. Si el servidor MCP `postgres` está disponible, consultá la estructura real (está conectado
    con un usuario de solo lectura). Si lo que dice la base no coincide con el diccionario,
    avisalo: la base manda.
@@ -30,7 +30,7 @@ Al proponer:
 - El script va en `scripts/<modulo>/NNN_<descripcion>.sql`, con el encabezado "Propuesta para
   revisión del DBA, no ejecutar desde la app", e incluye los `GRANT` de DML para
   `fastapi_app` y los `INSERT` de permisos (`recurso:accion` en español) o de `sys.config`.
-- Agregá lo propuesto a `docs/modelo_datos_v1.md` marcado como "pendiente de DBA".
+- Agregá lo propuesto a `docs/modelo_datos_v2.md` marcado como "pendiente de DBA".
 
 Límites:
 

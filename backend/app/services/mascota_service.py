@@ -4,7 +4,6 @@ from sqlalchemy import func, or_
 from sqlmodel import Session, col, select
 
 from app.core.errors import APIError
-from app.core.time_utils import utc_now
 from app.models.catalogo.estado_reproductivo import EstadoReproductivo
 from app.models.catalogo.habitat import Habitat
 from app.models.catalogo.mascota_estado import MascotaEstado
@@ -12,7 +11,6 @@ from app.models.catalogo.pelaje import Pelaje
 from app.models.catalogo.tamanio import Tamanio
 from app.models.catalogo.temperamento import Temperamento
 from app.models.clinica.especie import Especie
-from app.models.clinica.historial_peso import HistorialPeso
 from app.models.clinica.mascota import Mascota
 from app.models.clinica.raza import Raza
 from app.models.core.persona import Persona
@@ -265,20 +263,13 @@ def create_mascota(session: Session, payload: MascotaCreate) -> MascotaCreateRes
         microchip=payload.microchip,
         alertas_medicas=payload.alertas_medicas,
         mascota_estado_id=MASCOTA_ESTADO_ACTIVA_ID,
+        # El peso inicial se guarda en ultimo_peso (historial_peso se eliminó el 14/11/2026).
+        ultimo_peso=payload.peso_inicial_kg,
     )
     session.add(mascota)
     session.flush()
 
-    peso_registrado = False
-    if payload.peso_inicial_kg is not None:
-        session.add(
-            HistorialPeso(
-                mascota_id=mascota.id or 0,
-                fecha=utc_now(),
-                peso_kg=payload.peso_inicial_kg,
-            )
-        )
-        peso_registrado = True
+    peso_registrado = payload.peso_inicial_kg is not None
 
     session.commit()
     session.refresh(mascota)

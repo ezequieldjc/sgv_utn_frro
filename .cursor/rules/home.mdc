@@ -11,7 +11,7 @@ alwaysApply: true
    - El modelo **SQLModel** en `models/<schema>/` con `__table_args__ = {"schema": "..."}`.
    - Los schemas **Pydantic** en `schemas/`.
    - Los endpoints en `app/api/` usando solo DML, con `get_session` (u otra inyección del proyecto).
-   - El diccionario `docs/modelo_datos_v1.md` para que coincida con Postgres.
+   - El diccionario `docs/modelo_datos_v2.md` para que coincida con Postgres.
    - Alembic solo si el DBA lo pide, como historial de código — nunca como DDL contra la app.
 
 2. Si te piden una funcionalidad y falta una tabla o columna:

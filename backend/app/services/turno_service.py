@@ -42,13 +42,13 @@ from app.services.mascota_service import MASCOTA_ESTADO_ACTIVA_ID
 PERMISO_ATENDER = "agenda:atender"
 
 # Estados que ocupan el horario (igual que el WHERE de las exclusiones en Postgres).
-ESTADOS_ACTIVOS = ("solicitado", "confirmado", "realizado")
+ESTADOS_ACTIVOS = ("solicitado", "confirmado", "atendido")
 ESTADOS_MODIFICABLES = ("solicitado", "confirmado")
 
 # Estado destino -> estados de origen permitidos (Figura 5 de la 3ra entrega).
 TRANSICIONES: dict[str, tuple[str, ...]] = {
     "confirmado": ("solicitado",),
-    "realizado": ("confirmado",),
+    "atendido": ("confirmado",),
     "no_asistio": ("confirmado",),
     "cancelado": ESTADOS_MODIFICABLES,
 }
@@ -738,11 +738,13 @@ def _aplicar_transicion(session: Session, turno: Turno, nuevo_estado: str) -> No
             "TRANSICION_INVALIDA",
             f"No se puede pasar un turno de '{turno.estado}' a '{nuevo_estado}'",
         )
-    if nuevo_estado in ("realizado", "no_asistio") and _from_db(turno.fecha_hora_inicio) > utc_now():
+    # 'atendido' se puede marcar antes de la hora (el paciente llegó antes);
+    # 'no_asistio' solo tiene sentido una vez que el turno comenzó.
+    if nuevo_estado == "no_asistio" and _from_db(turno.fecha_hora_inicio) > utc_now():
         raise APIError(
             400,
             "TURNO_NO_INICIADO",
-            "Solo se puede marcar como realizado o no asistió un turno que ya comenzó",
+            "Solo se puede marcar como no asistió un turno que ya comenzó",
         )
     turno.estado = nuevo_estado
     session.add(turno)

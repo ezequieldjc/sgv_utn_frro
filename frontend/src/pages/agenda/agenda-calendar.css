@@ -112,9 +112,9 @@
   @apply border-emerald-500 bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-50;
 }
 
-.agenda-calendar .rbc-event.turno-realizado,
-.turno-dot.turno-realizado,
-.turno-chip.turno-realizado {
+.agenda-calendar .rbc-event.turno-atendido,
+.turno-dot.turno-atendido,
+.turno-chip.turno-atendido {
   @apply border-sky-500 bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-50;
 }
 

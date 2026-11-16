@@ -12,7 +12,8 @@ No todo vive en `public`. Schemas actuales:
 - `core` (persona, domicilio)
 - `catalogo` (estado_reproductivo, habitat, tamanio, pelaje, temperamento, mascota_estado,
   rubro; todos con `activo` para baja lógica)
-- `clinica` (especie, raza, mascota, historial_peso, patologia, patologia_predisposicion)
+- `clinica` (especie, raza, mascota, patologia, sintoma, consulta, dictado, consulta_sintoma,
+  consulta_diagnostico)
 - `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login)
 - `sys` (config)
 - `agenda` (tipo_turno, turno)
@@ -24,7 +25,7 @@ Nunca asumas `public`.
 
 `core.persona` incluye `fecha_nacimiento`, `domicilio_id` (FK a `core.domicilio`) y
 `es_cliente`; `dni`, `sexo`, `fecha_nacimiento`, `mail` y `domicilio_id` admiten NULL. `dni`
-no es unique. El diccionario canónico es `docs/modelo_datos_v1.md`.
+no es unique. El diccionario canónico es `docs/modelo_datos_v2.md`.
 
 ## Fuente única de verdad
 
@@ -51,7 +52,7 @@ reinventarse mal:
 |-----|---------|
 | `mascota.ultimo_peso` | `mascota.peso_actual` |
 | `mascota.mascota_estado_id` | un campo libre `mascota.estado` |
-| `historial_peso.peso_kg` | `peso` |
+| `consulta.peso_kg` | `peso` |
 | `persona.mail` | `usuario.email` (el mail vive en `persona`) |
 | `usuario.habilitado` | `usuario.activo` |
 

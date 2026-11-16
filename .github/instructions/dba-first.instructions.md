@@ -16,7 +16,7 @@ columnas, relaciones, constraints e índices). La base siempre va un paso adelan
   app, seeds o scripts de runtime. La única excepción es la fixture de tests en
   `backend/tests/conftest.py`, que arma una SQLite en memoria.
 - SQLModel solo mapea lo que el DBA ya creó. Alembic, si se usa, es historial de código
-  (`models/`, `docs/modelo_datos_v1.md`). Nunca corras `alembic upgrade` contra la DB de la
+  (`models/`, `docs/modelo_datos_v2.md`). Nunca corras `alembic upgrade` contra la DB de la
   aplicación. El DBA aplica el DDL a mano.
 - Respetá si el código del módulo es síncrono o asíncrono y las dependencias que ya existen
   (`get_session` de `app.db.session`).
@@ -28,7 +28,7 @@ columnas, relaciones, constraints e índices). La base siempre va un paso adelan
    - el modelo SQLModel en `backend/app/models/<schema>/` con `__table_args__ = {"schema": "..."}`;
    - los schemas Pydantic en `backend/app/schemas/`;
    - los endpoints en `backend/app/api/`, solo con DML y `get_session`;
-   - el diccionario `docs/modelo_datos_v1.md`, para que coincida con Postgres;
+   - el diccionario `docs/modelo_datos_v2.md`, para que coincida con Postgres;
    - Alembic solo si el DBA lo pide, como historial de código.
 2. Si te piden una funcionalidad y falta una tabla o columna:
    - **Stop.** No inventes el campo en SQLModel, no escribas DDL, no corras Alembic.

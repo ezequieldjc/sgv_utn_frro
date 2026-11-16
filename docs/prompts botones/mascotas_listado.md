@@ -193,6 +193,10 @@ Reglas:
 4. **No** setear `ultimo_peso` en el INSERT de mascota (lo actualiza el trigger).
 5. Si viene `peso_inicial_kg`: luego del insert de mascota, `INSERT` en
    `clinica.historial_peso` (`mascota_id`, `fecha = NOW()`, `peso_kg`).
+
+   > **Actualización 14/11/2026:** `clinica.historial_peso` ya no existe. El peso inicial se guarda
+   > en `clinica.mascota.ultimo_peso` en el mismo insert de la mascota (los pasos 4 y 5 quedan sin
+   > efecto). Ver `docs/modelo_datos_v2.md`.
 6. Campos opcionales del form → columnas nullable de `clinica.mascota`.
 
 ### Auxiliares
@@ -273,6 +277,7 @@ Nunca volver a `return Session(get_engine())` sin `yield`/`close`.
 3. `?cliente_id=` filtra por tutor.
 4. Alta con tutor o tutor eventual; raza default “Sin raza definida”; estado ACTIVA interno.
 5. Peso inicial genera fila en `historial_peso` sin tocar `ultimo_peso` en el insert.
+   *(Actualización 14/11/2026: el peso inicial se guarda en `ultimo_peso`; `historial_peso` ya no existe.)*
 6. Editar visible solo con `mascotas:editar`; historial con `consultas:ver_historial`.
 7. Búsqueda tutor: encuentra por nombre/DNI (con/sin formato); no ensancha el form con el
    mensaje vacío; no congela la API (sesiones cerradas).

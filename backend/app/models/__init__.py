@@ -16,11 +16,14 @@ from app.models.catalogo.temperamento import Temperamento
 from app.models.clinica.especie import Especie
 from app.models.comercial.detalle_venta import DetalleVenta
 from app.models.comercial.venta import Venta
-from app.models.clinica.historial_peso import HistorialPeso
 from app.models.clinica.mascota import Mascota
 from app.models.clinica.patologia import Patologia
-from app.models.clinica.patologia_predisposicion import PatologiaPredisposicion
 from app.models.clinica.raza import Raza
+from app.models.clinica.sintoma import Sintoma
+from app.models.clinica.consulta import Consulta
+from app.models.clinica.dictado import Dictado
+from app.models.clinica.consulta_sintoma import ConsultaSintoma
+from app.models.clinica.consulta_diagnostico import ConsultaDiagnostico
 from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
 from app.models.stock.movimiento_stock import MovimientoStock

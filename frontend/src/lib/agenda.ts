@@ -9,14 +9,14 @@ import type {
 } from "@/types/agenda";
 
 export type VistaAgenda = "day" | "week" | "agenda";
-export type AccionTurno = "confirmar" | "realizado" | "no_asistio" | "reprogramar" | "cancelar";
+export type AccionTurno = "confirmar" | "atendido" | "no_asistio" | "reprogramar" | "cancelar";
 
 export const ESTADOS_MODIFICABLES: EstadoTurno[] = ["solicitado", "confirmado"];
 
 export const ESTADO_LABEL: Record<EstadoTurno, string> = {
   solicitado: "Solicitado",
   confirmado: "Confirmado",
-  realizado: "Realizado",
+  atendido: "Atendido",
   cancelado: "Cancelado",
   no_asistio: "No asistió",
 };
@@ -25,7 +25,7 @@ export const ESTADO_LABEL: Record<EstadoTurno, string> = {
 export const ESTADO_CLASES: Record<EstadoTurno, string> = {
   solicitado: "turno-solicitado",
   confirmado: "turno-confirmado",
-  realizado: "turno-realizado",
+  atendido: "turno-atendido",
   cancelado: "turno-cancelado",
   no_asistio: "turno-no-asistio",
 };
@@ -33,7 +33,7 @@ export const ESTADO_CLASES: Record<EstadoTurno, string> = {
 export const ESTADO_BADGE: Record<EstadoTurno, string> = {
   solicitado: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
   confirmado: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  realizado: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  atendido: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   cancelado: "border-border bg-muted text-muted-foreground line-through",
   no_asistio: "border-destructive/40 bg-destructive/10 text-destructive",
 };
@@ -63,8 +63,12 @@ export function accionesDisponibles(
   if (puedeEditar && turno.estado === "solicitado") {
     acciones.push("confirmar");
   }
-  if (puedeEditar && turno.estado === "confirmado" && yaComenzo) {
-    acciones.push("realizado", "no_asistio");
+  // "atendido" se puede marcar antes de la hora (con aviso); "no asistió" solo si ya comenzó.
+  if (puedeEditar && turno.estado === "confirmado") {
+    acciones.push("atendido");
+    if (yaComenzo) {
+      acciones.push("no_asistio");
+    }
   }
   if (puedeEditar && ESTADOS_MODIFICABLES.includes(turno.estado)) {
     acciones.push("reprogramar");
@@ -73,6 +77,14 @@ export function accionesDisponibles(
     acciones.push("cancelar");
   }
   return acciones;
+}
+
+/** True si el turno todavía no comenzó (para avisar al marcarlo como atendido). */
+export function turnoNoComenzo(
+  turno: Pick<TurnoItem, "fecha_hora_inicio">,
+  ahora: Date = new Date(),
+): boolean {
+  return new Date(turno.fecha_hora_inicio).getTime() > ahora.getTime();
 }
 
 export function puedeArrastrar(turno: Pick<TurnoItem, "estado">, permisos: string[]): boolean {
@@ -200,7 +212,7 @@ const MENSAJES_ERROR: Record<string, string> = {
   DIA_SIN_ATENCION: "La clínica no atiende ese día.",
   VETERINARIO_INVALIDO: "El profesional elegido no está habilitado para atender turnos.",
   TRANSICION_INVALIDA: "El turno no admite ese cambio de estado.",
-  TURNO_NO_INICIADO: "Solo se puede marcar realizado o no asistió un turno que ya comenzó.",
+  TURNO_NO_INICIADO: "Solo se puede marcar no asistió un turno que ya comenzó.",
   TURNO_NO_REPROGRAMABLE: "Solo se pueden reprogramar turnos solicitados o confirmados.",
   PERMISOS_INSUFICIENTES: "No tenés permisos para realizar esta acción.",
 };

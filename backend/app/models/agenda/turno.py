@@ -9,14 +9,14 @@ class Turno(SQLModel, table=True):
 
     Las restricciones de exclusión (`EX_Turno_SinSuperposicion` por veterinario y
     `EX_Turno_MascotaSinSuperposicion` por mascota) viven solo en PostgreSQL
-    (ver scripts/agenda/001_agenda_turno.sql). El service replica esas reglas para
+    (ver scripts/agenda/001_agenda_turno.sql y 002_turno_atendido.sql). El service replica esas reglas para
     devolver errores claros y para que los tests en SQLite las cubran.
     """
 
     __tablename__ = "turno"
     __table_args__ = (
         CheckConstraint(
-            "estado IN ('solicitado','confirmado','realizado','cancelado','no_asistio')",
+            "estado IN ('solicitado','confirmado','atendido','cancelado','no_asistio')",
             name="CK_Turno_Estado",
         ),
         CheckConstraint(

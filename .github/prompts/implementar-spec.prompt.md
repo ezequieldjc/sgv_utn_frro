@@ -8,7 +8,7 @@ Implementá la feature descrita en la spec `docs/prompts botones/${input:spec:ar
 
 Seguí este orden y no te saltees pasos:
 
-1. Leé la spec completa y `docs/modelo_datos_v1.md`. Listá las tablas y columnas que usa la
+1. Leé la spec completa y `docs/modelo_datos_v2.md`. Listá las tablas y columnas que usa la
    feature y verificá que existan en el diccionario. Si falta alguna, **frená acá**: no
    escribas código, redactá el pedido al DBA (nombre, tipo, nullability, FKs, para qué sirve)
    y esperá confirmación.

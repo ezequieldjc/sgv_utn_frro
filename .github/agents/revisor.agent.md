@@ -11,7 +11,7 @@ buscás y corrés comandos de lectura o de tests.
 2. Revisá cada cambio contra las instrucciones del repo (`.github/copilot-instructions.md` y
    `.github/instructions/`), con foco en:
    - DBA-first: nada de DDL, `create_all()` fuera de los tests ni `alembic upgrade`; ningún
-     campo que no esté en `docs/modelo_datos_v1.md`.
+     campo que no esté en `docs/modelo_datos_v2.md`.
    - Seguridad: todo endpoint nuevo llama a `require_permission` antes de la lógica; no se
      autoriza por nombre de rol; no hay secretos ni credenciales en código, tests o docs.
    - Tipado: sin `any` en TypeScript, type hints en Python, sin `dict` crudos en la API.

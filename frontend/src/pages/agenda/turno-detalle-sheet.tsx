@@ -34,6 +34,7 @@ import {
   accionesDisponibles,
   horaLabel,
   mensajeError,
+  turnoNoComenzo,
   type AccionTurno,
 } from "@/lib/agenda";
 import type { TurnoItem } from "@/types/agenda";
@@ -41,10 +42,10 @@ import type { TurnoItem } from "@/types/agenda";
 type AccionConConfirmacion = Exclude<AccionTurno, "confirmar" | "reprogramar">;
 
 const CONFIRMACIONES: Record<AccionConConfirmacion, { titulo: string; texto: string; cta: string }> = {
-  realizado: {
-    titulo: "Marcar como realizado",
+  atendido: {
+    titulo: "Marcar como atendido",
     texto: "El turno quedará registrado como atendido.",
-    cta: "Marcar realizado",
+    cta: "Marcar atendido",
   },
   no_asistio: {
     titulo: "Marcar como no asistió",
@@ -173,10 +174,10 @@ export function TurnoDetalleSheet({ turno, permisos, onClose, onChanged, onRepro
                   Confirmar turno
                 </Button>
               ) : null}
-              {acciones.includes("realizado") ? (
-                <Button disabled={isWorking} onClick={() => setPendiente("realizado")}>
+              {acciones.includes("atendido") ? (
+                <Button disabled={isWorking} onClick={() => setPendiente("atendido")}>
                   <CheckCircle2 />
-                  Marcar realizado
+                  Marcar atendido
                 </Button>
               ) : null}
               {acciones.includes("no_asistio") ? (
@@ -222,6 +223,12 @@ export function TurnoDetalleSheet({ turno, permisos, onClose, onChanged, onRepro
                   {actual.mascota_nombre} · {horaLabel(actual.fecha_hora_inicio)} hs.{" "}
                   {CONFIRMACIONES[pendiente].texto}
                 </DialogDescription>
+                {pendiente === "atendido" && turnoNoComenzo(actual) ? (
+                  <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+                    Este turno está programado para las {horaLabel(actual.fecha_hora_inicio)} hs y todavía no
+                    comenzó. Podés marcarlo como atendido igual.
+                  </p>
+                ) : null}
               </DialogHeader>
               <DialogFooter>
                 <Button variant="outline" disabled={isWorking} onClick={() => setPendiente(null)}>

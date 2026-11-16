@@ -1,5 +1,5 @@
 // TODO: reemplazar por tipo generado desde OpenAPI
-export type EstadoTurno = "solicitado" | "confirmado" | "realizado" | "cancelado" | "no_asistio";
+export type EstadoTurno = "solicitado" | "confirmado" | "atendido" | "cancelado" | "no_asistio";
 
 // TODO: reemplazar por tipo generado desde OpenAPI
 export type CanalOrigen = "mostrador" | "telefono" | "whatsapp" | "portal";
@@ -51,7 +51,7 @@ export interface TurnoReprogramarPayload {
 
 // TODO: reemplazar por tipo generado desde OpenAPI
 export interface TurnoCambioEstadoPayload {
-  estado: "confirmado" | "realizado" | "no_asistio";
+  estado: "confirmado" | "atendido" | "no_asistio";
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI

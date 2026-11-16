@@ -443,28 +443,36 @@ def test_transicion_solicitado_a_confirmado_devuelve_200(client, session) -> Non
     assert response.json()["estado"] == "confirmado"
 
 
-def test_transicion_solicitado_a_realizado_devuelve_400(client, session) -> None:
+def test_transicion_solicitado_a_atendido_devuelve_400(client, session) -> None:
     s = _setup(client, session)
     turno = _turno_pasado(session, s, estado="solicitado")
-    response = client.post(f"/api/agenda/turnos/{turno.id}/estado", json={"estado": "realizado"})
+    response = client.post(f"/api/agenda/turnos/{turno.id}/estado", json={"estado": "atendido"})
     assert response.status_code == 400
     assert response.json()["error"] == "TRANSICION_INVALIDA"
 
 
-def test_marcar_realizado_turno_futuro_devuelve_400(client, session) -> None:
+def test_marcar_atendido_turno_futuro_devuelve_200(client, session) -> None:
     s = _setup(client, session)
     turno_id = _crear(client, s, inicio=_proximo(0, 9), estado_inicial="confirmado").json()["id"]
-    response = client.post(f"/api/agenda/turnos/{turno_id}/estado", json={"estado": "realizado"})
+    response = client.post(f"/api/agenda/turnos/{turno_id}/estado", json={"estado": "atendido"})
+    assert response.status_code == 200
+    assert response.json()["estado"] == "atendido"
+
+
+def test_marcar_no_asistio_turno_futuro_devuelve_400(client, session) -> None:
+    s = _setup(client, session)
+    turno_id = _crear(client, s, inicio=_proximo(0, 9), estado_inicial="confirmado").json()["id"]
+    response = client.post(f"/api/agenda/turnos/{turno_id}/estado", json={"estado": "no_asistio"})
     assert response.status_code == 400
     assert response.json()["error"] == "TURNO_NO_INICIADO"
 
 
-def test_marcar_realizado_turno_confirmado_ya_iniciado_devuelve_200(client, session) -> None:
+def test_marcar_atendido_turno_confirmado_ya_iniciado_devuelve_200(client, session) -> None:
     s = _setup(client, session)
     turno = _turno_pasado(session, s, estado="confirmado")
-    response = client.post(f"/api/agenda/turnos/{turno.id}/estado", json={"estado": "realizado"})
+    response = client.post(f"/api/agenda/turnos/{turno.id}/estado", json={"estado": "atendido"})
     assert response.status_code == 200
-    assert response.json()["estado"] == "realizado"
+    assert response.json()["estado"] == "atendido"
 
 
 def test_marcar_no_asistio_turno_confirmado_ya_iniciado_devuelve_200(client, session) -> None:
@@ -475,12 +483,19 @@ def test_marcar_no_asistio_turno_confirmado_ya_iniciado_devuelve_200(client, ses
     assert response.json()["estado"] == "no_asistio"
 
 
-def test_cancelar_turno_realizado_devuelve_400(client, session) -> None:
+def test_cancelar_turno_atendido_devuelve_400(client, session) -> None:
     s = _setup(client, session)
-    turno = _turno_pasado(session, s, estado="realizado")
+    turno = _turno_pasado(session, s, estado="atendido")
     response = client.post(f"/api/agenda/turnos/{turno.id}/cancelar")
     assert response.status_code == 400
     assert response.json()["error"] == "TRANSICION_INVALIDA"
+
+
+def test_estado_realizado_ya_no_existe_devuelve_422(client, session) -> None:
+    s = _setup(client, session)
+    turno = _turno_pasado(session, s, estado="confirmado")
+    response = client.post(f"/api/agenda/turnos/{turno.id}/estado", json={"estado": "realizado"})
+    assert response.status_code == 422
 
 
 def test_cancelar_turno_inexistente_devuelve_404(client, session) -> None:

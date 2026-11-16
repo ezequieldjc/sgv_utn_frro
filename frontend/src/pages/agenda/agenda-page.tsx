@@ -100,7 +100,7 @@ const VISTAS: { value: VistaAgenda; label: string }[] = [
   { value: "agenda", label: "Lista" },
 ];
 
-const LEYENDA: EstadoTurno[] = ["solicitado", "confirmado", "realizado", "no_asistio", "cancelado"];
+const LEYENDA: EstadoTurno[] = ["solicitado", "confirmado", "atendido", "no_asistio", "cancelado"];
 
 const selectClass =
   "flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm";
