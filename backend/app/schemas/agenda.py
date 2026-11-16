@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, model_validator
 
-EstadoTurno = Literal["solicitado", "confirmado", "realizado", "cancelado", "no_asistio"]
+EstadoTurno = Literal["solicitado", "confirmado", "atendido", "cancelado", "no_asistio"]
 CanalOrigen = Literal["mostrador", "telefono", "whatsapp", "portal"]
 # "portal" lo asigna el portal del propietario; desde la app interna no se elige.
 CanalOrigenInterno = Literal["mostrador", "telefono", "whatsapp"]
@@ -40,7 +40,7 @@ class TurnoReprogramar(BaseModel):
 
 
 class TurnoCambioEstado(BaseModel):
-    estado: Literal["confirmado", "realizado", "no_asistio"]
+    estado: Literal["confirmado", "atendido", "no_asistio"]
 
 
 class TurnoItem(BaseModel):

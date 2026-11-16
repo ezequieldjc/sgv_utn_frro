@@ -10,6 +10,7 @@ import {
   mensajeError,
   puedeArrastrar,
   rangoParaVista,
+  turnoNoComenzo,
   turnoToEvento,
 } from "@/lib/agenda";
 import type { FranjaDisponible, HorarioAtencion, TurnoItem } from "@/types/agenda";
@@ -64,28 +65,35 @@ describe("acciones disponibles por estado y permisos", () => {
     ]);
   });
 
-  it("test_turno_confirmado_futuro_no_permite_marcar_realizado", () => {
+  it("test_turno_confirmado_futuro_permite_atendido_pero_no_no_asistio", () => {
     expect(accionesDisponibles(turno({ estado: "confirmado" }), RECEPCION, AHORA)).toEqual([
+      "atendido",
       "reprogramar",
       "cancelar",
     ]);
   });
 
-  it("test_turno_confirmado_ya_iniciado_permite_realizado_y_no_asistio", () => {
+  it("test_turno_no_comenzo_segun_la_hora", () => {
+    expect(turnoNoComenzo(turno(), AHORA)).toBe(true);
+    const pasado = turno({ fecha_hora_inicio: new Date(2030, 0, 7, 9, 0).toISOString() });
+    expect(turnoNoComenzo(pasado, AHORA)).toBe(false);
+  });
+
+  it("test_turno_confirmado_ya_iniciado_permite_atendido_y_no_asistio", () => {
     const pasado = turno({
       estado: "confirmado",
       fecha_hora_inicio: new Date(2030, 0, 7, 9, 0).toISOString(),
     });
     expect(accionesDisponibles(pasado, RECEPCION, AHORA)).toEqual([
-      "realizado",
+      "atendido",
       "no_asistio",
       "reprogramar",
       "cancelar",
     ]);
   });
 
-  it("test_turno_realizado_o_cancelado_no_tiene_acciones", () => {
-    expect(accionesDisponibles(turno({ estado: "realizado" }), RECEPCION, AHORA)).toEqual([]);
+  it("test_turno_atendido_o_cancelado_no_tiene_acciones", () => {
+    expect(accionesDisponibles(turno({ estado: "atendido" }), RECEPCION, AHORA)).toEqual([]);
     expect(accionesDisponibles(turno({ estado: "cancelado" }), RECEPCION, AHORA)).toEqual([]);
   });
 
@@ -108,7 +116,7 @@ describe("acciones disponibles por estado y permisos", () => {
 
   it("test_arrastrar_requiere_editar_y_estado_modificable", () => {
     expect(puedeArrastrar(turno(), RECEPCION)).toBe(true);
-    expect(puedeArrastrar(turno({ estado: "realizado" }), RECEPCION)).toBe(false);
+    expect(puedeArrastrar(turno({ estado: "atendido" }), RECEPCION)).toBe(false);
     expect(puedeArrastrar(turno(), ["agenda:ver"])).toBe(false);
   });
 });

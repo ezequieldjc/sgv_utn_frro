@@ -8,7 +8,6 @@ from sqlmodel import select
 from app.models.catalogo.mascota_estado import MascotaEstado
 from app.models.catalogo.pelaje import Pelaje
 from app.models.clinica.especie import Especie
-from app.models.clinica.historial_peso import HistorialPeso
 from app.models.clinica.mascota import Mascota
 from app.models.clinica.raza import Raza
 from app.models.core.persona import Persona
@@ -130,12 +129,8 @@ def test_create_y_list_mascota_con_tutor_y_peso(client, session) -> None:
     mascota = session.get(Mascota, created["id"])
     assert mascota is not None
     assert mascota.persona_id == tutor.id
-    # ultimo_peso lo setea trigger en Postgres; en SQLite de tests puede quedar None
-    pesos = session.exec(
-        select(HistorialPeso).where(HistorialPeso.mascota_id == mascota.id)
-    ).all()
-    assert len(pesos) == 1
-    assert pesos[0].peso_kg == Decimal("12.50")
+    # El peso inicial del alta se guarda en mascota.ultimo_peso (ya no existe historial_peso)
+    assert mascota.ultimo_peso == Decimal("12.50")
 
     list_response = client.get("/api/mascotas")
     assert list_response.status_code == 200

@@ -170,8 +170,9 @@ antiguo campo libre `clinica.mascota.estado`.
 - **raza_id**: integer, Obligatorio. *FK a `clinica.raza.id`*.
 - **nombre**: varchar(50), Obligatorio.
 - **fecha_nacimiento**: date, Opcional.
-- **ultimo_peso**: decimal(5,2), Opcional. *Ya no se actualiza automáticamente (se eliminó
-  `historial_peso` y su trigger). Conserva el último valor que dejó el trigger.*
+- **ultimo_peso**: decimal(5,2), Opcional. *Lo guarda el alta de mascota con el peso inicial
+  (`peso_inicial_kg`). Ya no hay trigger (se eliminó `historial_peso`). Pendiente para la etapa de
+  consulta: que el backend lo actualice al firmar una consulta con `peso_kg`.*
 - **sexo**: char(1), Opcional. *Restricción CHECK: `'M'`, `'H'`, `'U'`.*
 - **microchip**: varchar(15), Opcional. *Unique.*
 - **alertas_medicas**: text, Opcional.
@@ -339,6 +340,9 @@ antiguo campo libre `clinica.mascota.estado`.
 > Transiciones válidas: `solicitado → confirmado`; `confirmado → atendido | no_asistio` (solo si
 > el turno ya comenzó; `atendido` lo pone la firma de la consulta); `solicitado | confirmado → cancelado`. Solo se reprograman turnos
 > `solicitado` o `confirmado` y conservan su estado.
+>
+> *Actualización 16/11/2026:* `atendido` se puede marcar desde `confirmado` aunque el turno todavía
+> no haya comenzado (la app muestra un aviso). `no_asistio` sigue exigiendo que haya comenzado.
 
 ---
 
