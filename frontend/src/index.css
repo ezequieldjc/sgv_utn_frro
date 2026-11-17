@@ -73,6 +73,21 @@ html.dark {
   color-scheme: dark;
 }
 
+/*
+ * Listas desplegables nativas (<select>): Windows/Chrome dibuja las opciones con el fondo
+ * del sistema y, con selects de fondo transparente, en modo oscuro quedaba texto claro
+ * sobre fondo blanco. Se fijan fondo y texto de las opciones con las variables del tema.
+ */
+select option,
+select optgroup {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+select option:disabled {
+  color: hsl(var(--muted-foreground));
+}
+
 @layer base {
   * {
     @apply border-border;

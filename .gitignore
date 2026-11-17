@@ -5,7 +5,9 @@ Desktop.ini
 
 # --- Editores / IDE ---
 .idea/
-.vscode/
+.vscode/*
+# Recomendaciones de extensiones compartidas por el equipo (settings.json y mcp.json quedan personales)
+!.vscode/extensions.json
 *.swp
 *.swo
 *~
@@ -63,3 +65,7 @@ cypress/screenshots/
 *.bak
 *.tmp
 .cache/
+
+# --- Secretos locales (no versionar) ---
+cookies.txt
+scripts/secretkey.txt

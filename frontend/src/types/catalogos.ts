@@ -5,7 +5,8 @@ export type CatalogoSlug =
   | "pelajes"
   | "temperamentos"
   | "estados-reproductivos"
-  | "mascota-estados";
+  | "mascota-estados"
+  | "rubros";
 
 // TODO: reemplazar por tipo generado desde OpenAPI
 export interface CatalogoNavItem {
@@ -88,5 +89,12 @@ export const CATALOGO_NAV: CatalogoNavItem[] = [
     singularLabel: "Estado de mascota",
     requiereEspecie: false,
     apiPath: "/api/catalogos/mascota-estados",
+  },
+  {
+    slug: "rubros",
+    label: "Rubros de productos",
+    singularLabel: "Rubro",
+    requiereEspecie: false,
+    apiPath: "/api/catalogos/rubros",
   },
 ];

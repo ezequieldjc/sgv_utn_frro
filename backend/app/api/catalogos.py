@@ -10,6 +10,7 @@ from app.models.catalogo.estado_reproductivo import EstadoReproductivo
 from app.models.catalogo.habitat import Habitat
 from app.models.catalogo.mascota_estado import MascotaEstado
 from app.models.catalogo.pelaje import Pelaje
+from app.models.catalogo.rubro import Rubro
 from app.models.catalogo.tamanio import Tamanio
 from app.models.catalogo.temperamento import Temperamento
 from app.schemas.catalogos import (
@@ -158,3 +159,4 @@ _register_con_especie("pelajes", Pelaje)
 _register_con_especie("temperamentos", Temperamento)
 _register_con_especie("estados-reproductivos", EstadoReproductivo)
 _register_global("mascota-estados", MascotaEstado)
+_register_global("rubros", Rubro)

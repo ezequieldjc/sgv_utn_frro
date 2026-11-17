@@ -17,6 +17,7 @@ INSERT INTO auth.permiso (nombre, descripcion) VALUES
 ('agenda:crear_turno', 'Permite agendar un nuevo turno'),
 ('agenda:editar_turno', 'Permite modificar datos de un turno agendado'),
 ('agenda:cancelar_turno', 'Permite cancelar un turno existente'),
+('agenda:atender', 'Permite ser asignado como veterinario en la agenda de turnos'),
 
 -- 4. Mascotas
 ('mascotas:ver_listado', 'Permite ver el listado general de mascotas'),
@@ -36,6 +37,10 @@ INSERT INTO auth.permiso (nombre, descripcion) VALUES
 ('stock:registrar_movimiento', 'Permite ingresar, egresar o ajustar stock de insumos'),
 ('stock:ver_movimientos', 'Permite ver el historial de movimientos de stock'),
 ('stock:ver_analisis', 'Permite consultar reportes y análisis del estado de stock'),
+
+-- 6. Ventas de mostrador
+('ventas:registrar', 'Permite registrar ventas de mostrador'),
+('ventas:ver', 'Permite consultar el historial de ventas'),
 
 -- 10. Administración (Admin)
 ('usuarios:ver', 'Permite ver el listado de usuarios del sistema'),

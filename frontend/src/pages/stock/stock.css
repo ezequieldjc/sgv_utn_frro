@@ -1,0 +1,21 @@
+/*
+ * Colores de las dos series del análisis (pet shop / consultorio).
+ * Paleta validada con el validador de dataviz (contraste, separación para daltonismo y
+ * visión normal) contra la superficie clara y la oscura: todas las verificaciones pasan.
+ */
+:root {
+  --serie-petshop: #2a78d6;
+  --serie-consultorio: #eb6834;
+}
+
+.dark {
+  --serie-petshop: #3987e5;
+  --serie-consultorio: #d95926;
+}
+
+.serie-dot {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 2px;
+}

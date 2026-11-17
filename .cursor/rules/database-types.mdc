@@ -8,16 +8,20 @@ alwaysApply: false
   Schemas actuales:
   - `core` (persona, domicilio)
   - `catalogo` (estado_reproductivo, habitat, tamanio, pelaje, temperamento,
-    mascota_estado; todos con `activo` para baja lógica)
-  - `clinica` (especie, raza, mascota, historial_peso, patologia, patologia_predisposicion)
+    mascota_estado, rubro; todos con `activo` para baja lógica)
+  - `clinica` (especie, raza, mascota, patologia, sintoma, consulta, dictado, consulta_sintoma,
+    consulta_diagnostico)
   - `auth` (usuario, rol, permiso, rol_permiso, historial_contrasena, login)
   - `sys` (config)
+  - `agenda` (tipo_turno, turno)
+  - `stock` (producto, movimiento_stock)
+  - `comercial` (venta, detalle_venta)
   Cada modelo SQLModel debe declarar su schema explícitamente:
   `__table_args__ = {"schema": "clinica"}` (o el schema que corresponda). Nunca asumas
   schema `public` por default.
   Nota: `core.persona` incluye `fecha_nacimiento`, `domicilio_id` (FK a `core.domicilio`) y
   `es_cliente`; `dni`, `sexo`, `fecha_nacimiento`, `mail` y `domicilio_id` admiten NULL.
-  `dni` no es unique. El diccionario canónico está en `docs/modelo_datos_v1.md`.
+  `dni` no es unique. El diccionario canónico está en `docs/modelo_datos_v2.md`.
 
 - Single Source of Truth: PostgreSQL (el DBA) es la fuente de la verdad estructural. Los
   modelos SQLModel en `models/<schema>/` (ej. `models/clinica/mascota.py`) deben reflejar
@@ -38,10 +42,10 @@ alwaysApply: false
 - No Inventions: Nunca inventes una propiedad que no esté en PostgreSQL ni en el
   Diccionario de Datos. Si para una funcionalidad hace falta un campo o tabla nueva,
   pediselo al DBA (no empieces por SQLModel ni por Alembic). Cuando el DBA confirme que
-  ya existe en Postgres, actualizá el modelo SQLModel, `docs/modelo_datos_v1.md`, schemas
+  ya existe en Postgres, actualizá el modelo SQLModel, `docs/modelo_datos_v2.md`, schemas
   Pydantic y tipos TS. Ejemplos de campos reales para no reinventar: usá
   `mascota.ultimo_peso` (no `mascota.peso_actual`), `mascota.mascota_estado_id` (no un
-  campo libre `mascota.estado`), `historial_peso.peso_kg` (no `peso`), `persona.mail` (no
+  campo libre `mascota.estado`), `consulta.peso_kg` (no `peso`), `persona.mail` (no
   `usuario.email`, el mail vive en `persona`, no en `usuario`), `usuario.habilitado` (no
   `usuario.activo`).
 

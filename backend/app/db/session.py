@@ -16,6 +16,9 @@ SCHEMA_TRANSLATION_MAP = {
     "sys": None,
     "catalogo": None,
     "clinica": None,
+    "agenda": None,
+    "stock": None,
+    "comercial": None,
 }
 
 

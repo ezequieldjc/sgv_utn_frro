@@ -49,4 +49,3 @@ class Mascota(SQLModel, table=True):
     )
     temperamento: Mapped[Optional["Temperamento"]] = Relationship(back_populates="mascotas")
     mascota_estado: Mapped["MascotaEstado"] = Relationship(back_populates="mascotas")
-    historial_pesos: Mapped[list["HistorialPeso"]] = Relationship(back_populates="mascota")

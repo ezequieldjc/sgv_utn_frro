@@ -20,6 +20,16 @@ import MascotasPage from "./pages/mascotas/mascotas-page";
 import MascotaFormPage from "./pages/mascotas/mascota-form-page";
 import MascotaEditPage from "./pages/mascotas/mascota-edit-page";
 import ConsultasHistorialPage from "./pages/consultas/consultas-historial-page";
+import ConsultaPage from "./pages/consultas/consulta-page";
+import NuevaConsultaPage from "./pages/consultas/nueva-consulta-page";
+import AgendaPage from "./pages/agenda/agenda-page";
+import TurnoFormPage from "./pages/agenda/turno-form-page";
+import InventarioPage from "./pages/stock/inventario-page";
+import ProductoFormPage from "./pages/stock/producto-form-page";
+import MovimientosPage from "./pages/stock/movimientos-page";
+import AnalisisStockPage from "./pages/stock/analisis-page";
+import NuevaVentaPage from "./pages/ventas/nueva-venta-page";
+import VentasPage from "./pages/ventas/ventas-page";
 
 export default function App() {
   return (
@@ -51,6 +61,18 @@ export default function App() {
             <Route path="mascotas/nuevo" element={<MascotaFormPage />} />
             <Route path="mascotas/:id/editar" element={<MascotaEditPage />} />
             <Route path="consultas/historial" element={<ConsultasHistorialPage />} />
+            <Route path="consultas/historia-clinica" element={<ConsultasHistorialPage />} />
+            <Route path="consultas/nueva" element={<NuevaConsultaPage />} />
+            <Route path="consultas/:id" element={<ConsultaPage />} />
+            <Route path="agenda" element={<AgendaPage />} />
+            <Route path="agenda/nuevo-turno" element={<TurnoFormPage />} />
+            <Route path="stock" element={<InventarioPage />} />
+            <Route path="stock/alta" element={<ProductoFormPage />} />
+            <Route path="stock/:id/editar" element={<ProductoFormPage />} />
+            <Route path="stock/movimientos" element={<MovimientosPage />} />
+            <Route path="stock/analisis" element={<AnalisisStockPage />} />
+            <Route path="ventas" element={<VentasPage />} />
+            <Route path="ventas/nueva" element={<NuevaVentaPage />} />
           </Route>
         </Routes>
       </AuthProvider>

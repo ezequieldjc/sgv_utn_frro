@@ -8,6 +8,7 @@ from app.core.errors import APIError
 from app.models.catalogo.estado_reproductivo import EstadoReproductivo
 from app.models.catalogo.habitat import Habitat
 from app.models.catalogo.mascota_estado import MascotaEstado
+from app.models.catalogo.rubro import Rubro
 from app.models.catalogo.pelaje import Pelaje
 from app.models.catalogo.tamanio import Tamanio
 from app.models.catalogo.temperamento import Temperamento
@@ -192,4 +193,5 @@ CATALOGOS_CON_ESPECIE: dict[str, type[SQLModel]] = {
 
 CATALOGO_GLOBAL: dict[str, type[SQLModel]] = {
     "mascota-estados": MascotaEstado,
+    "rubros": Rubro,
 }

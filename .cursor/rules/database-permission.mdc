@@ -17,7 +17,7 @@ Reglas estrictas:
 - Prohibido `SQLModel.metadata.create_all()` / `Base.metadata.create_all()`. Nunca ejecutes
   migraciones estructurales desde FastAPI, seeds de la app ni scripts de runtime.
 - SQLModel solo mapea lo que el DBA ya creó. Alembic, si se usa, es historial de código
-  (`models/`, `docs/modelo_datos_v1.md`, etc.). Nunca corras `alembic upgrade` contra la
+  (`models/`, `docs/modelo_datos_v2.md`, etc.). Nunca corras `alembic upgrade` contra la
   DB de la aplicación. El DBA aplica el DDL a mano.
 
 Si para una funcionalidad falta una tabla o columna: pedila al DBA (nombre, tipo,
