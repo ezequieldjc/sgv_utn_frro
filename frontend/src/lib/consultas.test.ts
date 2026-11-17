@@ -5,6 +5,12 @@ import {
   DICTADOS_DEMO,
   armarDiagnosticosFirma,
   avisoEvidencia,
+  diaLabel,
+  diagnosticoAnterior,
+  diasHastaControl,
+  evolucionSignos,
+  fechaControlSugerida,
+  linkProgramarControl,
   cambiosFicha,
   dictadoDemoPara,
   edadLabel,
@@ -14,7 +20,12 @@ import {
   validarFicha,
   type FichaForm,
 } from "@/lib/consultas";
-import type { SugerenciaItem } from "@/types/consultas";
+import type {
+  ConsultaAnteriorResumen,
+  ConsultaDetalle,
+  ConsultaSignoItem,
+  SugerenciaItem,
+} from "@/types/consultas";
 
 const FICHA: FichaForm = {
   motivo: "Ronquidos",
@@ -165,5 +176,113 @@ describe("evidencia del motor", () => {
     const aviso = avisoEvidencia(sugerencias, false, "90.12");
     expect(aviso).toContain("Evidencia insuficiente");
     expect(aviso).toContain("90%");
+  });
+});
+
+function signo(codigo: string | null, presente: boolean, nombre = codigo ?? "Sin código"): ConsultaSignoItem {
+  return {
+    id: Math.floor(Math.random() * 1e6),
+    sintoma_id: codigo ? 1 : null,
+    codigo,
+    nombre,
+    sistema: null,
+    texto_original: nombre,
+    presente,
+    origen: "dictado",
+    confirmado: true,
+    dictado_id: null,
+  };
+}
+
+// Mediodía en Argentina (15 UTC): el mismo día en cualquier huso horario del runner.
+const CONSULTA_COCO = {
+  fecha_hora: "2026-11-16T15:00:00Z",
+  tratamiento: "Indico reposo, evitar el calor y control en diez días.",
+  observaciones: null,
+};
+
+describe("controles", () => {
+  it("test_dias_hasta_control_lee_numeros_en_letras_y_unidades", () => {
+    expect(diasHastaControl("Indico reposo y control en diez días.")).toBe(10);
+    expect(diasHastaControl("Radiografía y control en dos semanas")).toBe(14);
+    expect(diasHastaControl("Dieta blanda y control en 48 horas")).toBe(2);
+    expect(diasHastaControl("Control en una semana")).toBe(7);
+    expect(diasHastaControl("control a los 15 dias")).toBe(15);
+    expect(diasHastaControl("Indico reposo.")).toBeNull();
+    expect(diasHastaControl(null)).toBeNull();
+  });
+
+  it("test_fecha_sugerida_suma_los_dias_a_la_consulta", () => {
+    expect(fechaControlSugerida(CONSULTA_COCO, new Date(2026, 10, 17))).toBe("2026-11-26");
+  });
+
+  it("test_dia_label_muestra_dia_de_semana_y_fecha_corta", () => {
+    expect(diaLabel("2026-11-26")).toBe("jueves 26/11");
+  });
+
+  it("test_fecha_sugerida_nunca_es_pasada_ni_domingo", () => {
+    const vieja = { ...CONSULTA_COCO, fecha_hora: "2026-10-01T15:00:00Z" };
+    expect(fechaControlSugerida(vieja, new Date(2026, 10, 17))).toBe("2026-11-17");
+    // 16/11 + 6 días = domingo 22/11: pasa al lunes.
+    const domingo = { ...CONSULTA_COCO, tratamiento: "control en seis días" };
+    expect(fechaControlSugerida(domingo, new Date(2026, 10, 17))).toBe("2026-11-23");
+    expect(fechaControlSugerida({ ...CONSULTA_COCO, tratamiento: null }, new Date())).toBeNull();
+  });
+
+  it("test_evolucion_de_signos_entre_la_anterior_y_el_control", () => {
+    const anteriores = [
+      signo("estertor_ronquido", true, "Ronquido"),
+      signo("tos", true, "Tos"),
+      signo("sincope", false, "Síncope"),
+      signo("disnea", true, "Disnea"),
+      signo(null, true),
+    ];
+    const actuales = [
+      signo("estertor_ronquido", true, "Ronquido"),
+      signo("tos", false, "Tos"),
+      signo("vomito", true, "Vómitos"),
+    ];
+
+    expect(evolucionSignos(anteriores, actuales).map((f) => [f.codigo, f.cambio])).toEqual([
+      ["estertor_ronquido", "persiste"],
+      ["tos", "resuelto"],
+      ["disnea", "sin_registrar"],
+      ["vomito", "nuevo"],
+    ]);
+  });
+
+  it("test_diagnostico_anterior_toma_el_principal", () => {
+    const anterior = {
+      diagnosticos: [
+        { tipo_diagnostico: "secundario", patologia_id: 9, descripcion_libre: null },
+        { tipo_diagnostico: "principal", patologia_id: 3, descripcion_libre: null },
+      ],
+    } as unknown as ConsultaAnteriorResumen;
+    expect(diagnosticoAnterior(anterior)).toEqual({ patologia_id: 3, descripcion: "" });
+
+    const libre = {
+      diagnosticos: [{ tipo_diagnostico: "principal", patologia_id: null, descripcion_libre: "Golpe" }],
+    } as unknown as ConsultaAnteriorResumen;
+    expect(diagnosticoAnterior(libre)).toEqual({ patologia_id: null, descripcion: "Golpe" });
+    expect(diagnosticoAnterior(null)).toBeNull();
+  });
+
+  it("test_link_programar_control_precarga_el_alta_de_turno", () => {
+    const detalle = {
+      ...CONSULTA_COCO,
+      veterinario_id: 7,
+      mascota: { id: 6, nombre: "Coco", especie_nombre: "Canina", tutor_nombre: "Martín Rossi" },
+    } as unknown as ConsultaDetalle;
+
+    const url = new URL(linkProgramarControl(detalle, new Date(2026, 10, 17)), "http://x");
+
+    expect(url.pathname).toBe("/agenda/nuevo-turno");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      mascota_id: "6",
+      mascota: "Coco (Canina) · Martín Rossi",
+      veterinario_id: "7",
+      tipo: "Control",
+      fecha: "2026-11-26",
+    });
   });
 });

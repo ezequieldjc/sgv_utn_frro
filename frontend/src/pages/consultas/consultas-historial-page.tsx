@@ -157,7 +157,14 @@ export default function ConsultasHistorialPage() {
                 >
                   <TableCell className="whitespace-nowrap">{fechaHoraLabel(item.fecha_hora)}</TableCell>
                   {mascotaId ? null : <TableCell>{item.mascota_nombre}</TableCell>}
-                  <TableCell className="max-w-xs truncate">{item.motivo ?? "—"}</TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {item.consulta_padre_id !== null ? (
+                      <span className="mr-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                        Control
+                      </span>
+                    ) : null}
+                    {item.motivo ?? "—"}
+                  </TableCell>
                   <TableCell>{item.diagnostico_principal ?? "—"}</TableCell>
                   <TableCell>{item.veterinario_nombre}</TableCell>
                   <TableCell>

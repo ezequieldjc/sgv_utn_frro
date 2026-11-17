@@ -59,6 +59,32 @@ export interface DictadoItem {
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
+/** La consulta de la que esta es control, con lo necesario para comparar la evolución. */
+export interface ConsultaAnteriorResumen {
+  id: number;
+  fecha_hora: string;
+  fecha_firma: string | null;
+  veterinario_nombre: string;
+  motivo: string | null;
+  peso_kg: string | null;
+  temperatura_c: string | null;
+  tratamiento: string | null;
+  observaciones: string | null;
+  diagnosticos: DiagnosticoItem[];
+  signos: ConsultaSignoItem[];
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+/** Una consulta que se cargó como control de esta. */
+export interface ControlResumen {
+  id: number;
+  fecha_hora: string;
+  estado: EstadoConsulta;
+  motivo: string | null;
+  diagnostico_principal: string | null;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
 export interface ConsultaDetalle {
   id: number;
   estado: EstadoConsulta;
@@ -78,6 +104,8 @@ export interface ConsultaDetalle {
   signos: ConsultaSignoItem[];
   diagnosticos: DiagnosticoItem[];
   dictados: DictadoItem[];
+  consulta_padre: ConsultaAnteriorResumen | null;
+  controles: ControlResumen[];
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
@@ -132,6 +160,7 @@ export interface ConsultaListItem {
   motivo: string | null;
   diagnostico_principal: string | null;
   veterinario_nombre: string;
+  consulta_padre_id: number | null;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
