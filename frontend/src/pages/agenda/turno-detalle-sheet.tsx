@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   CalendarClock,
   CheckCircle2,
@@ -27,6 +28,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { apiFetch } from "@/lib/api";
+import { ESTADOS_TURNO_ATENDIBLES, hasPermission } from "@/lib/consultas";
 import {
   CANAL_LABEL,
   ESTADO_BADGE,
@@ -38,6 +40,7 @@ import {
   type AccionTurno,
 } from "@/lib/agenda";
 import type { TurnoItem } from "@/types/agenda";
+import type { ConsultaDetalle } from "@/types/consultas";
 
 type AccionConConfirmacion = Exclude<AccionTurno, "confirmar" | "reprogramar">;
 
@@ -68,6 +71,7 @@ interface Props {
 }
 
 export function TurnoDetalleSheet({ turno, permisos, onClose, onChanged, onReprogramar }: Props) {
+  const navigate = useNavigate();
   const [pendiente, setPendiente] = React.useState<AccionConConfirmacion | null>(null);
   const [isWorking, setIsWorking] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -83,6 +87,25 @@ export function TurnoDetalleSheet({ turno, permisos, onClose, onChanged, onRepro
   const actual = turno;
   const acciones = accionesDisponibles(actual, permisos);
   const inicio = new Date(actual.fecha_hora_inicio);
+  const puedeIniciarConsulta =
+    hasPermission(permisos, "consultas:crear") && ESTADOS_TURNO_ATENDIBLES.includes(actual.estado);
+
+  async function iniciarConsulta() {
+    setIsWorking(true);
+    setError(null);
+    try {
+      // Si el turno ya tiene consulta, el backend devuelve esa y se retoma.
+      const consulta = await apiFetch<ConsultaDetalle>("/api/consultas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mascota_id: actual.mascota_id, turno_id: actual.id }),
+      });
+      navigate(`/consultas/${consulta.id}`);
+    } catch (err) {
+      setError(mensajeError(err, "No se pudo iniciar la consulta."));
+      setIsWorking(false);
+    }
+  }
 
   async function ejecutar(accion: AccionTurno) {
     setIsWorking(true);
@@ -166,8 +189,14 @@ export function TurnoDetalleSheet({ turno, permisos, onClose, onChanged, onRepro
             </div>
           ) : null}
 
-          {acciones.length > 0 ? (
+          {acciones.length > 0 || puedeIniciarConsulta ? (
             <div className="mt-auto grid gap-2">
+              {puedeIniciarConsulta ? (
+                <Button disabled={isWorking} onClick={() => void iniciarConsulta()}>
+                  {isWorking ? <Loader2 className="animate-spin" /> : <Stethoscope />}
+                  Iniciar consulta
+                </Button>
+              ) : null}
               {acciones.includes("confirmar") ? (
                 <Button disabled={isWorking} onClick={() => void ejecutar("confirmar")}>
                   {isWorking ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
