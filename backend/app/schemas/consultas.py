@@ -51,11 +51,16 @@ class FichaDictado(BaseModel):
 class ConsultaCreate(BaseModel):
     mascota_id: int
     turno_id: int | None = None
+    # Para un control: la consulta anterior (firmada y de la misma mascota). Si no se indica y la
+    # consulta se abre desde un turno de tipo Control, se vincula sola a la última firmada.
+    consulta_padre_id: int | None = None
 
 
 class ConsultaUpdate(BaseModel):
     """Solo se modifican los campos enviados; enviar null borra el valor."""
 
+    # null desvincula la consulta anterior.
+    consulta_padre_id: int | None = None
     motivo: str | None = None
     anamnesis: str | None = None
     examen_fisico: str | None = None
@@ -182,6 +187,32 @@ class DictadoItem(BaseModel):
     fecha_creacion: datetime
 
 
+class ConsultaAnteriorResumen(BaseModel):
+    """La consulta de la que esta es control, con lo necesario para comparar la evolución."""
+
+    id: int
+    fecha_hora: datetime
+    fecha_firma: datetime | None = None
+    veterinario_nombre: str
+    motivo: str | None = None
+    peso_kg: Decimal | None = None
+    temperatura_c: Decimal | None = None
+    tratamiento: str | None = None
+    observaciones: str | None = None
+    diagnosticos: list[DiagnosticoItem]
+    signos: list[ConsultaSignoItem]
+
+
+class ControlResumen(BaseModel):
+    """Una consulta que se cargó como control de esta."""
+
+    id: int
+    fecha_hora: datetime
+    estado: EstadoConsulta
+    motivo: str | None = None
+    diagnostico_principal: str | None = None
+
+
 class ConsultaDetalle(BaseModel):
     id: int
     estado: EstadoConsulta
@@ -201,6 +232,9 @@ class ConsultaDetalle(BaseModel):
     signos: list[ConsultaSignoItem]
     diagnosticos: list[DiagnosticoItem]
     dictados: list[DictadoItem]
+    # Si es un control: la consulta anterior. Y si otras consultas son control de esta, cuáles.
+    consulta_padre: ConsultaAnteriorResumen | None = None
+    controles: list[ControlResumen] = Field(default_factory=list)
 
 
 class SugerenciaItem(BaseModel):
@@ -234,6 +268,7 @@ class ConsultaListItem(BaseModel):
     motivo: str | None = None
     diagnostico_principal: str | None = None
     veterinario_nombre: str
+    consulta_padre_id: int | None = None
 
 
 class ConsultaListResponse(BaseModel):

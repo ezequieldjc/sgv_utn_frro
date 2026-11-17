@@ -28,27 +28,36 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
   - Los 10 casos de `docs/casos_prueba_dictado.md` corren como tests.
   - La sesión se renueva sola con el refresh token (`POST /api/auth/refresh`). Antes vencía a
     los 15 minutos, aunque se estuviera usando.
+  - Mergeada a `staging` (PR #30).
+- **Rama `feature/control-consulta`:** control desde la consulta anterior.
+  - Una consulta abierta desde un turno de tipo Control se vincula sola a la última firmada.
+  - La consulta muestra la evolución de los signos y permite reusar el diagnóstico anterior.
+  - "Programar control" agenda el turno con la fecha que surge del dictado.
+  - Para la demo quedó agendado el control de Coco: jueves 26/11 a las 9:00, con Valeria,
+    confirmado.
 
 ## Qué falta, en orden
 
-1. **Volver a alinear `staging` con `main`**: abrir un PR de `main` a `staging` y mergearlo.
-   Después, mergear `feature/prototipo-ajustes` a `staging`. Ese PR tiene que revisarlo otro
-   integrante y pasar el CI.
-2. **Turnos para el día de la presentación**: uno confirmado para cada caso del guion, el mismo
+1. **Mergear `feature/control-consulta` a `staging`**, con revisión de otro integrante y el CI en
+   verde.
+2. **Decidir si VETERINARIO puede agendar turnos** (`agenda:crear_turno`, desde Admin → Roles).
+   Sin ese permiso, el veterinario no ve "Programar control" y tiene que pedírselo a recepción.
+3. **Turnos para el día de la presentación**: uno confirmado para cada caso del guion, el mismo
    día. La consulta toma la fecha y hora en que se inicia.
-3. **Ensayar la demo completa contra Neon** al menos una vez, con el usuario veterinario. El
+4. **Ensayar la demo completa contra Neon** al menos una vez, con el usuario veterinario. El
    turno de Luna del 17/11 quedó libre para eso.
-4. **Ajustes de contenido (opcional):** revisar las frecuencias de `BASE_CONOCIMIENTO`
+5. **Ajustes de contenido (opcional):** revisar las frecuencias de `BASE_CONOCIMIENTO`
    (`backend/app/services/motor_simulado.py`) y los textos de `DICTADOS_DEMO`
    (`frontend/src/lib/consultas.ts`). Si se cambia un código, cambiarlo también en el script 006.
 
-## Guion de la demo (3 casos)
+## Guion de la demo (4 casos)
 
 | Caso | Paciente | Qué se dicta | Qué tiene que pasar |
 |------|----------|--------------|---------------------|
 | 1 | Coco, Bulldog Francés (ya existe, con una consulta firmada del 16/11) | Ronquidos, se cansa al caminar, regurgita, tos, **nunca se desmayó**, 13,2 kg, 38,9 °C | 7 signos, con el síncope **negado**; primera sugerencia: síndrome braquicefálico (predisposición de raza ×4). Se acepta como principal y se firma. |
 | 2 | Luna, Cocker Spaniel Inglés (ya existe) | Sacude la cabeza, se rasca las orejas, secreción marrón, **no tiene fiebre** | Primera sugerencia: otitis externa. Mostrar «¿Por qué?» y una corrección a mano de un signo. |
 | 3 | Thor, Labrador Retriever (ya existe) | Renguea, le cuesta levantarse, dolor de cadera | Primera sugerencia: displasia de cadera. Firmar con un diagnóstico manual secundario. |
+| 4 | Coco, control (turno del 26/11 o uno nuevo con "Programar control") | "Viene a control. Sigue roncando de noche pero ya no se cansa al caminar y no tose." | La consulta se vincula sola a la anterior. La evolución marca ronquido **Persiste** y tos e intolerancia al ejercicio **Resuelto**. El motor avisa que la evidencia no alcanza (es un control) y se firma con "Usar el diagnóstico anterior". |
 
 Al final, abrir la historia clínica de una de las mascotas y mostrar la consulta firmada en solo
 lectura, con sus signos, sus diagnósticos y el dictado original.

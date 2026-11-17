@@ -4,6 +4,7 @@ import {
   INITIAL_TURNO_FORM,
   buildTurnoPayload,
   formDesdeQuery,
+  tipoDesdeQuery,
   validateTurnoForm,
 } from "@/pages/agenda/turno-form-page";
 
@@ -56,5 +57,26 @@ describe("formulario de nuevo turno", () => {
 
   it("test_prefill_ignora_fecha_con_formato_invalido", () => {
     expect(formDesdeQuery(new URLSearchParams("fecha=07/01/2030")).fecha).toBe("");
+  });
+
+  it("test_prefill_de_un_control_trae_la_mascota_con_su_etiqueta", () => {
+    const form = formDesdeQuery(
+      new URLSearchParams({ mascota_id: "6", mascota: "Coco (Canina) · Martín Rossi", tipo: "Control" }),
+    );
+    expect(form.mascota_id).toBe("6");
+    expect(form.mascota_label).toBe("Coco (Canina) · Martín Rossi");
+    expect(formDesdeQuery(new URLSearchParams("mascota_id=abc")).mascota_id).toBe("");
+  });
+
+  it("test_tipo_desde_query_compara_sin_mayusculas_ni_tildes", () => {
+    const tipos = [
+      { id: 1, nombre: "Consulta", duracion_min: 30 },
+      { id: 2, nombre: "Control", duracion_min: 30 },
+      { id: 4, nombre: "Cirugía", duracion_min: 90 },
+    ];
+    expect(tipoDesdeQuery(tipos, "Control")).toBe("2");
+    expect(tipoDesdeQuery(tipos, "cirugia")).toBe("4");
+    expect(tipoDesdeQuery(tipos, "Baño")).toBe("");
+    expect(tipoDesdeQuery(tipos, null)).toBe("");
   });
 });

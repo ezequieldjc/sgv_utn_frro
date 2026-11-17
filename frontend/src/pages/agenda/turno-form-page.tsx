@@ -88,14 +88,35 @@ export function buildTurnoPayload(form: TurnoFormState): TurnoCreatePayload {
   };
 }
 
-/** Prefill desde la URL (clic en un hueco del calendario): ?veterinario_id=&fecha=&hora= */
+/**
+ * Prefill desde la URL. El calendario manda ?veterinario_id=&fecha=&hora= al hacer clic en un
+ * hueco; "Programar control" de una consulta firmada suma ?mascota_id=&mascota=&tipo=Control.
+ */
 export function formDesdeQuery(params: URLSearchParams): TurnoFormState {
   const fecha = params.get("fecha") ?? "";
+  const mascotaId = params.get("mascota_id") ?? "";
+  const mascotaValida = /^\d+$/.test(mascotaId);
   return {
     ...INITIAL_TURNO_FORM,
+    mascota_id: mascotaValida ? mascotaId : "",
+    mascota_label: mascotaValida ? (params.get("mascota") ?? `Mascota #${mascotaId}`) : "",
     veterinario_id: params.get("veterinario_id") ?? "",
     fecha: /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : "",
   };
+}
+
+function sinTildes(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+}
+
+/** Id del tipo de turno cuyo nombre coincide con ?tipo= (sin mayúsculas ni tildes), o "". */
+export function tipoDesdeQuery(tipos: TipoTurnoOpcion[], nombre: string | null): string {
+  if (!nombre) {
+    return "";
+  }
+  const buscado = sinTildes(nombre);
+  const tipo = tipos.find((t) => sinTildes(t.nombre) === buscado);
+  return tipo ? String(tipo.id) : "";
 }
 
 const selectClass =
@@ -156,11 +177,15 @@ export default function TurnoFormPage() {
         ]);
         setTipos(tiposRows);
         setVeterinarios(vetsRows);
+        const tipoPedido = tipoDesdeQuery(tiposRows, searchParams.get("tipo"));
+        if (tipoPedido) {
+          setForm((prev) => (prev.tipo_turno_id ? prev : { ...prev, tipo_turno_id: tipoPedido }));
+        }
       } catch {
         setSubmitError("No se pudieron cargar los tipos de turno o los profesionales.");
       }
     })();
-  }, [canCreate]);
+  }, [canCreate, searchParams]);
 
   // Búsqueda de mascota (debounce 400 ms, mismo patrón que el buscador de tutores).
   React.useEffect(() => {
