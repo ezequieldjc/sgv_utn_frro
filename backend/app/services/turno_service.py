@@ -37,7 +37,7 @@ from app.schemas.agenda import (
     VeterinarioOpcion,
 )
 from app.services.config_service import get_config_value
-from app.services.mascota_service import MASCOTA_ESTADO_ACTIVA_ID
+from app.services.mascota_service import ids_estados_atendibles
 
 PERMISO_ATENDER = "agenda:atender"
 
@@ -242,8 +242,11 @@ def _validar_mascota(session: Session, mascota_id: int) -> None:
     mascota = session.get(Mascota, mascota_id)
     if mascota is None:
         raise APIError(404, "MASCOTA_NO_ENCONTRADA", "No se encontró la mascota indicada")
-    if mascota.mascota_estado_id != MASCOTA_ESTADO_ACTIVA_ID:
-        raise APIError(400, "MASCOTA_NO_ACTIVA", "La mascota indicada no está activa")
+    # ACTIVA o en un estado del tutor eventual (en tránsito, extraviada): también se atienden.
+    if mascota.mascota_estado_id not in ids_estados_atendibles(session):
+        raise APIError(
+            400, "MASCOTA_NO_ACTIVA", "La mascota no puede recibir turnos en su estado actual"
+        )
 
 
 def es_veterinario_asignable(session: Session, usuario_id: int) -> bool:
@@ -496,7 +499,7 @@ def buscar_mascotas(session: Session, q: str, *, limit: int = 20) -> list[Mascot
         .join(Especie, Especie.id == Raza.especie_id)
         .join(Persona, Persona.id == Mascota.persona_id)
         .where(
-            Mascota.mascota_estado_id == MASCOTA_ESTADO_ACTIVA_ID,
+            col(Mascota.mascota_estado_id).in_(ids_estados_atendibles(session)),
             or_(
                 col(Mascota.nombre).ilike(like),
                 col(Persona.nombre).ilike(like),

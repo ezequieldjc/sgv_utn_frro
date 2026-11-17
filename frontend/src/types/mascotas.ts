@@ -34,6 +34,8 @@ export interface MascotaCreatePayload {
   peso_inicial_kg: number | null;
   microchip: string | null;
   alertas_medicas: string | null;
+  /** Null: ACTIVA, o con tutor eventual el primero de los estados permitidos. */
+  mascota_estado_id: number | null;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
@@ -43,7 +45,20 @@ export interface MascotaCreateResponse {
   persona_id: number;
   raza_id: number;
   mascota_estado_id: number;
+  mascota_estado_nombre: string;
   peso_registrado: boolean;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+/**
+ * Regla del tutor eventual. `estados_permitidos` vacío: el parámetro no está cargado y no hay
+ * restricción.
+ */
+export interface TutorEventualConfig {
+  persona_id: number | null;
+  estados_permitidos: CatalogoOpcion[];
+  estado_por_defecto_id: number | null;
+  estado_activa_id: number;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI

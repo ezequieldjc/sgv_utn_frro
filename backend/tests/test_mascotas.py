@@ -187,6 +187,8 @@ def test_create_mascota_tutor_eventual(client, session) -> None:
     body = response.json()
     assert body["persona_id"] == tutor_eventual.id
     assert body["peso_registrado"] is False
+    # Sin el parámetro ESTADOS_MASCOTA_TUTOR_EVENTUAL no hay regla: queda ACTIVA, como antes.
+    assert body["mascota_estado_id"] == MASCOTA_ESTADO_ACTIVA_ID
 
 
 def test_create_mascota_raza_de_otra_especie_devuelve_400(client, session) -> None:
@@ -725,3 +727,229 @@ def test_list_catalogo_pelajes_filtra_por_especie(client, session) -> None:
     assert len(body) == 1
     assert body[0]["id"] == pelaje_ok.id
     assert body[0]["nombre"] == "Largo"
+
+
+# ---------------------------------------------------------------------------
+# Regla del tutor eventual: estados permitidos (ESTADOS_MASCOTA_TUTOR_EVENTUAL)
+# ---------------------------------------------------------------------------
+
+
+def _escenario_tutor_eventual(client, session, *, con_parametro: bool = True) -> dict:
+    """Admin logueado, estados de la clínica, tutor eventual configurado y un cliente real."""
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="Admin",
+        apellido="User",
+        dni="222",
+        permiso_nombre="*",
+    )
+    especie, raza_default, _ = _seed_mascota_catalogo(session)
+    rescate = MascotaEstado(nombre="En Tránsito / Rescate", activo=True)
+    extraviado = MascotaEstado(nombre="Extraviado", activo=True)
+    fallecido = MascotaEstado(nombre="Fallecido", activo=True)
+    tutor_eventual = Persona(
+        nombre="Tutor", apellido="Eventual / Anónimo", dni="0", celular="000", es_cliente=True
+    )
+    session.add_all([rescate, extraviado, fallecido, tutor_eventual])
+    session.commit()
+    for fila in (rescate, extraviado, fallecido, tutor_eventual):
+        session.refresh(fila)
+
+    config = session.exec(
+        select(Config).where(Config.parametro_nombre == "PERSONA_ID_TUTOR_EVENTUAL")
+    ).one()
+    config.parametro_valor = str(tutor_eventual.id)
+    session.add(config)
+    if con_parametro:
+        session.add(
+            Config(
+                config_id=3,
+                config_nombre="SISTEMA",
+                parametro_id=3,
+                parametro_nombre="ESTADOS_MASCOTA_TUTOR_EVENTUAL",
+                parametro_valor=f"{rescate.id},{extraviado.id}",
+            )
+        )
+    session.commit()
+
+    tutor_real = seed_cliente(
+        session, nombre="Ana", apellido="Ruiz", dni="40111222", fecha_nacimiento=date(1990, 1, 1)
+    )
+    _login(client, "admin", "Secret123!")
+    return {
+        "especie": especie,
+        "raza": raza_default,
+        "rescate": rescate,
+        "extraviado": extraviado,
+        "fallecido": fallecido,
+        "tutor_eventual": tutor_eventual,
+        "tutor_real": tutor_real,
+    }
+
+
+def _alta_eventual(client, esc: dict, **extra):
+    return client.post(
+        "/api/mascotas",
+        json={
+            "tutor_eventual": True,
+            "nombre": "Perdido",
+            "especie_id": esc["especie"].id,
+            "raza_id": esc["raza"].id,
+            **extra,
+        },
+    )
+
+
+def test_alta_con_tutor_eventual_queda_en_transito_por_defecto(client, session) -> None:
+    esc = _escenario_tutor_eventual(client, session)
+
+    response = _alta_eventual(client, esc)
+
+    assert response.status_code == 201, response.text
+    assert response.json()["mascota_estado_id"] == esc["rescate"].id
+    assert response.json()["mascota_estado_nombre"] == "En Tránsito / Rescate"
+
+
+def test_alta_con_tutor_eventual_acepta_extraviado_y_rechaza_activa(client, session) -> None:
+    esc = _escenario_tutor_eventual(client, session)
+
+    extraviado = _alta_eventual(client, esc, mascota_estado_id=esc["extraviado"].id)
+    activa = _alta_eventual(client, esc, mascota_estado_id=MASCOTA_ESTADO_ACTIVA_ID)
+
+    assert extraviado.status_code == 201
+    assert extraviado.json()["mascota_estado_nombre"] == "Extraviado"
+    assert activa.status_code == 400
+    assert activa.json()["error"] == "ESTADO_NO_PERMITIDO_TUTOR_EVENTUAL"
+    assert "Extraviado" in activa.json()["detalle"]
+
+
+def test_alta_con_tutor_real_sigue_quedando_activa(client, session) -> None:
+    esc = _escenario_tutor_eventual(client, session)
+
+    creada = _crear_mascota_basica(
+        client,
+        especie_id=esc["especie"].id or 0,
+        raza_id=esc["raza"].id or 0,
+        persona_id=esc["tutor_real"].id or 0,
+    )
+
+    assert creada["mascota_estado_id"] == MASCOTA_ESTADO_ACTIVA_ID
+    assert creada["mascota_estado_nombre"] == "ACTIVA"
+
+
+def test_mascota_del_tutor_eventual_no_puede_pasar_a_activa(client, session) -> None:
+    esc = _escenario_tutor_eventual(client, session)
+    mascota_id = _alta_eventual(client, esc).json()["id"]
+
+    activa = client.patch(
+        f"/api/mascotas/{mascota_id}", json={"mascota_estado_id": MASCOTA_ESTADO_ACTIVA_ID}
+    )
+    extraviada = client.patch(
+        f"/api/mascotas/{mascota_id}", json={"mascota_estado_id": esc["extraviado"].id}
+    )
+
+    assert activa.status_code == 400
+    assert activa.json()["error"] == "ESTADO_NO_PERMITIDO_TUTOR_EVENTUAL"
+    assert extraviada.status_code == 200
+    assert extraviada.json()["mascota_estado_nombre"] == "Extraviado"
+
+
+def test_asignarle_un_dueno_la_pasa_a_activa(client, session) -> None:
+    esc = _escenario_tutor_eventual(client, session)
+    mascota_id = _alta_eventual(client, esc).json()["id"]
+
+    response = client.patch(
+        f"/api/mascotas/{mascota_id}", json={"persona_id": esc["tutor_real"].id}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["persona_id"] == esc["tutor_real"].id
+    assert response.json()["mascota_estado_id"] == MASCOTA_ESTADO_ACTIVA_ID
+
+
+def test_asignarle_un_dueno_respeta_el_estado_enviado(client, session) -> None:
+    # Una mascota con dueño también se puede perder: la regla va en un solo sentido.
+    esc = _escenario_tutor_eventual(client, session)
+    mascota_id = _alta_eventual(client, esc).json()["id"]
+
+    response = client.patch(
+        f"/api/mascotas/{mascota_id}",
+        json={"persona_id": esc["tutor_real"].id, "mascota_estado_id": esc["extraviado"].id},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["mascota_estado_nombre"] == "Extraviado"
+
+
+def test_editar_otros_datos_no_se_bloquea_por_un_estado_viejo(client, session) -> None:
+    # Una mascota cargada antes de la regla: tutor eventual y ACTIVA.
+    esc = _escenario_tutor_eventual(client, session)
+    vieja = Mascota(
+        persona_id=esc["tutor_eventual"].id or 0,
+        raza_id=esc["raza"].id or 0,
+        nombre="Lola",
+        mascota_estado_id=MASCOTA_ESTADO_ACTIVA_ID,
+    )
+    session.add(vieja)
+    session.commit()
+    session.refresh(vieja)
+
+    response = client.patch(f"/api/mascotas/{vieja.id}", json={"nombre": "Lolita"})
+
+    assert response.status_code == 200
+    assert response.json()["nombre"] == "Lolita"
+
+
+def test_config_tutor_eventual_devuelve_persona_y_estados_en_orden(client, session) -> None:
+    esc = _escenario_tutor_eventual(client, session)
+
+    data = client.get("/api/mascotas/config/tutor-eventual").json()
+
+    assert data["persona_id"] == esc["tutor_eventual"].id
+    assert [e["nombre"] for e in data["estados_permitidos"]] == [
+        "En Tránsito / Rescate",
+        "Extraviado",
+    ]
+    assert data["estado_por_defecto_id"] == esc["rescate"].id
+    assert data["estado_activa_id"] == MASCOTA_ESTADO_ACTIVA_ID
+
+
+def test_config_tutor_eventual_sin_parametro_no_restringe(client, session) -> None:
+    esc = _escenario_tutor_eventual(client, session, con_parametro=False)
+
+    data = client.get("/api/mascotas/config/tutor-eventual").json()
+
+    assert data["persona_id"] == esc["tutor_eventual"].id
+    assert data["estados_permitidos"] == []
+    assert data["estado_por_defecto_id"] is None
+
+
+def test_listado_solo_atendibles_muestra_activas_y_las_del_tutor_eventual(client, session) -> None:
+    esc = _escenario_tutor_eventual(client, session)
+    _alta_eventual(client, esc)  # En Tránsito / Rescate
+    _crear_mascota_basica(
+        client,
+        especie_id=esc["especie"].id or 0,
+        raza_id=esc["raza"].id or 0,
+        persona_id=esc["tutor_real"].id or 0,
+        nombre="Activa",
+    )
+    fallecida = _crear_mascota_basica(
+        client,
+        especie_id=esc["especie"].id or 0,
+        raza_id=esc["raza"].id or 0,
+        persona_id=esc["tutor_real"].id or 0,
+        nombre="Fallecida",
+    )
+    client.patch(
+        f"/api/mascotas/{fallecida['id']}", json={"mascota_estado_id": esc["fallecido"].id}
+    )
+
+    atendibles = client.get("/api/mascotas", params={"solo_atendibles": "true"}).json()
+    todas = client.get("/api/mascotas").json()
+
+    assert sorted(m["nombre"] for m in atendibles["items"]) == ["Activa", "Perdido"]
+    assert todas["total"] == 3

@@ -29,17 +29,33 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
   - La sesión se renueva sola con el refresh token (`POST /api/auth/refresh`). Antes vencía a
     los 15 minutos, aunque se estuviera usando.
   - Mergeada a `staging` (PR #30).
-- **Rama `feature/control-consulta`:** control desde la consulta anterior.
+- **Rama `feature/control-consulta`:** control desde la consulta anterior. Mergeada a `staging`
+  (PR #31).
   - Una consulta abierta desde un turno de tipo Control se vincula sola a la última firmada.
   - La consulta muestra la evolución de los signos y permite reusar el diagnóstico anterior.
   - "Programar control" agenda el turno con la fecha que surge del dictado.
   - Para la demo quedó agendado el control de Coco: jueves 26/11 a las 9:00, con Valeria,
     confirmado.
+- **Rama `feature/tutor-eventual-estados`:** regla del tutor eventual.
+  - Una mascota sin tutor registrado queda "En Tránsito / Rescate" (por defecto) o
+    "Extraviado", nunca ACTIVA. Al asignarle un dueño pasa a ACTIVA.
+  - Esos estados se atienden igual: la agenda les da turnos, aparecen en el buscador de
+    pacientes y en el listado de mascotas por defecto.
+  - Los estados permitidos son un parámetro (`ESTADOS_MASCOTA_TUTOR_EVENTUAL`) que crea
+    `scripts/clinica/007_tutor_eventual_estados.sql`. Ese script además corrige las mascotas
+    que hoy están ACTIVAS con el tutor eventual.
 
 ## Qué falta, en orden
 
-1. **Mergear `feature/control-consulta` a `staging`**, con revisión de otro integrante y el CI en
-   verde.
+1. **Mergear `feature/tutor-eventual-estados` a `staging`** (con revisión y el CI en verde) y
+   **después aplicar `scripts/clinica/007_tutor_eventual_estados.sql` en Neon**, como DBA. El
+   orden importa:
+   - El código nuevo sin el script se comporta como antes: el tutor eventual no tiene
+     restricción.
+   - El script sin el código nuevo, no: el código anterior solo da turnos a mascotas ACTIVAS,
+     así que las del tutor eventual dejarían de aparecer en la agenda.
+   - Si alguien usa la app publicada (`main`), conviene pasar `staging` a `main` antes de
+     correr el script.
 2. **Decidir si VETERINARIO puede agendar turnos** (`agenda:crear_turno`, desde Admin → Roles).
    Sin ese permiso, el veterinario no ve "Programar control" y tiene que pedírselo a recepción.
 3. **Turnos para el día de la presentación**: uno confirmado para cada caso del guion, el mismo

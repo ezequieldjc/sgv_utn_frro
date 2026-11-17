@@ -25,12 +25,17 @@ from app.schemas.mascotas import (
     MascotaListResponse,
     MascotaUpdate,
     RazaOpcionMascota,
+    TutorEventualConfig,
     TutorOpcion,
 )
 from app.services.config_service import get_parametro_valor_por_nombre
 
 MASCOTA_ESTADO_ACTIVA_ID = 1
 PARAM_TUTOR_EVENTUAL = "PERSONA_ID_TUTOR_EVENTUAL"
+# Ids de los estados en los que puede estar una mascota con tutor eventual (por ejemplo,
+# "En Tránsito / Rescate" y "Extraviado"), separados por coma. El primero es el de por defecto.
+# Si el parámetro no está cargado, no hay restricción.
+PARAM_ESTADOS_TUTOR_EVENTUAL = "ESTADOS_MASCOTA_TUTOR_EVENTUAL"
 PARAM_RAZA_DEFAULT = "RAZA_NOMBRE_DEFAULT"
 RAZA_DEFAULT_FALLBACK = "Sin raza definida"
 
@@ -129,6 +134,7 @@ def list_mascotas(
     cliente_id: int | None,
     page: int,
     page_size: int,
+    solo_atendibles: bool = False,
 ) -> MascotaListResponse:
     page = max(page, 1)
     page_size = max(min(page_size, 100), 1)
@@ -156,6 +162,8 @@ def list_mascotas(
 
     if mascota_estado_id is not None:
         base = base.where(Mascota.mascota_estado_id == mascota_estado_id)
+    elif solo_atendibles:
+        base = base.where(col(Mascota.mascota_estado_id).in_(ids_estados_atendibles(session)))
     if especie_id is not None:
         base = base.where(Especie.id == especie_id)
     if raza_id is not None:
@@ -228,6 +236,84 @@ def _resolve_persona_id(session: Session, payload: MascotaCreate) -> int:
     return persona_id
 
 
+def _estados_tutor_eventual(session: Session) -> list[MascotaEstado]:
+    """Estados permitidos con tutor eventual, en el orden del parámetro.
+
+    Ignora ids inválidos, inexistentes o dados de baja. Lista vacía si el parámetro no está
+    cargado: en ese caso la regla no se aplica.
+    """
+    raw = get_parametro_valor_por_nombre(session, PARAM_ESTADOS_TUTOR_EVENTUAL, default="")
+    estados: list[MascotaEstado] = []
+    vistos: set[int] = set()
+    for parte in str(raw).split(","):
+        parte = parte.strip()
+        if not parte.isdigit() or int(parte) in vistos:
+            continue
+        estado = session.get(MascotaEstado, int(parte))
+        if estado is not None and estado.activo:
+            estados.append(estado)
+            vistos.add(int(parte))
+    return estados
+
+
+def ids_estados_atendibles(session: Session) -> set[int]:
+    """Estados en los que una mascota puede recibir turnos y consultas.
+
+    ACTIVA y los estados del tutor eventual (un animal en tránsito o extraviado también se atiende).
+    Los demás (por ejemplo, fallecida o dada de baja) no.
+    """
+    return {MASCOTA_ESTADO_ACTIVA_ID} | {
+        e.id for e in _estados_tutor_eventual(session) if e.id is not None
+    }
+
+
+def _error_estado_tutor_eventual(permitidos: list[MascotaEstado]) -> APIError:
+    nombres = [f"«{e.nombre}»" for e in permitidos]
+    lista = nombres[0] if len(nombres) == 1 else ", ".join(nombres[:-1]) + " o " + nombres[-1]
+    return APIError(
+        400,
+        "ESTADO_NO_PERMITIDO_TUTOR_EVENTUAL",
+        f"Una mascota sin tutor registrado tiene que estar {lista}",
+    )
+
+
+def get_config_tutor_eventual(session: Session) -> TutorEventualConfig:
+    permitidos = _estados_tutor_eventual(session)
+    return TutorEventualConfig(
+        persona_id=_tutor_eventual_id(session),
+        estados_permitidos=[
+            MascotaEstadoOpcion(id=e.id or 0, nombre=e.nombre) for e in permitidos
+        ],
+        estado_por_defecto_id=permitidos[0].id if permitidos else None,
+        estado_activa_id=MASCOTA_ESTADO_ACTIVA_ID,
+    )
+
+
+def _estado_de_alta(session: Session, payload: MascotaCreate) -> MascotaEstado:
+    """Estado con el que nace la mascota.
+
+    Sin estado indicado queda ACTIVA. Con tutor eventual (y el parámetro cargado) tiene que ser
+    uno de los permitidos, y por defecto es el primero.
+    """
+    permitidos = _estados_tutor_eventual(session) if payload.tutor_eventual else []
+    estado_id = payload.mascota_estado_id
+    if estado_id is None:
+        estado_id = permitidos[0].id if permitidos else MASCOTA_ESTADO_ACTIVA_ID
+    if permitidos and estado_id not in {e.id for e in permitidos}:
+        raise _error_estado_tutor_eventual(permitidos)
+
+    estado = session.get(MascotaEstado, estado_id)
+    if estado is not None and estado.activo:
+        return estado
+    if payload.mascota_estado_id is None:
+        raise APIError(
+            500,
+            "ESTADO_ACTIVA_NO_ENCONTRADO",
+            "No existe el estado operativo ACTIVA (id=1)",
+        )
+    raise APIError(400, "ESTADO_INVALIDO", "No se encontró el estado indicado")
+
+
 def create_mascota(session: Session, payload: MascotaCreate) -> MascotaCreateResponse:
     persona_id = _resolve_persona_id(session, payload)
 
@@ -239,13 +325,7 @@ def create_mascota(session: Session, payload: MascotaCreate) -> MascotaCreateRes
             "La raza no pertenece a la especie seleccionada",
         )
 
-    estado = session.get(MascotaEstado, MASCOTA_ESTADO_ACTIVA_ID)
-    if estado is None:
-        raise APIError(
-            500,
-            "ESTADO_ACTIVA_NO_ENCONTRADO",
-            "No existe el estado operativo ACTIVA (id=1)",
-        )
+    estado = _estado_de_alta(session, payload)
 
     if payload.microchip:
         existing_chip = session.exec(
@@ -262,7 +342,7 @@ def create_mascota(session: Session, payload: MascotaCreate) -> MascotaCreateRes
         fecha_nacimiento=payload.fecha_nacimiento,
         microchip=payload.microchip,
         alertas_medicas=payload.alertas_medicas,
-        mascota_estado_id=MASCOTA_ESTADO_ACTIVA_ID,
+        mascota_estado_id=estado.id or MASCOTA_ESTADO_ACTIVA_ID,
         # El peso inicial se guarda en ultimo_peso (historial_peso se eliminó el 14/11/2026).
         ultimo_peso=payload.peso_inicial_kg,
     )
@@ -280,6 +360,7 @@ def create_mascota(session: Session, payload: MascotaCreate) -> MascotaCreateRes
         persona_id=mascota.persona_id,
         raza_id=mascota.raza_id,
         mascota_estado_id=mascota.mascota_estado_id,
+        mascota_estado_nombre=estado.nombre,
         peso_registrado=peso_registrado,
     )
 
@@ -373,6 +454,8 @@ def update_mascota(session: Session, mascota_id: int, payload: MascotaUpdate) ->
         raise APIError(404, "MASCOTA_NO_ENCONTRADA", "No se encontró la mascota indicada")
 
     data = payload.model_dump(exclude_unset=True)
+    eventual_id = _tutor_eventual_id(session)
+    era_eventual = eventual_id is not None and mascota.persona_id == eventual_id
     current_raza = session.get(Raza, mascota.raza_id)
     if current_raza is None:
         raise APIError(500, "RAZA_NO_ENCONTRADA", "La mascota no tiene una raza válida")
@@ -385,7 +468,6 @@ def update_mascota(session: Session, mascota_id: int, payload: MascotaUpdate) ->
         persona = session.get(Persona, new_persona_id)
         if persona is None or not persona.es_cliente:
             raise APIError(404, "TUTOR_NO_ENCONTRADO", "No se encontró el tutor indicado")
-        eventual_id = _tutor_eventual_id(session)
         if (
             eventual_id is not None
             and new_persona_id == eventual_id
@@ -419,6 +501,17 @@ def update_mascota(session: Session, mascota_id: int, payload: MascotaUpdate) ->
         if estado is None or not estado.activo:
             raise APIError(400, "ESTADO_INVALIDO", "No se encontró el estado indicado")
         mascota.mascota_estado_id = estado_id
+    elif era_eventual and mascota.persona_id != eventual_id:
+        # Se le asignó un dueño: deja de estar extraviada o en tránsito.
+        mascota.mascota_estado_id = MASCOTA_ESTADO_ACTIVA_ID
+
+    # Regla del tutor eventual: solo los estados permitidos. Se controla cuando cambia el tutor o
+    # el estado, así una edición de otros datos no queda bloqueada por un estado viejo.
+    es_eventual = eventual_id is not None and mascota.persona_id == eventual_id
+    if es_eventual and ("mascota_estado_id" in data or "persona_id" in data):
+        permitidos = _estados_tutor_eventual(session)
+        if permitidos and mascota.mascota_estado_id not in {e.id for e in permitidos}:
+            raise _error_estado_tutor_eventual(permitidos)
 
     if "nombre" in data and data["nombre"] is not None:
         mascota.nombre = data["nombre"]
