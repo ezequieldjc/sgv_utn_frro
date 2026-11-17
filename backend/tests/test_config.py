@@ -239,3 +239,37 @@ def test_patch_razon_social_actualiza_public(client, session) -> None:
     public = client.get("/api/config/public")
     assert public.status_code == 200
     assert public.json()["razon_social"] == "Nueva Razon"
+
+
+def test_patch_estados_tutor_eventual_valida_lista_de_ids(client, session) -> None:
+    _seed_jwt_config(session)
+    clear_config_cache()
+    seed_usuario_con_permiso(
+        session,
+        username="parameditor",
+        password="Secret123!",
+        nombre="Params",
+        apellido="Editor",
+        dni="30111888",
+        permiso_nombre="parametros:editar",
+        rol_nombre="EDITOR",
+    )
+    fila = Config(
+        config_id=3,
+        config_nombre="SISTEMA",
+        parametro_id=3,
+        parametro_nombre="ESTADOS_MASCOTA_TUTOR_EVENTUAL",
+        parametro_valor="5,4",
+    )
+    session.add(fila)
+    session.commit()
+    session.refresh(fila)
+    _login(client, "parameditor")
+
+    invalido = client.patch(f"/api/config/{fila.id}", json={"parametro_valor": "5,abc"})
+    valido = client.patch(f"/api/config/{fila.id}", json={"parametro_valor": " 4 , 5 "})
+
+    assert invalido.status_code == 400
+    assert invalido.json()["error"] == "VALOR_INVALIDO"
+    assert valido.status_code == 200
+    assert valido.json()["parametro_valor"] == "4,5"

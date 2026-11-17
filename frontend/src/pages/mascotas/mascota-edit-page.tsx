@@ -18,12 +18,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
 import { useSelectTypeahead } from "@/hooks/use-select-typeahead";
 import { apiFetch } from "@/lib/api";
+import {
+  esTutorEventual,
+  estadoTrasCambioDeTutor,
+  estadoValidoParaTutor,
+  estadosParaTutor,
+  nombresPermitidos,
+} from "@/lib/mascotas";
 import type {
   CatalogoOpcion,
   MascotaDetail,
   MascotaUpdatePayload,
   RazaOpcion,
   TutorOpcion,
+  TutorEventualConfig,
 } from "@/types/mascotas";
 
 interface EditFormState {
@@ -226,6 +234,8 @@ export default function MascotaEditPage() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<MascotaDetail | null>(null);
+  const [tutorEventual, setTutorEventual] = React.useState<TutorEventualConfig | null>(null);
+  const [avisoEstado, setAvisoEstado] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!canEdit || !id) {
@@ -299,6 +309,27 @@ export default function MascotaEditPage() {
         setHabitats(habitatRows);
         setEstadosRepro(reproRows);
         setTemperamentos(tempRows);
+
+        // Regla del tutor eventual. Sin la configuración, la edición funciona como antes.
+        let configTutor: TutorEventualConfig | null = null;
+        try {
+          configTutor = await apiFetch<TutorEventualConfig>("/api/mascotas/config/tutor-eventual");
+        } catch {
+          configTutor = null;
+        }
+        setTutorEventual(configTutor);
+        const estadoActual = String(detail.mascota_estado_id);
+        const estadoCorregido = estadoValidoParaTutor(configTutor, estadoActual, detail.persona_id);
+        if (estadoCorregido !== estadoActual) {
+          // Mascota cargada antes de la regla (con tutor eventual y ACTIVA, por ejemplo).
+          setForm((prev) => ({ ...prev, mascota_estado_id: estadoCorregido }));
+          const nombre = configTutor?.estados_permitidos.find(
+            (e) => String(e.id) === estadoCorregido,
+          )?.nombre;
+          setAvisoEstado(
+            `Estaba como «${detail.mascota_estado_nombre}», pero sin tutor registrado corresponde «${nombre}». Guardá para confirmar el cambio.`,
+          );
+        }
       } catch (error) {
         const status = (error as { status?: number }).status;
         if (status === 404) {
@@ -415,6 +446,12 @@ export default function MascotaEditPage() {
 
   const selectClass =
     "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm";
+  const estadosVisibles = estadosParaTutor(estados, tutorEventual, form.persona_id);
+  const conReglaTutorEventual =
+    esTutorEventual(tutorEventual, form.persona_id) &&
+    (tutorEventual?.estados_permitidos.length ?? 0) > 0;
+  // El tutor eventual no se elige desde la búsqueda: no se puede pasar una mascota con dueño a él.
+  const tutoresVisibles = tutorOptions.filter((tutor) => !esTutorEventual(tutorEventual, tutor.id));
 
   if (isLoading) {
     return (
@@ -515,7 +552,7 @@ export default function MascotaEditPage() {
                 onKeyDown={(event) => {
                   handleTypeaheadKeyDown(
                     event,
-                    estados.map((item) => ({
+                    estadosVisibles.map((item) => ({
                       value: String(item.id),
                       label: item.nombre,
                     })),
@@ -523,16 +560,31 @@ export default function MascotaEditPage() {
                     (value) => updateField("mascota_estado_id", value),
                   );
                 }}
-                onChange={(event) => updateField("mascota_estado_id", event.target.value)}
+                onChange={(event) => {
+                  updateField("mascota_estado_id", event.target.value);
+                  setAvisoEstado(null);
+                }}
                 className={`${selectClass} ${fieldClass(Boolean(errors.mascota_estado_id))}`}
               >
                 <option value="">Seleccionar…</option>
-                {estados.map((item) => (
+                {estadosVisibles.map((item) => (
                   <option key={item.id} value={String(item.id)}>
                     {item.nombre}
                   </option>
                 ))}
               </select>
+              {conReglaTutorEventual ? (
+                <p className="text-xs text-muted-foreground">
+                  Sin tutor registrado, el estado es {nombresPermitidos(tutorEventual)}. Al
+                  asignarle un dueño pasa a{" "}
+                  {estados.find((e) => e.id === tutorEventual?.estado_activa_id)?.nombre ??
+                    "Activo"}
+                  .
+                </p>
+              ) : null}
+              {avisoEstado ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">{avisoEstado}</p>
+              ) : null}
               {errors.mascota_estado_id ? (
                 <p className="text-xs text-destructive">{errors.mascota_estado_id}</p>
               ) : null}
@@ -565,14 +617,28 @@ export default function MascotaEditPage() {
             {tutorSearchError ? (
               <p className="text-xs text-destructive break-words">{tutorSearchError}</p>
             ) : null}
-            {tutorOptions.length > 0 ? (
+            {tutoresVisibles.length > 0 ? (
               <ul className="max-h-48 overflow-auto rounded-md border">
-                {tutorOptions.map((tutor) => (
+                {tutoresVisibles.map((tutor) => (
                   <li key={tutor.id}>
                     <button
                       type="button"
                       className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-muted"
                       onClick={() => {
+                        const nuevoEstado = estadoTrasCambioDeTutor(
+                          tutorEventual,
+                          form.mascota_estado_id,
+                          form.persona_id,
+                          String(tutor.id),
+                        );
+                        if (nuevoEstado !== form.mascota_estado_id) {
+                          updateField("mascota_estado_id", nuevoEstado);
+                          const nombre =
+                            estados.find((e) => String(e.id) === nuevoEstado)?.nombre ?? "Activo";
+                          setAvisoEstado(
+                            `El estado pasó a «${nombre}» porque ahora tiene dueño. Podés cambiarlo si hace falta.`,
+                          );
+                        }
                         updateField("persona_id", String(tutor.id));
                         updateField(
                           "tutor_label",
@@ -599,7 +665,7 @@ export default function MascotaEditPage() {
             {!isSearchingTutores &&
             tutorSearchDone &&
             !tutorSearchError &&
-            tutorOptions.length === 0 &&
+            tutoresVisibles.length === 0 &&
             form.tutor_search.trim().length > 0 ? (
               <p className="max-w-full text-xs leading-relaxed text-muted-foreground break-words">
                 No hay clientes con ese DNI o nombre. Solo aparecen personas

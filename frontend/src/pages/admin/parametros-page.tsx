@@ -14,6 +14,8 @@ const INTEGER_PARAMETROS = new Set([
   "REFRESH_TOKEN_EXPIRACION",
   "PERSONA_ID_TUTOR_EVENTUAL",
 ]);
+// Listas de ids separados por coma (por ejemplo "5,4"); el backend valida lo mismo.
+const LISTA_ENTEROS_PARAMETROS = new Set(["ESTADOS_MASCOTA_TUTOR_EVENTUAL"]);
 
 export function hasPermission(permisos: string[], required: string): boolean {
   return permisos.includes("*") || permisos.includes(required);
@@ -37,6 +39,12 @@ export function validateParametroValor(
     const numero = Number.parseInt(valor, 10);
     if (!Number.isFinite(numero) || numero < 1) {
       return "Debe ser un entero >= 1.";
+    }
+  }
+  if (LISTA_ENTEROS_PARAMETROS.has(parametroNombre)) {
+    const partes = valor.split(",").map((parte) => parte.trim());
+    if (partes.some((parte) => !/^\d+$/.test(parte) || Number(parte) < 1)) {
+      return "Debe ser una lista de ids separados por coma (por ejemplo: 5,4).";
     }
   }
   return null;

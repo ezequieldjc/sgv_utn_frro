@@ -20,12 +20,14 @@ from app.schemas.mascotas import (
     MascotaListResponse,
     MascotaUpdate,
     RazaOpcionMascota,
+    TutorEventualConfig,
     TutorOpcion,
 )
 from app.services.authorization_service import require_any_permission, require_permission
 from app.services.mascota_service import (
     buscar_tutores,
     create_mascota,
+    get_config_tutor_eventual,
     get_mascota,
     get_raza_default_nombre,
     get_tutor_by_id,
@@ -46,6 +48,8 @@ def get_mascotas(
     especie_id: int | None = Query(default=None),
     raza_id: int | None = Query(default=None),
     mascota_estado_id: int | None = Query(default=None),
+    # Sin mascota_estado_id: solo las que se pueden atender (ACTIVA y las del tutor eventual).
+    solo_atendibles: bool = Query(default=False),
     cliente_id: int | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
@@ -62,6 +66,7 @@ def get_mascotas(
         cliente_id=cliente_id,
         page=page,
         page_size=page_size,
+        solo_atendibles=solo_atendibles,
     )
 
 
@@ -139,6 +144,18 @@ def get_raza_default(
 ) -> dict[str, str]:
     require_any_permission(session, access_token, "mascotas:crear", "mascotas:editar")
     return {"nombre": get_raza_default_nombre(session)}
+
+
+@router.get("/config/tutor-eventual", response_model=TutorEventualConfig)
+def get_tutor_eventual_config(
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> TutorEventualConfig:
+    """Persona del tutor eventual y estados permitidos para sus mascotas."""
+    require_any_permission(
+        session, access_token, "mascotas:ver_listado", "mascotas:crear", "mascotas:editar"
+    )
+    return get_config_tutor_eventual(session)
 
 
 @router.get("/catalogos/pelajes", response_model=list[CatalogoClinicoOpcion])

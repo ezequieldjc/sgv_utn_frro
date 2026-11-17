@@ -83,6 +83,7 @@ También pueden existir (código/SQL de negocio, no siempre en el diccionario se
 |---------------|------------------|-------------|
 | SISTEMA | `PERSONA_ID_TUTOR_EVENTUAL` | Entero positivo (id de persona) |
 | SISTEMA | `RAZA_NOMBRE_DEFAULT` | Texto no vacío |
+| SISTEMA | `ESTADOS_MASCOTA_TUTOR_EVENTUAL` | Lista de ids de `catalogo.mascota_estado` separados por coma; el primero es el de por defecto (`scripts/clinica/007`) |
 
 La pantalla **no asume** que solo existen estos: si el DBA agrega otra fila, debe aparecer
 agrupada bajo su `config_nombre` y validarse como texto no vacío salvo que entre en la
@@ -213,6 +214,7 @@ misma tabla canónica por `parametro_nombre`.
 | `ACCESS_TOKEN_EXPIRACION` | Entero ≥ 1 (string que parsea a int; sin decimales) |
 | `REFRESH_TOKEN_EXPIRACION` | Entero ≥ 1 |
 | `PERSONA_ID_TUTOR_EVENTUAL` | Entero ≥ 1 |
+| `ESTADOS_MASCOTA_TUTOR_EVENTUAL` | Lista de enteros ≥ 1 separados por coma; se guarda sin espacios (`5,4`) |
 | `RAZON_SOCIAL` | Texto no vacío tras trim; max 255 |
 | `RAZA_NOMBRE_DEFAULT` | Texto no vacío tras trim; max 255 |
 | **Cualquier otro** | Texto no vacío tras trim; max 255 |

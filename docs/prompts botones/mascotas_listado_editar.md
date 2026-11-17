@@ -78,6 +78,15 @@ Opcionales: `nombre`, `persona_id`, `raza_id`, `mascota_estado_id`, `sexo`, `fec
 2. `raza_id` debe pertenecer a la especie actual de la mascota.
 3. Catálogos clínicos: activos y de esa especie.
 4. `persona_id` debe ser cliente (`es_cliente=true`). Si el tutor actual **no** es el eventual de config (`PERSONA_ID_TUTOR_EVENTUAL`), rechazar setear el eventual → `400 TUTOR_EVENTUAL_NO_PERMITIDO`. Sí se puede cambiar a otro cliente real; si ya es eventual, sí se puede asignar cliente real.
+4.1. **Estados con tutor eventual** (`ESTADOS_MASCOTA_TUTOR_EVENTUAL`):
+   - Si la mascota queda con el tutor eventual, su estado tiene que ser uno de los del
+     parámetro (`400 ESTADO_NO_PERMITIDO_TUTOR_EVENTUAL`). Se controla cuando el pedido cambia
+     el tutor o el estado.
+   - Al pasar del tutor eventual a un cliente real sin indicar estado, queda ACTIVA. Si se
+     indica estado, se respeta: una mascota con dueño también se puede perder.
+   - Sin el parámetro cargado no hay restricción.
+   - El frontend ofrece solo los estados permitidos. Al elegir un dueño pone ACTIVA, y saca al
+     tutor eventual de la búsqueda.
 5. Microchip duplicado → `409`. No tocar `ultimo_peso`.
 
 ---

@@ -19,6 +19,7 @@ from app.models.clinica.especie import Especie
 from app.models.clinica.mascota import Mascota
 from app.models.clinica.raza import Raza
 from app.models.core.persona import Persona
+from app.models.sys.config import Config
 from app.services.mascota_service import MASCOTA_ESTADO_ACTIVA_ID
 from test_clientes import _seed_jwt_config
 
@@ -733,3 +734,55 @@ def test_disponibilidad_dia_pasado_marca_todo_como_pasado(client, session) -> No
 def test_disponibilidad_domingo_devuelve_lista_vacia(client, session) -> None:
     s = _setup(client, session)
     assert _disponibilidad(client, s, fecha=_proximo(6, 0).date()) == []
+
+
+# ---------------------------------------------------------------------------
+# Mascotas atendibles: ACTIVA y los estados del tutor eventual
+# ---------------------------------------------------------------------------
+
+
+def _estados_tutor_eventual(session, s: dict) -> dict:
+    """m1 queda "En Tránsito / Rescate" (estado del tutor eventual) y m2 "Fallecido"."""
+    rescate = MascotaEstado(nombre="En Tránsito / Rescate", activo=True)
+    fallecido = MascotaEstado(nombre="Fallecido", activo=True)
+    session.add_all([rescate, fallecido])
+    session.commit()
+    session.refresh(rescate)
+    session.refresh(fallecido)
+    session.add(
+        Config(
+            config_id=3,
+            config_nombre="SISTEMA",
+            parametro_id=3,
+            parametro_nombre="ESTADOS_MASCOTA_TUTOR_EVENTUAL",
+            parametro_valor=str(rescate.id),
+        )
+    )
+    s["m1"].mascota_estado_id = rescate.id
+    s["m2"].mascota_estado_id = fallecido.id
+    session.add_all([s["m1"], s["m2"]])
+    session.commit()
+    return {"rescate": rescate, "fallecido": fallecido}
+
+
+def test_mascota_en_transito_puede_recibir_turnos_y_una_fallecida_no(client, session) -> None:
+    s = _setup(client, session)
+    _estados_tutor_eventual(session, s)
+
+    en_transito = _crear(client, s, inicio=_proximo(0, 9), mascota="m1")
+    fallecida = _crear(client, s, inicio=_proximo(0, 10), mascota="m2")
+
+    assert en_transito.status_code == 201, en_transito.text
+    assert fallecida.status_code == 400
+    assert fallecida.json()["error"] == "MASCOTA_NO_ACTIVA"
+
+
+def test_buscador_de_la_agenda_incluye_las_mascotas_en_transito(client, session) -> None:
+    s = _setup(client, session)
+    _estados_tutor_eventual(session, s)
+
+    en_transito = client.get("/api/agenda/mascotas", params={"q": "firu"}).json()
+    fallecida = client.get("/api/agenda/mascotas", params={"q": "michi"}).json()
+
+    assert [m["nombre"] for m in en_transito] == ["Firulais"]
+    assert fallecida == []

@@ -51,6 +51,18 @@ describe("alta rápida de mascotas", () => {
     });
   });
 
+  it("test_payload_envia_el_estado_solo_con_tutor_eventual", () => {
+    const base = { ...INITIAL_FORM, nombre: "Michi", especie_id: "1", raza_id: "3" };
+
+    const eventual = buildMascotaPayload({ ...base, tutor_eventual: true, mascota_estado_id: "4" });
+    const conDueno = buildMascotaPayload({ ...base, persona_id: "10", mascota_estado_id: "4" });
+    const eventualSinElegir = buildMascotaPayload({ ...base, tutor_eventual: true });
+
+    expect(eventual.mascota_estado_id).toBe(4);
+    expect(conDueno.mascota_estado_id).toBeNull();
+    expect(eventualSinElegir.mascota_estado_id).toBeNull();
+  });
+
   it("test_fecha_mes_anio_se_transforma_al_dia_1", () => {
     const form = {
       ...INITIAL_FORM,

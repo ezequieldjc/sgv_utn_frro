@@ -61,6 +61,9 @@ describe("parámetros — helpers", () => {
     expect(validateParametroValor("ACCESS_TOKEN_EXPIRACION", "abc")).toBeTruthy();
     expect(validateParametroValor("ACCESS_TOKEN_EXPIRACION", "0")).toBeTruthy();
     expect(validateParametroValor("RAZON_SOCIAL", "   ")).toBeTruthy();
+    expect(validateParametroValor("ESTADOS_MASCOTA_TUTOR_EVENTUAL", "5, 4")).toBeNull();
+    expect(validateParametroValor("ESTADOS_MASCOTA_TUTOR_EVENTUAL", "5,abc")).toBeTruthy();
+    expect(validateParametroValor("ESTADOS_MASCOTA_TUTOR_EVENTUAL", "0")).toBeTruthy();
     expect(validateParametroValor("RAZON_SOCIAL", "Clinica")).toBeNull();
     expect(validateParametroValor("OTRO_PARAM", "x")).toBeNull();
   });

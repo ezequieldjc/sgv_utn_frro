@@ -40,6 +40,8 @@ class MascotaCreate(BaseModel):
     peso_inicial_kg: Decimal | None = Field(default=None, max_digits=5, decimal_places=2)
     microchip: str | None = Field(default=None, max_length=15)
     alertas_medicas: str | None = None
+    # Opcional. Sin valor queda ACTIVA; con tutor eventual, el primero de los estados permitidos.
+    mascota_estado_id: int | None = None
 
     @model_validator(mode="after")
     def tutor_o_eventual(self) -> MascotaCreate:
@@ -75,6 +77,7 @@ class MascotaCreateResponse(BaseModel):
     persona_id: int
     raza_id: int
     mascota_estado_id: int
+    mascota_estado_nombre: str
     peso_registrado: bool
 
 
@@ -99,6 +102,19 @@ class RazaOpcionMascota(BaseModel):
 class MascotaEstadoOpcion(BaseModel):
     id: int
     nombre: str
+
+
+class TutorEventualConfig(BaseModel):
+    """Lo que el frontend necesita para aplicar la regla del tutor eventual.
+
+    `estados_permitidos` vacío significa que el parámetro ESTADOS_MASCOTA_TUTOR_EVENTUAL no está
+    cargado: no hay restricción (el comportamiento de antes).
+    """
+
+    persona_id: int | None = None
+    estados_permitidos: list[MascotaEstadoOpcion]
+    estado_por_defecto_id: int | None = None
+    estado_activa_id: int
 
 
 class CatalogoClinicoOpcion(BaseModel):
