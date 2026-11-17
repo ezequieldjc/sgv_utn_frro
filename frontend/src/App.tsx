@@ -30,6 +30,13 @@ import MovimientosPage from "./pages/stock/movimientos-page";
 import AnalisisStockPage from "./pages/stock/analisis-page";
 import NuevaVentaPage from "./pages/ventas/nueva-venta-page";
 import VentasPage from "./pages/ventas/ventas-page";
+import MisMascotasPage from "./pages/portal/mis-mascotas-page";
+import PortalMascotaPage from "./pages/portal/portal-mascota-page";
+import PortalConsultaPage from "./pages/portal/portal-consulta-page";
+import MisTurnosPage from "./pages/portal/mis-turnos-page";
+import MisComprasPage from "./pages/portal/mis-compras-page";
+import PortalInicioPage from "./pages/portal/portal-inicio-page";
+import PedirTurnoPage from "./pages/portal/pedir-turno-page";
 
 export default function App() {
   return (
@@ -73,6 +80,13 @@ export default function App() {
             <Route path="stock/analisis" element={<AnalisisStockPage />} />
             <Route path="ventas" element={<VentasPage />} />
             <Route path="ventas/nueva" element={<NuevaVentaPage />} />
+            <Route path="portal" element={<PortalInicioPage />} />
+            <Route path="portal/mascotas" element={<MisMascotasPage />} />
+            <Route path="portal/mascotas/:id" element={<PortalMascotaPage />} />
+            <Route path="portal/consultas/:id" element={<PortalConsultaPage />} />
+            <Route path="portal/turnos" element={<MisTurnosPage />} />
+            <Route path="portal/turnos/nuevo" element={<PedirTurnoPage />} />
+            <Route path="portal/compras" element={<MisComprasPage />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -44,6 +44,19 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
   - Los estados permitidos son un parámetro (`ESTADOS_MASCOTA_TUTOR_EVENTUAL`) que crea
     `scripts/clinica/007_tutor_eventual_estados.sql`. Ese script además corrige las mascotas
     que hoy están ACTIVAS con el tutor eventual.
+  - Mergeada a `staging` (PR #32).
+- **`scripts/auth/001_portal_y_cuentas_cliente.sql` (aplicado en Neon el 17/11):** `username` a
+  100 caracteres, `portal:ver` para CLIENTE, `ventas:ver` para RECEPCIONISTA y
+  `agenda:crear_turno` para VETERINARIO.
+- **Rama `feature/portal-cliente`:** portal de solo lectura para el cliente (mis mascotas,
+  historia clínica con las consultas firmadas, turnos y compras). Cada cliente ve solo lo suyo;
+  lo ajeno responde 404. Además pide turnos (desde mañana, quedan solicitados hasta que la
+  clínica los confirme) y cancela los que siguen solicitados. Requiere
+  `scripts/agenda/003_portal_pedir_turno.sql` (aplicado en Neon el 17/11). Detalle en
+  `docs/prompts botones/portal_cliente.md`.
+- **Alta de mascota:** Canina y Felina aparecen primero en el selector de especie.
+- **Próxima rama `feature/cuentas-cliente`:** el mail es el usuario, todo cliente nace con
+  usuario, restablecer la contraseña por mail y registro desde el login.
 
 ## Qué falta, en orden
 
@@ -56,8 +69,8 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
      así que las del tutor eventual dejarían de aparecer en la agenda.
    - Si alguien usa la app publicada (`main`), conviene pasar `staging` a `main` antes de
      correr el script.
-2. **Decidir si VETERINARIO puede agendar turnos** (`agenda:crear_turno`, desde Admin → Roles).
-   Sin ese permiso, el veterinario no ve "Programar control" y tiene que pedírselo a recepción.
+2. ~~Decidir si VETERINARIO puede agendar turnos~~: resuelto, `agenda:crear_turno` se le asignó
+   con `scripts/auth/001_portal_y_cuentas_cliente.sql`.
 3. **Turnos para el día de la presentación**: uno confirmado para cada caso del guion, el mismo
    día. La consulta toma la fecha y hora en que se inicia.
 4. **Ensayar la demo completa contra Neon** al menos una vez, con el usuario veterinario. El

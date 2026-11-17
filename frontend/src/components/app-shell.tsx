@@ -82,6 +82,15 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
+    title: "Mi portal",
+    icon: PawPrint,
+    items: [
+      { to: "/portal/mascotas", label: "Mis mascotas", permiso: "portal:ver" },
+      { to: "/portal/turnos", label: "Mis turnos", permiso: "portal:ver" },
+      { to: "/portal/compras", label: "Mis compras", permiso: "portal:ver" },
+    ],
+  },
+  {
     title: "Consultas",
     icon: Stethoscope,
     items: [
@@ -172,6 +181,9 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 const SEGMENT_LABELS: Record<string, string> = {
+  portal: "Mi portal",
+  turnos: "Mis turnos",
+  compras: "Mis compras",
   consultas: "Consultas",
   nueva: "Nueva",
   historial: "Historial",
