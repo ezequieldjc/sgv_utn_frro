@@ -95,6 +95,8 @@ export interface Explicacion {
   edad: unknown;
   sintomas_presentes: ExplicacionSigno[];
   sintomas_negados: ExplicacionSigno[];
+  /** Desde simulado-0.2: peso de "otra causa no contemplada" en el mismo total. */
+  otra_causa_pct?: number;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
@@ -113,6 +115,10 @@ export interface SugerenciasResponse {
   version_motor: string;
   sugerencias: SugerenciaItem[];
   signos_sin_codigo: number;
+  /** Peso de "otra causa no contemplada" en el mismo total que las sugerencias; null sin signos. */
+  otra_causa_pct: string | null;
+  /** Falso cuando "otra causa" es más probable que la primera sugerencia. */
+  evidencia_suficiente: boolean;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI

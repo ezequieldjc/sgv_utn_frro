@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { apiFetch } from '../lib/api';
+import { EVENTO_SESION_EXPIRADA, apiFetch } from '../lib/api';
 import type { AuthSessionResponse, Usuario } from '../types/auth';
 import type { PublicConfig } from '../types/config';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [clinicName, setClinicName] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // apiFetch avisa cuando la sesión venció y no se pudo renovar: se vuelve al login sin
+    // recargar la página (recargar con la cookie vencida volvería a disparar el aviso).
+    function alExpirarSesion() {
+      setUsuario(null);
+      setPermisos([]);
+      navigate('/login');
+    }
+    window.addEventListener(EVENTO_SESION_EXPIRADA, alExpirarSesion);
+    return () => window.removeEventListener(EVENTO_SESION_EXPIRADA, alExpirarSesion);
+  }, [navigate]);
 
   useEffect(() => {
     // rehydrate: call /api/auth/me and /api/config/public in parallel

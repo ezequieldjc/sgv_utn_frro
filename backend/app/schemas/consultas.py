@@ -217,6 +217,11 @@ class SugerenciasResponse(BaseModel):
     version_motor: str
     sugerencias: list[SugerenciaItem]
     signos_sin_codigo: int
+    # Peso de "otra causa no contemplada" en el mismo total que los porcentajes de arriba.
+    # None cuando no hay signos.
+    otra_causa_pct: Decimal | None = None
+    # Falso cuando "otra causa" es más probable que la primera sugerencia.
+    evidencia_suficiente: bool = False
 
 
 class ConsultaListItem(BaseModel):

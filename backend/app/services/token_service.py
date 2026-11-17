@@ -40,3 +40,17 @@ def decode_access_token(token: str) -> dict[str, Any]:
     if payload.get("typ") != "access":
         raise APIError(401, "TOKEN_INVALIDO", "El token es inválido")
     return payload
+
+
+def decode_refresh_token(token: str) -> dict[str, Any]:
+    """Decodifica la cookie de renovación. Un access token no sirve para renovar."""
+    try:
+        payload = decode_token(token)
+    except ExpiredSignatureError as exc:
+        raise APIError(401, "SESION_EXPIRADA", "La sesión expiró: volvé a ingresar") from exc
+    except JWTError as exc:
+        raise APIError(401, "TOKEN_INVALIDO", "El token es inválido") from exc
+
+    if payload.get("typ") != "refresh":
+        raise APIError(401, "TOKEN_INVALIDO", "El token es inválido")
+    return payload

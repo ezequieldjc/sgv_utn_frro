@@ -453,6 +453,8 @@ export default function ConsultaPage() {
             <PanelSugerencias
               sugerencias={sugerencias?.sugerencias ?? []}
               signosSinCodigo={sugerencias?.signos_sin_codigo ?? 0}
+              otraCausaPct={sugerencias?.otra_causa_pct ?? null}
+              evidenciaSuficiente={sugerencias?.evidencia_suficiente ?? true}
               cargando={cargandoSugerencias}
               decisiones={decisiones}
               principal={principal}

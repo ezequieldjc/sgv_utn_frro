@@ -4,6 +4,7 @@ import {
   DICTADO_DEMO_GENERICO,
   DICTADOS_DEMO,
   armarDiagnosticosFirma,
+  avisoEvidencia,
   cambiosFicha,
   dictadoDemoPara,
   edadLabel,
@@ -153,5 +154,16 @@ describe("errores", () => {
     });
     expect(mensajeError(error)).toContain("Las sugerencias cambiaron");
     expect(mensajeError(Object.assign(new Error(""), { status: 422 }))).toContain("inválidos");
+  });
+});
+
+describe("evidencia del motor", () => {
+  it("test_aviso_evidencia_solo_cuando_otra_causa_pesa_mas", () => {
+    const sugerencias = [sugerencia(1, 1)];
+    expect(avisoEvidencia(sugerencias, true, "0.40")).toBeNull();
+    expect(avisoEvidencia([], false, null)).toBeNull();
+    const aviso = avisoEvidencia(sugerencias, false, "90.12");
+    expect(aviso).toContain("Evidencia insuficiente");
+    expect(aviso).toContain("90%");
   });
 });
