@@ -96,3 +96,31 @@ export function nombresPermitidos(config: TutorEventualConfig | null): string {
     ? nombres[0]
     : `${nombres.slice(0, -1).join(", ")} o ${nombres[nombres.length - 1]}`;
 }
+
+// ---------------------------------------------------------------------------
+// Especies: las más comunes arriba
+// ---------------------------------------------------------------------------
+
+/** Especies que se muestran primero al cargar una mascota: son casi todos los pacientes. */
+export const ESPECIES_DESTACADAS = ["Canina", "Felina"];
+
+function normalizar(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+}
+
+/**
+ * Separa las especies en las destacadas (en el orden de ESPECIES_DESTACADAS) y el resto
+ * (en orden alfabético). Compara sin mayúsculas ni tildes.
+ */
+export function agruparEspecies<T extends { nombre: string }>(
+  especies: T[],
+): { destacadas: T[]; resto: T[] } {
+  const orden = ESPECIES_DESTACADAS.map(normalizar);
+  const destacadas = especies
+    .filter((e) => orden.includes(normalizar(e.nombre)))
+    .sort((a, b) => orden.indexOf(normalizar(a.nombre)) - orden.indexOf(normalizar(b.nombre)));
+  const resto = especies
+    .filter((e) => !orden.includes(normalizar(e.nombre)))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  return { destacadas, resto };
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  agruparEspecies,
   esTutorEventual,
   estadoTrasCambioDeTutor,
   estadoValidoParaTutor,
@@ -70,5 +71,28 @@ describe("regla del tutor eventual", () => {
     expect(etiquetaAtendibles(ESTADOS, SIN_REGLA)).toBe("Activas");
     expect(nombresPermitidos(CONFIG)).toBe("En Tránsito / Rescate o Extraviado");
     expect(nombresPermitidos(null)).toBe("");
+  });
+});
+
+describe("agruparEspecies", () => {
+  it("test_agrupar_especies_pone_canina_y_felina_arriba_y_el_resto_alfabetico", () => {
+    const especies = [
+      { id: 1, nombre: "Ave" },
+      { id: 2, nombre: "Felina" },
+      { id: 3, nombre: "Reptil" },
+      { id: 4, nombre: "canina" },
+      { id: 5, nombre: "Exótico" },
+    ];
+
+    const { destacadas, resto } = agruparEspecies(especies);
+
+    expect(destacadas.map((e) => e.id)).toEqual([4, 2]);
+    expect(resto.map((e) => e.nombre)).toEqual(["Ave", "Exótico", "Reptil"]);
+  });
+
+  it("test_agrupar_especies_sin_destacadas_devuelve_todo_en_resto", () => {
+    const { destacadas, resto } = agruparEspecies([{ id: 1, nombre: "Ave" }]);
+    expect(destacadas).toEqual([]);
+    expect(resto).toHaveLength(1);
   });
 });

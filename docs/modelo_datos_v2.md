@@ -79,7 +79,7 @@ La asignación concreta de permisos a cada rol vive en la base de datos y no deb
 ### Entidad: `Usuario`
 - **id**: integer, PK.
 - **persona_id**: integer, Obligatorio. *FK a persona.id*. *Restricción: Unique (un usuario por persona).*
-- **username**: varchar(50), Obligatorio. *Restricción: Unique (`UQ_Usuario_Username`).*
+- **username**: varchar(100), Obligatorio. *Restricción: Unique (`UQ_Usuario_Username`).* (De 50 a 100 con `scripts/auth/001_portal_y_cuentas_cliente.sql`: el usuario de un cliente es su mail.)
 - **habilitado**: boolean, Obligatorio. *Default: True*.
 - **rol_id**: integer, Obligatorio. *FK a rol.id*.
 - **version_token**: integer, Obligatorio. *Default: 1*. (Para invalidación de JWT).
@@ -100,7 +100,7 @@ Regla de uso en login: la contraseña vigente de un usuario no se guarda en `usu
 ### Entidad: `Login`
 - **id**: bigserial, PK.
 - **usuario_id**: integer, Opcional. *FK a usuario.id*. (Puede ser nulo si el usuario ingresado no existe).
-- **username_ingresado**: varchar(50), Obligatorio.
+- **username_ingresado**: varchar(100), Obligatorio.
 - **fecha**: timestamp, Obligatorio. *Default: NOW()*.
 - **exito**: boolean, Obligatorio. (True=Exitoso, False=Fallido).
 - **ip**: inet, Obligatorio. (En SQLModel mapear como String o usar tipo IP de SQLAlchemy; en Pydantic, `IPvAnyAddress`).

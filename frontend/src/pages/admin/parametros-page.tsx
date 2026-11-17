@@ -15,7 +15,7 @@ const INTEGER_PARAMETROS = new Set([
   "PERSONA_ID_TUTOR_EVENTUAL",
 ]);
 // Listas de ids separados por coma (por ejemplo "5,4"); el backend valida lo mismo.
-const LISTA_ENTEROS_PARAMETROS = new Set(["ESTADOS_MASCOTA_TUTOR_EVENTUAL"]);
+const LISTA_ENTEROS_PARAMETROS = new Set(["ESTADOS_MASCOTA_TUTOR_EVENTUAL", "TIPOS_TURNO_PORTAL"]);
 
 export function hasPermission(permisos: string[], required: string): boolean {
   return permisos.includes("*") || permisos.includes(required);

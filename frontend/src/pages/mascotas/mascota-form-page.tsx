@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
 import { useSelectTypeahead } from "@/hooks/use-select-typeahead";
 import { apiFetch } from "@/lib/api";
-import { esTutorEventual, nombresPermitidos } from "@/lib/mascotas";
+import { agruparEspecies, esTutorEventual, nombresPermitidos } from "@/lib/mascotas";
 import type {
   CatalogoOpcion,
   MascotaCreatePayload,
@@ -198,6 +198,7 @@ export default function MascotaFormPage() {
   const [form, setForm] = React.useState<FormState>(INITIAL_FORM);
   const [errors, setErrors] = React.useState<FormErrors>({});
   const [especies, setEspecies] = React.useState<CatalogoOpcion[]>([]);
+  const especiesAgrupadas = React.useMemo(() => agruparEspecies(especies), [especies]);
   const [razas, setRazas] = React.useState<RazaOpcion[]>([]);
   const [razaDefaultNombre, setRazaDefaultNombre] = React.useState("Sin raza definida");
   const [tutorOptions, setTutorOptions] = React.useState<TutorOpcion[]>([]);
@@ -563,10 +564,12 @@ export default function MascotaFormPage() {
                     event,
                     [
                       { value: "", label: "Seleccionar…" },
-                      ...especies.map((item) => ({
-                        value: String(item.id),
-                        label: item.nombre,
-                      })),
+                      ...[...especiesAgrupadas.destacadas, ...especiesAgrupadas.resto].map(
+                        (item) => ({
+                          value: String(item.id),
+                          label: item.nombre,
+                        }),
+                      ),
                     ],
                     form.especie_id,
                     (value) => updateField("especie_id", value),
@@ -576,11 +579,24 @@ export default function MascotaFormPage() {
                 className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm ${fieldClass(Boolean(errors.especie_id))}`}
               >
                 <option value="">Seleccionar…</option>
-                {especies.map((item) => (
-                  <option key={item.id} value={String(item.id)}>
-                    {item.nombre}
-                  </option>
-                ))}
+                {especiesAgrupadas.destacadas.length > 0 ? (
+                  <optgroup label="Más comunes">
+                    {especiesAgrupadas.destacadas.map((item) => (
+                      <option key={item.id} value={String(item.id)}>
+                        {item.nombre}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {especiesAgrupadas.resto.length > 0 ? (
+                  <optgroup label={especiesAgrupadas.destacadas.length > 0 ? "Otras especies" : "Especies"}>
+                    {especiesAgrupadas.resto.map((item) => (
+                      <option key={item.id} value={String(item.id)}>
+                        {item.nombre}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
               </select>
               {errors.especie_id ? (
                 <p className="text-xs text-destructive">{errors.especie_id}</p>

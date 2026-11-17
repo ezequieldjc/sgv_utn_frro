@@ -12,6 +12,7 @@ from app.api.mascotas import router as mascotas_router
 from app.api.stock import router as stock_router
 from app.api.ventas import router as ventas_router
 from app.api.permisos import router as permisos_router
+from app.api.portal import router as portal_router
 from app.api.roles import router as roles_router
 from app.api.usuarios import router as usuarios_router
 from app.core.errors import APIError
@@ -52,3 +53,4 @@ app.include_router(consultas_router)
 app.include_router(agenda_router)
 app.include_router(stock_router)
 app.include_router(ventas_router)
+app.include_router(portal_router)

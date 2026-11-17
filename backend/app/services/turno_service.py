@@ -655,35 +655,59 @@ def get_disponibilidad(
 # ---------------------------------------------------------------------------
 
 
-def create_turno(session: Session, payload: TurnoCreate) -> TurnoItem:
-    tipo = _get_tipo_turno_activo(session, payload.tipo_turno_id)
-    _validar_mascota(session, payload.mascota_id)
-    _validar_veterinario(session, payload.veterinario_id)
+def registrar_turno(
+    session: Session,
+    *,
+    mascota_id: int,
+    veterinario_id: int,
+    tipo_turno_id: int,
+    fecha_hora_inicio: datetime,
+    estado: str,
+    canal_origen: str,
+) -> Turno:
+    """Valida y guarda un turno. Lo usan la app interna (`create_turno`) y el portal del
+    cliente, que agrega sus propias reglas antes de llamarla."""
+    tipo = _get_tipo_turno_activo(session, tipo_turno_id)
+    _validar_mascota(session, mascota_id)
+    _validar_veterinario(session, veterinario_id)
 
-    inicio = _to_utc(payload.fecha_hora_inicio)
+    inicio = _to_utc(fecha_hora_inicio)
     fin = inicio + timedelta(minutes=tipo.duracion_min)
     _validar_no_pasado(inicio)
     _validar_horario(inicio, fin)
     _validar_superposiciones(
         session,
-        veterinario_id=payload.veterinario_id,
-        mascota_id=payload.mascota_id,
+        veterinario_id=veterinario_id,
+        mascota_id=mascota_id,
         inicio=inicio,
         fin=fin,
     )
 
     turno = Turno(
-        mascota_id=payload.mascota_id,
-        veterinario_id=payload.veterinario_id,
-        tipo_turno_id=payload.tipo_turno_id,
+        mascota_id=mascota_id,
+        veterinario_id=veterinario_id,
+        tipo_turno_id=tipo_turno_id,
         fecha_hora_inicio=inicio,
         fecha_hora_fin=fin,
-        estado=payload.estado_inicial,
-        canal_origen=payload.canal_origen,
+        estado=estado,
+        canal_origen=canal_origen,
     )
     session.add(turno)
     _commit_turno(session)
     session.refresh(turno)
+    return turno
+
+
+def create_turno(session: Session, payload: TurnoCreate) -> TurnoItem:
+    turno = registrar_turno(
+        session,
+        mascota_id=payload.mascota_id,
+        veterinario_id=payload.veterinario_id,
+        tipo_turno_id=payload.tipo_turno_id,
+        fecha_hora_inicio=payload.fecha_hora_inicio,
+        estado=payload.estado_inicial,
+        canal_origen=payload.canal_origen,
+    )
     return get_turno(session, turno.id or 0)
 
 

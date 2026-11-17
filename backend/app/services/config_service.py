@@ -17,7 +17,7 @@ INTEGER_PARAMETROS = frozenset(
     }
 )
 # Listas de ids separados por coma (por ejemplo "5,4").
-LISTA_ENTEROS_PARAMETROS = frozenset({"ESTADOS_MASCOTA_TUTOR_EVENTUAL"})
+LISTA_ENTEROS_PARAMETROS = frozenset({"ESTADOS_MASCOTA_TUTOR_EVENTUAL", "TIPOS_TURNO_PORTAL"})
 
 
 def normalize_and_validate_parametro_valor(parametro_nombre: str, raw_valor: str) -> str:
