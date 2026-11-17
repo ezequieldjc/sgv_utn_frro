@@ -393,6 +393,9 @@ def test_sugerencias_para_bulldog_con_signos_respiratorios_ponen_primero_al_braq
     assert primera["explicacion"]["raza"] == {"codigo": "french-bulldog", "multiplicador": 4.0}
     assert [s["codigo"] for s in primera["explicacion"]["sintomas_negados"]] == ["sincope"]
     assert len(data["sugerencias"]) <= 3
+    # Con siete signos que explica el braquicefálico, "otra causa" casi no pesa.
+    assert data["evidencia_suficiente"] is True
+    assert Decimal(data["otra_causa_pct"]) < Decimal("1")
 
 
 def test_sugerencias_sin_signos_devuelve_lista_vacia(client, escenario):
@@ -401,6 +404,8 @@ def test_sugerencias_sin_signos_devuelve_lista_vacia(client, escenario):
     data = client.get(f"/api/consultas/{consulta['id']}/sugerencias").json()
 
     assert data["sugerencias"] == []
+    assert data["otra_causa_pct"] is None
+    assert data["evidencia_suficiente"] is False
 
 
 def test_motor_excluye_patologias_de_conformacion_en_razas_no_predispuestas():
@@ -410,10 +415,25 @@ def test_motor_excluye_patologias_de_conformacion_en_razas_no_predispuestas():
     ]
     signos = [motor_simulado.SignoEntrada("estertor_ronquido", True)]
 
-    sugerencias = motor_simulado.diagnosticar("labrador-retriever", signos, patologias)
+    resultado = motor_simulado.diagnosticar("labrador-retriever", signos, patologias)
 
-    assert [s.codigo for s in sugerencias] == ["acute-gastroenteritis"]
-    assert sugerencias[0].probabilidad_pct == Decimal("100.00")
+    assert [s.codigo for s in resultado.sugerencias] == ["acute-gastroenteritis"]
+    # Antes la gastroenteritis se llevaba el 100 % solo por ser la única que quedaba.
+    # Un ronquido no la explica: lo más probable es una causa fuera del catálogo.
+    assert resultado.evidencia_suficiente is False
+    assert resultado.otra_causa_pct is not None
+    assert resultado.otra_causa_pct > resultado.sugerencias[0].probabilidad_pct
+
+
+def test_motor_otra_causa_tiene_piso_aunque_las_prevalencias_sumen_mas_de_uno():
+    patologias = [
+        motor_simulado.PatologiaEntrada(i, codigo, codigo, 0.5)
+        for i, codigo in enumerate(motor_simulado.BASE_CONOCIMIENTO, start=1)
+    ]
+
+    assert motor_simulado.probabilidad_otra_causa(patologias) == (
+        motor_simulado.PROBABILIDAD_OTRA_CAUSA_MINIMA
+    )
 
 
 def test_motor_es_deterministico_y_los_porcentajes_no_superan_100():
@@ -431,8 +451,12 @@ def test_motor_es_deterministico_y_los_porcentajes_no_superan_100():
     segunda = motor_simulado.diagnosticar(None, signos, patologias)
 
     assert primera == segunda
-    assert primera[0].codigo == "acute-gastroenteritis"
-    assert sum(s.probabilidad_pct for s in primera) <= Decimal("100")
+    assert primera.sugerencias[0].codigo == "acute-gastroenteritis"
+    assert primera.evidencia_suficiente is True
+    # Top 3 + otra causa no pasan de 100 (más el redondeo a dos decimales de cada uno).
+    assert primera.otra_causa_pct is not None
+    total = sum(s.probabilidad_pct for s in primera.sugerencias) + primera.otra_causa_pct
+    assert total <= Decimal("100.02")
 
 
 # ---------------------------------------------------------------------------

@@ -18,11 +18,27 @@ from app.services.auth_service import (
     create_login_audit,
     validate_login,
 )
-from app.services.authorization_service import get_current_authenticated_session
+from app.services.authorization_service import get_current_authenticated_session, validar_renovacion
 from app.services.config_service import get_access_token_expiration_minutes, get_refresh_token_expiration_minutes
-from app.services.token_service import issue_token_pair
+from app.services.token_service import TokenPair, issue_token_pair
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+def _set_auth_cookies(response: Response, token_pair: TokenPair) -> None:
+    settings = get_settings()
+    for key, value in (
+        (settings.access_cookie_name, token_pair.access_token),
+        (settings.refresh_cookie_name, token_pair.refresh_token),
+    ):
+        response.set_cookie(
+            key=key,
+            value=value,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
+            path="/",
+        )
 
 
 def _extract_client_ip(request: Request) -> str:
@@ -84,23 +100,34 @@ def login(payload: LoginRequest, request: Request, response: Response, session: 
         user_id=validation.user.id,
     )
 
+    _set_auth_cookies(response, token_pair)
+    return session_response
+
+
+@router.post("/refresh", response_model=AuthSessionResponse)
+def refresh(
+    request: Request,
+    response: Response,
+    session: Session = Depends(get_session),
+) -> AuthSessionResponse:
+    """Renueva el access token con la cookie de renovación, sin pedir la contraseña.
+
+    El frontend lo llama solo cuando una llamada devuelve TOKEN_EXPIRADO. Los permisos se vuelven
+    a leer de la base, así que un cambio en el rol se aplica en la próxima renovación. También
+    se emite una cookie de renovación nueva, con lo que la sesión se extiende mientras se use.
+    """
     settings = get_settings()
-    response.set_cookie(
-        key=settings.access_cookie_name,
-        value=token_pair.access_token,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
-        path="/",
+    usuario = validar_renovacion(session, request.cookies.get(settings.refresh_cookie_name))
+    session_response = build_session_response(session, usuario)
+    token_pair = issue_token_pair(
+        user_id=usuario.id or 0,
+        rol_id=usuario.rol_id,
+        permisos=session_response.permisos,
+        version_token=usuario.version_token,
+        access_minutes=get_access_token_expiration_minutes(),
+        refresh_minutes=get_refresh_token_expiration_minutes(),
     )
-    response.set_cookie(
-        key=settings.refresh_cookie_name,
-        value=token_pair.refresh_token,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
-        path="/",
-    )
+    _set_auth_cookies(response, token_pair)
     return session_response
 
 

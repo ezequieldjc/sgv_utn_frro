@@ -71,6 +71,24 @@ export function dictadoDemoPara(mascota: Pick<MascotaResumen, "raza_codigo">): s
 }
 
 /** El motor normaliza a 100 %: los extremos se muestran sin sugerir certeza absoluta. */
+/**
+ * Aviso para el panel cuando "otra causa no contemplada" pesa más que la primera sugerencia.
+ * Sin sugerencias no hay nada que advertir: el panel ya pide dictar o cargar signos.
+ */
+export function avisoEvidencia(
+  sugerencias: SugerenciaItem[],
+  evidenciaSuficiente: boolean,
+  otraCausaPct: string | null,
+): string | null {
+  if (sugerencias.length === 0 || evidenciaSuficiente) {
+    return null;
+  }
+  return (
+    `Evidencia insuficiente: con estos signos, lo más probable (${porcentajeLabel(otraCausaPct)}) ` +
+    "es una causa que no está en el catálogo del prototipo. Tomá las sugerencias con cautela."
+  );
+}
+
 export function porcentajeLabel(valor: string | number | null): string {
   if (valor === null) {
     return "—";

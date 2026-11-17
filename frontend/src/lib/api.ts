@@ -2,6 +2,17 @@ const BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ||
   "";
 
+/** Se dispara cuando la sesión venció y no se pudo renovar: el AuthProvider manda al login. */
+export const EVENTO_SESION_EXPIRADA = "auth:sesion-expirada";
+
+// Llamadas que nunca disparan una renovación: o son la renovación misma, o no usan la sesión.
+const RUTAS_SIN_RENOVACION = [
+  "/api/auth/login",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+  "/api/auth/cambiar-contrasena-obligatorio",
+];
+
 function buildUrl(input: RequestInfo): RequestInfo {
   if (typeof input !== "string") {
     return input;
@@ -15,17 +26,64 @@ function buildUrl(input: RequestInfo): RequestInfo {
   return input;
 }
 
+function puedeRenovar(input: RequestInfo): boolean {
+  return typeof input === "string" && !RUTAS_SIN_RENOVACION.some((ruta) => input.startsWith(ruta));
+}
+
+async function leerCuerpo(res: Response): Promise<unknown> {
+  const contentType = res.headers.get("content-type") || "";
+  return contentType.includes("application/json") ? res.json() : res.text();
+}
+
+function codigoDeError(body: unknown): string | null {
+  return typeof body === "object" &&
+    body !== null &&
+    "error" in body &&
+    typeof (body as { error: unknown }).error === "string"
+    ? (body as { error: string }).error
+    : null;
+}
+
+let renovacionEnCurso: Promise<boolean> | null = null;
+
+/**
+ * Pide un access token nuevo con la cookie de renovación (HttpOnly, el navegador la manda solo).
+ * Si varias llamadas vencen a la vez, comparten el mismo pedido.
+ */
+function renovarSesion(): Promise<boolean> {
+  if (renovacionEnCurso === null) {
+    renovacionEnCurso = fetch(buildUrl("/api/auth/refresh"), {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((res) => res.ok)
+      .catch(() => false)
+      .finally(() => {
+        renovacionEnCurso = null;
+      });
+  }
+  return renovacionEnCurso;
+}
+
 export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const url = buildUrl(input);
-  const res = await fetch(url, { credentials: "include", ...init });
+  let res = await fetch(url, { credentials: "include", ...init });
+
+  // El access token dura pocos minutos: si venció, se renueva una vez y se repite la llamada.
+  if (res.status === 401 && puedeRenovar(input)) {
+    const codigo = codigoDeError(await leerCuerpo(res.clone()));
+    if (codigo === "TOKEN_EXPIRADO") {
+      if (await renovarSesion()) {
+        res = await fetch(url, { credentials: "include", ...init });
+      } else {
+        window.dispatchEvent(new Event(EVENTO_SESION_EXPIRADA));
+      }
+    }
+  }
+
   const contentType = res.headers.get("content-type") || "";
   if (!res.ok) {
-    let body: unknown = null;
-    if (contentType.includes("application/json")) {
-      body = await res.json();
-    } else {
-      body = await res.text();
-    }
+    const body = await leerCuerpo(res);
     const detalle =
       typeof body === "object" &&
       body !== null &&

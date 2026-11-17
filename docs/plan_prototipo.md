@@ -16,17 +16,29 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
   aceptar o descartar, firmar y ver la historia clínica. El detalle está en
   `docs/prompts botones/consulta_dictado.md`. Tests: 247 del backend y 96 del frontend en verde,
   y el recorrido completo probado en el navegador.
+- **17/11:**
+  - `006` aplicado en Neon.
+  - La rama se mergeó con el PR #28, pero a `main` en lugar de `staging`.
+  - Datos de demo cargados desde la app: la veterinaria Valeria Sosa (`vsosa`), Martín Rossi con
+    Coco, Carla Gómez con Thor y Mora, y turnos del 17/11.
+  - La consulta de Coco quedó firmada.
+- **Rama `feature/prototipo-ajustes`:**
+  - El motor contempla "otra causa no contemplada" (`simulado-0.2`) y avisa cuando la evidencia
+    no alcanza.
+  - Los 10 casos de `docs/casos_prueba_dictado.md` corren como tests.
+  - La sesión se renueva sola con el refresh token (`POST /api/auth/refresh`). Antes vencía a
+    los 15 minutos, aunque se estuviera usando.
 
 ## Qué falta, en orden
 
-1. **Aplicar `scripts/clinica/006_datos_prototipo.sql` en Neon**, como DBA. Da los permisos de
-   consultas a VETERINARIO, completa los códigos de las razas y carga 20 signos y 5 patologías.
-   Sin este paso la pantalla funciona, pero no hay signos ni sugerencias.
-2. **Mergear la rama** a `staging` (PR revisado por otro integrante, CI en verde).
-3. **Cargar los datos de demostración desde la app**, como lo haría la clínica: los pacientes que
-   falten y un turno confirmado para cada caso, el mismo día de la presentación.
-4. **Ensayar la demo completa contra Neon** al menos una vez, con el usuario veterinario.
-5. **Ajustes de contenido (opcional):** revisar las frecuencias de `BASE_CONOCIMIENTO`
+1. **Volver a alinear `staging` con `main`**: abrir un PR de `main` a `staging` y mergearlo.
+   Después, mergear `feature/prototipo-ajustes` a `staging`. Ese PR tiene que revisarlo otro
+   integrante y pasar el CI.
+2. **Turnos para el día de la presentación**: uno confirmado para cada caso del guion, el mismo
+   día. La consulta toma la fecha y hora en que se inicia.
+3. **Ensayar la demo completa contra Neon** al menos una vez, con el usuario veterinario. El
+   turno de Luna del 17/11 quedó libre para eso.
+4. **Ajustes de contenido (opcional):** revisar las frecuencias de `BASE_CONOCIMIENTO`
    (`backend/app/services/motor_simulado.py`) y los textos de `DICTADOS_DEMO`
    (`frontend/src/lib/consultas.ts`). Si se cambia un código, cambiarlo también en el script 006.
 
@@ -34,9 +46,9 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
 
 | Caso | Paciente | Qué se dicta | Qué tiene que pasar |
 |------|----------|--------------|---------------------|
-| 1 | Coco, Bulldog Francés (crear) | Ronquidos, se cansa al caminar, regurgita, tos, **nunca se desmayó**, 13,2 kg, 38,9 °C | 7 signos, con el síncope **negado**; primera sugerencia: síndrome braquicefálico (predisposición de raza ×4). Se acepta como principal y se firma. |
+| 1 | Coco, Bulldog Francés (ya existe, con una consulta firmada del 16/11) | Ronquidos, se cansa al caminar, regurgita, tos, **nunca se desmayó**, 13,2 kg, 38,9 °C | 7 signos, con el síncope **negado**; primera sugerencia: síndrome braquicefálico (predisposición de raza ×4). Se acepta como principal y se firma. |
 | 2 | Luna, Cocker Spaniel Inglés (ya existe) | Sacude la cabeza, se rasca las orejas, secreción marrón, **no tiene fiebre** | Primera sugerencia: otitis externa. Mostrar «¿Por qué?» y una corrección a mano de un signo. |
-| 3 | Un Labrador Retriever (crear) | Renguea, le cuesta levantarse, dolor de cadera | Primera sugerencia: displasia de cadera. Firmar con un diagnóstico manual secundario. |
+| 3 | Thor, Labrador Retriever (ya existe) | Renguea, le cuesta levantarse, dolor de cadera | Primera sugerencia: displasia de cadera. Firmar con un diagnóstico manual secundario. |
 
 Al final, abrir la historia clínica de una de las mascotas y mostrar la consulta firmada en solo
 lectura, con sus signos, sus diagnósticos y el dictado original.
@@ -49,6 +61,9 @@ Lo simulado son los dos extremos que dependen de servicios o datos externos: la 
 - el contrato de la ficha;
 - los códigos compartidos entre módulos;
 - la fórmula del motor, que es determinística y explica cada factor;
+- el motor reconoce cuándo los signos no alcanzan: suma una "otra causa no contemplada" y avisa
+  **Evidencia insuficiente** (es el caso 10 de `docs/casos_prueba_dictado.md`, y conviene
+  mostrarlo a propósito);
 - las tablas y la firma en una sola transacción.
 
 El dictado se procesa con el extractor por reglas, que el documento de flujo prevé como respaldo

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 
+from fastapi.testclient import TestClient
 from sqlmodel import select
 
-from app.core.security import hash_password
+from app.core.security import create_access_token, create_refresh_token, hash_password
+from app.main import app
 from app.models.auth.historial_contrasena import HistorialContrasena
 from app.models.auth.login import Login
 from app.models.auth.permiso import Permiso
@@ -340,3 +342,94 @@ def test_cambiar_contrasena_obligatorio_exitoso_inserta_historial_y_permite_logi
     )
     assert login_new.status_code == 200
     assert client.cookies.get("access_token")
+
+
+# ---------------------------------------------------------------------------
+# Renovación de sesión (POST /api/auth/refresh)
+# ---------------------------------------------------------------------------
+
+
+def _login_y_refresh_token(client) -> str:
+    response = client.post(
+        "/api/auth/login",
+        json={"username": "jperez", "password": "Secret123!"},
+    )
+    assert response.status_code == 200
+    token = client.cookies.get("refresh_token")
+    assert token
+    return token
+
+
+def _navegador_con(refresh_token: str) -> TestClient:
+    """Un navegador al que solo le queda la cookie de renovación (el access token ya venció)."""
+    return TestClient(app, cookies={"refresh_token": refresh_token})
+
+
+def test_refresh_con_solo_la_cookie_de_renovacion_devuelve_una_sesion_nueva(client, session) -> None:
+    user = seed_auth_data(session)
+    navegador = _navegador_con(_login_y_refresh_token(client))
+
+    response = navegador.post("/api/auth/refresh")
+
+    assert response.status_code == 200
+    assert response.json()["usuario"]["id"] == user.id
+    assert response.json()["permisos"] == ["pacientes:read"]
+    set_cookies = response.headers.get_list("set-cookie")
+    assert any(c.startswith("access_token=") for c in set_cookies)
+    assert any(c.startswith("refresh_token=") for c in set_cookies)
+    assert navegador.get("/api/auth/me").status_code == 200
+
+
+def test_refresh_sin_cookie_devuelve_401(client, session) -> None:
+    seed_auth_data(session)
+
+    response = client.post("/api/auth/refresh")
+
+    assert response.status_code == 401
+    assert response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_refresh_no_acepta_un_access_token(client, session) -> None:
+    user = seed_auth_data(session)
+    access = create_access_token(user.id or 0, user.rol_id, [], user.version_token, 15)
+
+    response = _navegador_con(access).post("/api/auth/refresh")
+
+    assert response.status_code == 401
+    assert response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_refresh_vencido_devuelve_sesion_expirada(client, session) -> None:
+    user = seed_auth_data(session)
+    vencido = create_refresh_token(user.id or 0, user.version_token, -1)
+
+    response = _navegador_con(vencido).post("/api/auth/refresh")
+
+    assert response.status_code == 401
+    assert response.json()["error"] == "SESION_EXPIRADA"
+
+
+def test_refresh_despues_de_revocar_la_sesion_devuelve_401(client, session) -> None:
+    user = seed_auth_data(session)
+    refresh_token = _login_y_refresh_token(client)
+    user.version_token += 1
+    session.add(user)
+    session.commit()
+
+    response = _navegador_con(refresh_token).post("/api/auth/refresh")
+
+    assert response.status_code == 401
+    assert response.json()["error"] == "TOKEN_INVALIDO"
+
+
+def test_refresh_de_usuario_deshabilitado_devuelve_403(client, session) -> None:
+    user = seed_auth_data(session)
+    refresh_token = _login_y_refresh_token(client)
+    user.habilitado = False
+    session.add(user)
+    session.commit()
+
+    response = _navegador_con(refresh_token).post("/api/auth/refresh")
+
+    assert response.status_code == 403
+    assert response.json()["error"] == "USUARIO_DESHABILITADO"

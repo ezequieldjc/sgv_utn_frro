@@ -6,7 +6,15 @@ Aplica la fórmula de `docs/flujo_de_los_datos.md` (sección 3):
                  × frecuencia(p, s) de cada signo presente
                  × (1 − frecuencia(p, s)) de cada signo negado
 
-y normaliza para que los puntajes sumen 100 %. Lo simulado es la base de conocimiento: en vez de
+y normaliza para que los puntajes sumen 100 %. En la normalización entra además la hipótesis
+"otra causa no contemplada". El catálogo del prototipo tiene pocas patologías, y sin ese término el
+motor repartiría siempre el 100 % entre ellas aunque ninguna explique los signos (un perro mestizo
+que ronca y se agita terminaba con "displasia de cadera 81 %"). Su probabilidad base es lo que la
+suma de las prevalencias deja afuera, con un piso, y cada signo presente la multiplica por 0,05
+(el nivel "raro" de la escala) y cada negado por 0,95. Si esa hipótesis es la más probable, la
+evidencia no alcanza para sugerir con confianza y la pantalla lo avisa.
+
+Lo simulado es la base de conocimiento: en vez de
 leer `patologia_sintoma` y `raza_patologia` (que todavía no existen en PostgreSQL), las
 frecuencias y las predisposiciones de las patologías del prototipo están escritas acá, en
 `BASE_CONOCIMIENTO`. La prevalencia y `solo_razas_predispuestas` sí salen de `clinica.patologia`.
@@ -21,9 +29,14 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-VERSION_MOTOR = "simulado-0.1"
+VERSION_MOTOR = "simulado-0.2"
 # Frecuencia que se usa cuando la base no relaciona el signo con la patología.
 FRECUENCIA_SIN_FILA = 0.02
+# Hipótesis "otra causa no contemplada": con qué frecuencia mostraría cualquier signo un cuadro
+# que no está en el catálogo (nivel "raro" de la escala), y el piso de su probabilidad base para
+# que siga pesando aunque el catálogo crezca.
+FRECUENCIA_OTRA_CAUSA = 0.05
+PROBABILIDAD_OTRA_CAUSA_MINIMA = 0.10
 TOP = 3
 
 
@@ -124,21 +137,46 @@ class Sugerencia:
     explicacion: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class ResultadoMotor:
+    """El top 3 de patologías y cuánto pesa una causa que el catálogo no contempla.
+
+    `otra_causa_pct` es `None` cuando no hay signos (no hay nada que calcular).
+    `evidencia_suficiente` es falso cuando "otra causa" es más probable que la primera sugerencia.
+    """
+
+    sugerencias: list[Sugerencia]
+    otra_causa_pct: Decimal | None
+    evidencia_suficiente: bool
+
+
 def _redondear_pct(valor: float) -> Decimal:
     return Decimal(str(valor)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def probabilidad_otra_causa(patologias: list[PatologiaEntrada]) -> float:
+    """Probabilidad base de que el cuadro no sea ninguna patología del catálogo.
+
+    Es lo que la suma de las prevalencias deja afuera, con un piso para que la hipótesis siga
+    pesando aunque el catálogo crezca.
+    """
+    cubierta = sum(p.prevalencia for p in patologias)
+    return max(1.0 - cubierta, PROBABILIDAD_OTRA_CAUSA_MINIMA)
 
 
 def diagnosticar(
     raza_codigo: str | None,
     signos: list[SignoEntrada],
     patologias: list[PatologiaEntrada],
-) -> list[Sugerencia]:
+) -> ResultadoMotor:
     """Devuelve el top 3 de patologías con su porcentaje y la explicación de cada factor.
 
-    Sin signos no hay evidencia para sugerir nada: devuelve una lista vacía.
+    Los porcentajes se calculan sobre el total que incluye "otra causa no contemplada", así que
+    las sugerencias pueden sumar menos de 100 %. Sin signos no hay evidencia para sugerir nada:
+    devuelve un resultado vacío.
     """
     if not signos:
-        return []
+        return ResultadoMotor(sugerencias=[], otra_causa_pct=None, evidencia_suficiente=False)
 
     puntajes: list[tuple[PatologiaEntrada, float, dict[str, Any], str | None]] = []
     for patologia in patologias:
@@ -177,12 +215,19 @@ def diagnosticar(
         }
         puntajes.append((patologia, puntaje, explicacion, conocimiento.estudio_sugerido))
 
-    total = sum(p for _, p, _, _ in puntajes)
-    if total <= 0:
-        return []
+    puntaje_otra = probabilidad_otra_causa(patologias)
+    for signo in signos:
+        puntaje_otra *= FRECUENCIA_OTRA_CAUSA if signo.presente else 1.0 - FRECUENCIA_OTRA_CAUSA
 
-    ordenados = sorted(puntajes, key=lambda item: (-item[1], item[0].codigo))
-    return [
+    # puntaje_otra siempre es positivo, así que el total nunca es cero.
+    total = puntaje_otra + sum(p for _, p, _, _ in puntajes)
+    otra_causa_pct = _redondear_pct(puntaje_otra / total * 100)
+
+    ordenados = sorted(
+        (item for item in puntajes if item[1] > 0),
+        key=lambda item: (-item[1], item[0].codigo),
+    )
+    sugerencias = [
         Sugerencia(
             patologia_id=patologia.id,
             codigo=patologia.codigo,
@@ -190,9 +235,15 @@ def diagnosticar(
             ranking=puesto,
             probabilidad_pct=_redondear_pct(puntaje / total * 100),
             estudio_sugerido=estudio,
-            explicacion=explicacion,
+            # Queda guardado con el diagnóstico aceptado: explica por qué el porcentaje era ese.
+            explicacion={**explicacion, "otra_causa_pct": float(otra_causa_pct)},
         )
         for puesto, (patologia, puntaje, explicacion, estudio) in enumerate(
             ordenados[:TOP], start=1
         )
     ]
+    return ResultadoMotor(
+        sugerencias=sugerencias,
+        otra_causa_pct=otra_causa_pct,
+        evidencia_suficiente=bool(ordenados) and ordenados[0][1] > puntaje_otra,
+    )

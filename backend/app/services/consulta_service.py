@@ -527,7 +527,7 @@ def eliminar_signo(session: Session, consulta_id: int, signo_id: int) -> Consult
 
 def _calcular(
     session: Session, consulta: Consulta
-) -> tuple[list[motor_simulado.Sugerencia], int]:
+) -> tuple[motor_simulado.ResultadoMotor, int]:
     filas = session.exec(
         select(ConsultaSintoma, Sintoma)
         .join(Sintoma, col(Sintoma.id) == col(ConsultaSintoma.sintoma_id), isouter=True)
@@ -555,17 +555,17 @@ def _calcular(
         )
         for p in session.exec(select(Patologia).where(col(Patologia.activo).is_(True))).all()
     ]
-    sugerencias = motor_simulado.diagnosticar(
-        raza.codigo if raza else None, signos, patologias
-    )
-    return sugerencias, sin_codigo
+    resultado = motor_simulado.diagnosticar(raza.codigo if raza else None, signos, patologias)
+    return resultado, sin_codigo
 
 
 def get_sugerencias(session: Session, consulta_id: int) -> SugerenciasResponse:
     consulta = _get_consulta(session, consulta_id)
-    sugerencias, sin_codigo = _calcular(session, consulta)
+    resultado, sin_codigo = _calcular(session, consulta)
     return SugerenciasResponse(
         version_motor=motor_simulado.VERSION_MOTOR,
+        otra_causa_pct=resultado.otra_causa_pct,
+        evidencia_suficiente=resultado.evidencia_suficiente,
         sugerencias=[
             SugerenciaItem(
                 patologia_id=s.patologia_id,
@@ -576,7 +576,7 @@ def get_sugerencias(session: Session, consulta_id: int) -> SugerenciasResponse:
                 estudio_sugerido=s.estudio_sugerido,
                 explicacion=s.explicacion,
             )
-            for s in sugerencias
+            for s in resultado.sugerencias
         ],
         signos_sin_codigo=sin_codigo,
     )
@@ -605,7 +605,7 @@ def firmar_consulta(
         if patologia is None or not patologia.activo:
             raise APIError(404, "PATOLOGIA_NO_ENCONTRADA", "La patología no existe")
 
-    vigentes = {s.patologia_id: s for s in _calcular(session, consulta)[0]}
+    vigentes = {s.patologia_id: s for s in _calcular(session, consulta)[0].sugerencias}
     ahora = utc_now()
     for dx in payload.diagnosticos:
         fila = ConsultaDiagnostico(
