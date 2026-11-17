@@ -428,9 +428,11 @@ function ShellHeader() {
 
       <div className="ml-auto flex items-center gap-2">
         {canCreateConsulta ? (
-          <Button size="sm" className="hidden sm:inline-flex" type="button">
-            <Plus className="size-4" />
-            Nueva Consulta
+          <Button size="sm" className="hidden sm:inline-flex" asChild>
+            <Link to="/consultas/nueva">
+              <Plus className="size-4" />
+              Nueva Consulta
+            </Link>
           </Button>
         ) : null}
         <ModeToggle />
