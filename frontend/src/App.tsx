@@ -19,6 +19,7 @@ import {
 import MascotasPage from "./pages/mascotas/mascotas-page";
 import MascotaFormPage from "./pages/mascotas/mascota-form-page";
 import MascotaEditPage from "./pages/mascotas/mascota-edit-page";
+import MascotaVacunasPage from "./pages/mascotas/mascota-vacunas-page";
 import ConsultasHistorialPage from "./pages/consultas/consultas-historial-page";
 import ConsultaPage from "./pages/consultas/consulta-page";
 import NuevaConsultaPage from "./pages/consultas/nueva-consulta-page";
@@ -30,6 +31,9 @@ import MovimientosPage from "./pages/stock/movimientos-page";
 import AnalisisStockPage from "./pages/stock/analisis-page";
 import NuevaVentaPage from "./pages/ventas/nueva-venta-page";
 import VentasPage from "./pages/ventas/ventas-page";
+import RecordatoriosPage from "./pages/recordatorios/recordatorios-page";
+import RecetasHistorialPage from "./pages/recetas/recetas-historial-page";
+import NuevaRecetaPage from "./pages/recetas/nueva-receta-page";
 import MisMascotasPage from "./pages/portal/mis-mascotas-page";
 import PortalMascotaPage from "./pages/portal/portal-mascota-page";
 import PortalConsultaPage from "./pages/portal/portal-consulta-page";
@@ -67,12 +71,16 @@ export default function App() {
             <Route path="mascotas" element={<MascotasPage />} />
             <Route path="mascotas/nuevo" element={<MascotaFormPage />} />
             <Route path="mascotas/:id/editar" element={<MascotaEditPage />} />
+            <Route path="mascotas/:id/vacunas" element={<MascotaVacunasPage />} />
             <Route path="consultas/historial" element={<ConsultasHistorialPage />} />
             <Route path="consultas/historia-clinica" element={<ConsultasHistorialPage />} />
             <Route path="consultas/nueva" element={<NuevaConsultaPage />} />
             <Route path="consultas/:id" element={<ConsultaPage />} />
             <Route path="agenda" element={<AgendaPage />} />
             <Route path="agenda/nuevo-turno" element={<TurnoFormPage />} />
+            <Route path="recordatorios" element={<RecordatoriosPage />} />
+            <Route path="recetas/historial" element={<RecetasHistorialPage />} />
+            <Route path="recetas/nueva" element={<NuevaRecetaPage />} />
             <Route path="stock" element={<InventarioPage />} />
             <Route path="stock/alta" element={<ProductoFormPage />} />
             <Route path="stock/:id/editar" element={<ProductoFormPage />} />

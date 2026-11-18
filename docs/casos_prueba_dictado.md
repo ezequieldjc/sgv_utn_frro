@@ -1,6 +1,6 @@
 # Casos de prueba del dictado (prototipo)
 
-Diez dictados para probar el extractor por reglas (`nlp_simulado`) y el motor simulado
+Doce dictados para probar el extractor por reglas (`nlp_simulado`) y el motor simulado
 (`motor_simulado`, versión `simulado-0.2`) con las mascotas de la base de demo. Cada caso dice
 qué mascota usar, qué signos tendría que detectar y qué sugerencia debería aparecer. Los
 resultados se midieron corriendo el extractor y el motor, y están automatizados en
@@ -15,7 +15,10 @@ consultas firmadas no se pueden borrar.
 
 **Las mascotas.** Coco es de Martín Rossi. Thor y Mora son de Carla Gómez. Lola, Kiki y Bela
 están con el tutor eventual. Luna queda reservada para el recorrido con **Iniciar dictado**: es
-Cocker, así que el texto de prueba es el de otitis.
+Cocker, así que el texto de prueba es el de otitis. Felipe y Simón son dos Shar Pei de Joaquín
+Ferreyra, el cliente de prueba de los recordatorios (su celular es el de Bruno). El caso 11 es el
+texto de **Iniciar dictado** de la raza: la consulta de Felipe se hace en vivo en la demo, así que
+no se firma antes. Para Simón, el caso 12 se pega en la transcripción.
 
 Los porcentajes están escritos como los muestra la pantalla: ">99%" desde 99,5 y "<1%" debajo
 de 1. Desde `simulado-0.2` el cálculo incluye una hipótesis "otra causa no contemplada" en el
@@ -158,7 +161,39 @@ lo que la suma de las prevalencias deja afuera (0,85, con un piso de 0,10 para c
 crezca), y la frecuencia es 0,05 por signo presente, el nivel "raro" de la escala. Es el caso para
 mostrar, a propósito, que el sistema reconoce cuándo no sabe.
 
+### 11. Felipe (Shar Pei): dermatitis atópica con predisposición de raza
+
+> Viene porque se rasca todo el día y se lame las patas desde hace un mes. El dueño cuenta que
+> empeora en primavera, que no vomita ni tiene diarrea y que come bien. Pesa 21,5 kilos,
+> temperatura 38,7. Presenta enrojecimiento en los pliegues de la cara, en las axilas y entre los
+> dedos. No sacude la cabeza. Pido raspado cutáneo. Indico baño con clorhexidina cada tres días,
+> oclacitinib 16 mg un comprimido cada 12 horas por 14 días y control en quince días.
+
+Tendría que detectar prurito y lamido de patas como presentes, y vómitos, diarrea y sacudida de
+cabeza como negados. Arma también la ficha completa: el pedido de raspado va a observaciones y la
+indicación entera va a tratamiento, que es lo que después sale en la receta en PDF.
+
+**Sugerencia:** Dermatitis atópica 95%. Otra causa: 5%.
+
+Es el caso para mostrar el sesgo por raza: el Shar Pei suma predisposición ×4 a la dermatitis
+atópica (y ×2,5 a la otitis externa, por el conducto auditivo estrecho). Sin ese multiplicador,
+el mismo dictado da 83%. Para que el motor lo reconozca, el Shar Pei tiene el código
+`chinese-shar-pei` desde `scripts/clinica/008_vacunas_recordatorios.sql`.
+
+### 12. Simón (Shar Pei): otitis externa
+
+> Viene porque sacude la cabeza y tiene mal olor en las orejas desde hace cinco días. El dueño
+> cuenta que se rasca las orejas de noche y que no tiene fiebre. Pesa 23,8 kilos, temperatura
+> 38,5. Presenta el conducto auditivo derecho estrecho y enrojecido, con secreción marrón. Pido
+> citología de oído. Indico limpiador ótico cada 12 horas, gotas de gentamicina con betametasona
+> cinco gotas cada 12 horas por diez días y control en diez días.
+
+Tendría que detectar sacudida de cabeza, prurito y secreción en el oído como presentes, y fiebre
+como negada.
+
+**Sugerencias:** Otitis externa 99%, Dermatitis atópica 1%.
+
 ---
 
-Los diez casos están en `backend/tests/test_casos_dictado.py`. Corren con el resto de los tests
+Los doce casos están en `backend/tests/test_casos_dictado.py`. Corren con el resto de los tests
 del backend, también en el CI de cada PR.

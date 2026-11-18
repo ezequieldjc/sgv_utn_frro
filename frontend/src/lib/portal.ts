@@ -57,8 +57,13 @@ export function fechaLabel(iso: string): string {
 export function turnoLabel(iso: string): string {
   const fecha = new Date(iso);
   const dia = fecha.toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "2-digit" });
-  const hora = fecha.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  const hora = fecha.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   return `${dia}, ${hora}`;
+}
+
+/** El estado normal no se marca en la tarjeta. En el catálogo se llama "Activo" (id 1). */
+export function esEstadoActivo(nombre: string): boolean {
+  return /^activ[ao]$/i.test(nombre.trim());
 }
 
 export function pesoLabel(kg: string | number | null): string | null {
@@ -100,7 +105,12 @@ export function mensajePortal(error: unknown, queCosa: string): string {
 }
 
 export function horaLabel(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  // 24 horas, como la agenda: en es-AR el formato por defecto es "10:00 a. m.".
+  return new Date(iso).toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
 }
 
 export interface PedidoTurnoForm {

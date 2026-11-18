@@ -30,7 +30,7 @@ export function VentaDetalleSheet({ ventaId, onClose }: { ventaId: number | null
           <SheetTitle>Venta #{ventaId}</SheetTitle>
           <SheetDescription>
             {venta
-              ? `${new Date(venta.fecha).toLocaleString("es-AR", { dateStyle: "long", timeStyle: "short" })} · ${MEDIO_PAGO_LABEL[venta.medio_pago]}`
+              ? `${new Date(venta.fecha).toLocaleString("es-AR", { dateStyle: "long", timeStyle: "short", hourCycle: "h23" })} · ${MEDIO_PAGO_LABEL[venta.medio_pago]}`
               : "Cargando…"}
           </SheetDescription>
         </SheetHeader>

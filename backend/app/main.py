@@ -13,8 +13,11 @@ from app.api.stock import router as stock_router
 from app.api.ventas import router as ventas_router
 from app.api.permisos import router as permisos_router
 from app.api.portal import router as portal_router
+from app.api.recetas import router as recetas_router
+from app.api.recordatorios import router as recordatorios_router
 from app.api.roles import router as roles_router
 from app.api.usuarios import router as usuarios_router
+from app.api.vacunas import router as vacunas_router
 from app.core.errors import APIError
 from app.schemas.common import ErrorResponse
 
@@ -30,6 +33,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # El frontend lee el nombre del PDF de la receta cuando la API está en otro origen.
+    expose_headers=["Content-Disposition"],
 )
 
 
@@ -54,3 +59,6 @@ app.include_router(agenda_router)
 app.include_router(stock_router)
 app.include_router(ventas_router)
 app.include_router(portal_router)
+app.include_router(vacunas_router)
+app.include_router(recordatorios_router)
+app.include_router(recetas_router)

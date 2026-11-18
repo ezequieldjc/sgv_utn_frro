@@ -1,5 +1,6 @@
 from app.models.agenda.tipo_turno import TipoTurno
 from app.models.agenda.turno import Turno
+from app.models.agenda.recordatorio import Recordatorio
 from app.models.auth.historial_contrasena import HistorialContrasena
 from app.models.auth.login import Login
 from app.models.auth.permiso import Permiso
@@ -24,6 +25,7 @@ from app.models.clinica.consulta import Consulta
 from app.models.clinica.dictado import Dictado
 from app.models.clinica.consulta_sintoma import ConsultaSintoma
 from app.models.clinica.consulta_diagnostico import ConsultaDiagnostico
+from app.models.clinica.tratamiento_preventivo import TratamientoPreventivo
 from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
 from app.models.stock.movimiento_stock import MovimientoStock

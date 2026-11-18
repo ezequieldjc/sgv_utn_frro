@@ -25,7 +25,7 @@ const MASCOTAS: PortalMascota[] = [
     fecha_nacimiento: null,
     edad_meses: null,
     ultimo_peso: "13.20",
-    estado_nombre: "ACTIVA",
+    estado_nombre: "Activo",
     alertas_medicas: "Alérgico a la penicilina",
   },
 ];
@@ -70,6 +70,8 @@ describe("PortalInicioPage", () => {
     const coco = await screen.findByRole("link", { name: /Coco/ });
     expect(coco).toHaveAttribute("href", "/portal/mascotas/1");
     expect(screen.getByText("Alérgico a la penicilina")).toBeInTheDocument();
+    // El estado normal (en Neon, "Activo") no se marca en la tarjeta.
+    expect(screen.queryByText("Activo")).not.toBeInTheDocument();
     expect(
       await screen.findByText("Control de Coco con Valeria Sosa"),
     ).toBeInTheDocument();

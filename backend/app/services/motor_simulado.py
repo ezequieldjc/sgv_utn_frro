@@ -92,7 +92,13 @@ BASE_CONOCIMIENTO: dict[str, ConocimientoPatologia] = {
             "secrecion_otica": 0.8,
             "prurito": 0.5,
         },
-        razas={"cocker-spaniel": 4.0, "poodle-standard": 2.5, "poodle-toy": 2.5},
+        # Shar Pei: conducto auditivo estrecho (conformación).
+        razas={
+            "cocker-spaniel": 4.0,
+            "poodle-standard": 2.5,
+            "poodle-toy": 2.5,
+            "chinese-shar-pei": 2.5,
+        },
         estudio_sugerido="Citología de oído",
     ),
     "atopic-dermatitis": ConocimientoPatologia(
@@ -101,7 +107,7 @@ BASE_CONOCIMIENTO: dict[str, ConocimientoPatologia] = {
             "lamido_patas": 0.5,
             "sacudida_cabeza": 0.2,
         },
-        razas={"french-bulldog": 2.5, "labrador-retriever": 2.5},
+        razas={"french-bulldog": 2.5, "labrador-retriever": 2.5, "chinese-shar-pei": 4.0},
         estudio_sugerido="Raspado cutáneo y descarte de alergia alimentaria",
     ),
 }

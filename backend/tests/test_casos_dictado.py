@@ -1,4 +1,4 @@
-"""Los diez casos de `docs/casos_prueba_dictado.md`, como tests.
+"""Los casos de `docs/casos_prueba_dictado.md`, como tests.
 
 Cada caso pasa el texto por el extractor por reglas y el resultado por el motor simulado, y
 verifica qué signos salen presentes y negados, cuál es la primera sugerencia y si la evidencia
@@ -184,6 +184,36 @@ CASOS = {
         # Antes de simulado-0.2 daba "displasia de cadera 81 %".
         evidencia_suficiente=False,
     ),
+    "11-felipe-dermatitis-shar-pei": Caso(
+        raza="chinese-shar-pei",
+        texto=(
+            "Viene porque se rasca todo el día y se lame las patas desde hace un mes. "
+            "El dueño cuenta que empeora en primavera, que no vomita ni tiene diarrea y que come "
+            "bien. Pesa 21,5 kilos, temperatura 38,7. Presenta enrojecimiento en los pliegues de "
+            "la cara, en las axilas y entre los dedos. No sacude la cabeza. Pido raspado cutáneo. "
+            "Indico baño con clorhexidina cada tres días, oclacitinib 16 mg un comprimido cada 12 "
+            "horas por 14 días y control en quince días."
+        ),
+        presentes=frozenset({"prurito", "lamido_patas"}),
+        negados=frozenset({"vomito", "diarrea", "sacudida_cabeza"}),
+        primera="atopic-dermatitis",
+        evidencia_suficiente=True,
+    ),
+    "12-simon-otitis-shar-pei": Caso(
+        raza="chinese-shar-pei",
+        texto=(
+            "Viene porque sacude la cabeza y tiene mal olor en las orejas desde hace cinco días. "
+            "El dueño cuenta que se rasca las orejas de noche y que no tiene fiebre. Pesa 23,8 "
+            "kilos, temperatura 38,5. Presenta el conducto auditivo derecho estrecho y enrojecido, "
+            "con secreción marrón. Pido citología de oído. Indico limpiador ótico cada 12 horas, "
+            "gotas de gentamicina con betametasona cinco gotas cada 12 horas por diez días y "
+            "control en diez días."
+        ),
+        presentes=frozenset({"sacudida_cabeza", "prurito", "secrecion_otica"}),
+        negados=frozenset({"fiebre"}),
+        primera="otitis-externa",
+        evidencia_suficiente=True,
+    ),
 }
 
 
@@ -225,3 +255,14 @@ def test_casos_fuertes_siguen_arriba_de_99() -> None:
     for nombre in ("2-mora-displasia", "4-kiki-gastroenteritis"):
         _, resultado = _correr(CASOS[nombre])
         assert resultado.sugerencias[0].probabilidad_pct >= 99, nombre
+
+
+def test_shar_pei_suma_la_predisposicion_de_raza_a_la_dermatitis() -> None:
+    """Sin el multiplicador, Felipe daba dermatitis atópica 83 %; con el Shar Pei, 95 %."""
+    ficha, resultado = _correr(CASOS["11-felipe-dermatitis-shar-pei"])
+    primera = resultado.sugerencias[0]
+
+    assert primera.explicacion["raza"] == {"codigo": "chinese-shar-pei", "multiplicador": 4.0}
+    assert primera.probabilidad_pct > 90
+    assert ficha.tratamiento is not None and "oclacitinib" in ficha.tratamiento
+    assert ficha.observaciones == "Pido raspado cutáneo."

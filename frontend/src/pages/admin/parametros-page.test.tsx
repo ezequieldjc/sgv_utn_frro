@@ -66,6 +66,8 @@ describe("parámetros — helpers", () => {
     expect(validateParametroValor("ESTADOS_MASCOTA_TUTOR_EVENTUAL", "0")).toBeTruthy();
     expect(validateParametroValor("RAZON_SOCIAL", "Clinica")).toBeNull();
     expect(validateParametroValor("OTRO_PARAM", "x")).toBeNull();
+    expect(validateParametroValor("DIAS_AVISO_DOSIS", "7")).toBeNull();
+    expect(validateParametroValor("DIAS_REFUERZO_VACUNA", "un año")).toBeTruthy();
   });
 
   it("test_group_configs_agrupa_por_config_nombre_y_ordena", () => {
