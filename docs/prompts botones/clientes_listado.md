@@ -106,8 +106,8 @@ Las pantallas de destino pueden ser stubs mínimos en esta iteración; las rutas
 - Rutas protegidas:
   - `/clientes` (listado)
   - `/clientes/nuevo` (alta real; ver `clientes_crear.md`)
-  - `/clientes/:id` (stub detalle)
-  - `/clientes/:id/editar` (stub edición)
+  - `/clientes/:id` (detalle; ver `detalle_edicion_usuarios_clientes.md`)
+  - `/clientes/:id/editar` (edición; ver `detalle_edicion_usuarios_clientes.md`)
   - `/mascotas` (stub; acepta query `cliente_id`)
 
 La eliminación del ítem de sidebar no debe romper la navegación a `/clientes/nuevo` desde el botón del listado.
@@ -223,6 +223,7 @@ No usar `dict` crudos en request/response.
 
 ## 10. Fuera de alcance de esta iteración (listado)
 
-- Edición / detalle de cliente (stubs de navegación).
+- Edición / detalle de cliente: hecho el 18/11/2026, ver
+  [`detalle_edicion_usuarios_clientes.md`](./detalle_edicion_usuarios_clientes.md).
 - Módulo real de mascotas (solo stub de navegación).
 - Detalle del formulario de alta: ver [`clientes_crear.md`](./clientes_crear.md).

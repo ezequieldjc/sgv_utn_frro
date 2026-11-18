@@ -9,6 +9,7 @@ import {
   Eye,
   KeyRound,
   Loader2,
+  Pencil,
   Plus,
   Search,
   ShieldOff,
@@ -618,6 +619,15 @@ export default function UsuariosPage() {
                                 onClick={() => openResetConfirm(usuario)}
                               >
                                 <KeyRound className="size-4" />
+                              </ActionIconButton>
+                            ) : null}
+
+                            {canEdit ? (
+                              <ActionIconButton
+                                label="Editar"
+                                to={`/admin/usuarios/${usuario.id}/editar`}
+                              >
+                                <Pencil className="size-4" />
                               </ActionIconButton>
                             ) : null}
 

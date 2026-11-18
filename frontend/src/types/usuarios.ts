@@ -57,3 +57,49 @@ export interface UsuarioCreatePayload {
   rol_id: number;
   habilitado: boolean;
 }
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface DomicilioDetalle {
+  pais: string;
+  provincia: string;
+  ciudad: string;
+  calle: string;
+  altura: string;
+  cp: string;
+  departamento: string | null;
+  notas: string | null;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface UsuarioDetail {
+  id: number;
+  username: string;
+  habilitado: boolean;
+  rol_id: number;
+  rol_nombre: string;
+  /** Usuario CLIENTE: el mail es obligatorio y DNI, fecha, sexo y domicilio son opcionales. */
+  es_cliente: boolean;
+  nombre: string;
+  apellido: string;
+  dni: string | null;
+  fecha_nacimiento: string | null;
+  sexo: "M" | "F" | "X" | null;
+  celular: string;
+  mail: string | null;
+  domicilio: DomicilioDetalle | null;
+  ultimo_inicio_sesion: string | null;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface UsuarioUpdatePayload {
+  nombre: string;
+  apellido: string;
+  dni: string | null;
+  fecha_nacimiento: string | null;
+  sexo: "M" | "F" | "X" | null;
+  celular: string;
+  mail: string | null;
+  domicilio: DomicilioCreatePayload | null;
+  rol_id: number;
+  habilitado: boolean;
+}

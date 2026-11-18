@@ -1,6 +1,6 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, ShieldOff, UserPlus } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Loader2, Pencil, ShieldOff, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,7 +17,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
 import { apiFetch } from "@/lib/api";
-import type { ClienteCreatePayload, ClienteCreateResponse } from "@/types/clientes";
+import type {
+  ClienteCreatePayload,
+  ClienteCreateResponse,
+  ClienteDetail,
+  ClienteUpdatePayload,
+} from "@/types/clientes";
+
+export type ClienteFormMode = "create" | "edit" | "view";
 
 export interface FormState {
   nombre: string;
@@ -115,7 +122,38 @@ function sanitizeCelular(value: string): string {
   return value.replace(/[^\d]/g, "");
 }
 
-export function validateForm(form: FormState): FormErrors {
+function isoToMasked(iso: string | null): string {
+  const match = iso ? /^(\d{4})-(\d{2})-(\d{2})/.exec(iso) : null;
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
+
+/** Carga el formulario con el detalle del cliente (ver y editar). */
+export function formFromCliente(cliente: ClienteDetail): FormState {
+  return {
+    nombre: cliente.nombre,
+    apellido: cliente.apellido,
+    dni: cliente.dni ?? "",
+    fecha_nacimiento: isoToMasked(cliente.fecha_nacimiento),
+    sexo: cliente.sexo ?? "",
+    celular: cliente.celular,
+    mail: cliente.mail ?? "",
+    pais: cliente.domicilio?.pais ?? INITIAL_FORM.pais,
+    provincia: cliente.domicilio?.provincia ?? INITIAL_FORM.provincia,
+    ciudad: cliente.domicilio?.ciudad ?? "",
+    calle: cliente.domicilio?.calle ?? "",
+    altura: cliente.domicilio?.altura ?? "",
+    cp: cliente.domicilio?.cp ?? "",
+    departamento: cliente.domicilio?.departamento ?? "",
+    notas: cliente.domicilio?.notas ?? "",
+    incluir_domicilio: cliente.domicilio !== null,
+  };
+}
+
+/**
+ * `mailObligatorio` es false solo al editar un cliente sin cuenta (el tutor eventual): para el
+ * resto, el mail es su usuario.
+ */
+export function validateForm(form: FormState, mailObligatorio = true): FormErrors {
   const errors: FormErrors = {};
 
   if (!form.nombre.trim()) {
@@ -136,7 +174,9 @@ export function validateForm(form: FormState): FormErrors {
     errors.celular = "El celular debe incluir números.";
   }
   if (!form.mail.trim()) {
-    errors.mail = "El email es obligatorio: es el usuario del cliente para entrar al portal.";
+    if (mailObligatorio) {
+      errors.mail = "El email es obligatorio: es el usuario del cliente para entrar al portal.";
+    }
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.mail.trim())) {
     errors.mail = "Ingresá un email válido.";
   }
@@ -186,6 +226,11 @@ export function buildClientePayload(form: FormState): ClienteCreatePayload {
   };
 }
 
+export function buildClienteUpdatePayload(form: FormState): ClienteUpdatePayload {
+  const { mail, ...resto } = buildClientePayload(form);
+  return { ...resto, mail: mail || null };
+}
+
 function fieldClass(hasError: boolean): string {
   return hasError ? "border-destructive focus-visible:ring-destructive" : "";
 }
@@ -207,10 +252,16 @@ function AccessDenied({ message }: { message: string }) {
   );
 }
 
-export default function ClienteFormPage() {
+export default function ClienteFormPage({ mode = "create" }: { mode?: ClienteFormMode }) {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const clienteId = mode === "create" ? null : Number(id);
   const { permisos } = useAuth();
   const canCreate = hasPermission(permisos, "clientes:crear");
+  const canView = hasPermission(permisos, "clientes:ver_listado");
+  const canEdit = hasPermission(permisos, "clientes:editar");
+  // Sin clientes:editar, la edición se muestra en solo lectura (como en Admin → Usuarios).
+  const readOnly = mode === "view" || (mode === "edit" && !canEdit);
 
   const [form, setForm] = React.useState<FormState>(INITIAL_FORM);
   const [errors, setErrors] = React.useState<FormErrors>({});
@@ -218,11 +269,68 @@ export default function ClienteFormPage() {
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<ClienteCreateResponse | null>(null);
   const [confirmarSinDniOpen, setConfirmarSinDniOpen] = React.useState(false);
+  const [cliente, setCliente] = React.useState<ClienteDetail | null>(null);
+  const [isLoadingCliente, setIsLoadingCliente] = React.useState(mode !== "create");
+  const [clienteError, setClienteError] = React.useState<string | null>(null);
+  const puedeVer = canView || canEdit;
+  // El tutor eventual no tiene cuenta: para él el mail es opcional.
+  const mailObligatorio = mode === "create" || cliente?.cuenta !== null;
 
   const fieldRefs = React.useRef<Partial<Record<keyof FormState, HTMLElement | null>>>({});
 
-  if (!canCreate) {
+  React.useEffect(() => {
+    if (clienteId === null || !puedeVer) {
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingCliente(true);
+    setClienteError(null);
+    apiFetch<ClienteDetail>(`/api/clientes/${clienteId}`)
+      .then((data) => {
+        if (!cancelled) {
+          setCliente(data);
+          setForm(formFromCliente(data));
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          const status = (error as { status?: number }).status;
+          setClienteError(
+            status === 404 ? "No se encontró el cliente." : "No se pudo cargar el cliente.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingCliente(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clienteId, puedeVer]);
+
+  if (mode === "create" && !canCreate) {
     return <AccessDenied message="No tenés permiso para crear clientes." />;
+  }
+  if (mode !== "create" && !puedeVer) {
+    return <AccessDenied message="No tenés permiso para ver clientes." />;
+  }
+  if (mode !== "create" && (isLoadingCliente || clienteError)) {
+    return (
+      <div className="mx-auto flex min-h-[40vh] max-w-3xl flex-col items-center justify-center gap-3 text-center">
+        {clienteError ? (
+          <>
+            <p className="text-sm text-destructive">{clienteError}</p>
+            <Button type="button" variant="outline" asChild>
+              <Link to="/clientes">Volver al listado</Link>
+            </Button>
+          </>
+        ) : (
+          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Cargando" />
+        )}
+      </div>
+    );
   }
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -280,18 +388,58 @@ export default function ClienteFormPage() {
     }
   }
 
+  async function updateCliente(idCliente: number) {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await apiFetch<ClienteDetail>(`/api/clientes/${idCliente}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildClienteUpdatePayload(form)),
+      });
+      navigate(`/clientes/${idCliente}`);
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      const codigo = (error as { body?: { error?: string } }).body?.error;
+      if (codigo === "MAIL_EN_USO" || codigo === "MAIL_OBLIGATORIO") {
+        const mensaje =
+          codigo === "MAIL_EN_USO"
+            ? "Ya existe una cuenta con ese email."
+            : "El email es obligatorio: es el usuario del cliente para entrar al portal.";
+        setErrors((prev) => ({ ...prev, mail: mensaje }));
+        setSubmitError(mensaje);
+      } else if (codigo === "DNI_DUPLICADO") {
+        setErrors((prev) => ({ ...prev, dni: "Ya existe una persona con ese DNI." }));
+        setSubmitError("Ya existe una persona con ese DNI.");
+      } else if (status === 403) {
+        setSubmitError("No tenés permisos para editar clientes.");
+      } else if (status === 404) {
+        setSubmitError("No se encontró el cliente.");
+      } else {
+        setSubmitError("No se pudieron guardar los cambios. Intentá de nuevo.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (isSubmitting) {
+    if (isSubmitting || readOnly) {
       return;
     }
 
-    const nextErrors = validateForm(form);
+    const nextErrors = validateForm(form, mailObligatorio);
     setErrors(nextErrors);
     setSubmitError(null);
 
     if (Object.keys(nextErrors).length > 0) {
       window.setTimeout(() => focusFirstError(nextErrors), 0);
+      return;
+    }
+
+    if (mode === "edit" && clienteId !== null) {
+      await updateCliente(clienteId);
       return;
     }
 
@@ -317,14 +465,23 @@ export default function ClienteFormPage() {
             Mascotas y Clientes
           </span>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Nuevo Cliente</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {mode === "create"
+            ? "Nuevo Cliente"
+            : mode === "edit"
+              ? "Editar Cliente"
+              : "Detalle de Cliente"}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Completá los datos básicos. El domicilio es opcional. Se crea también la cuenta del
-          cliente: su usuario es el email.
+          {mode === "create"
+            ? "Completá los datos básicos. El domicilio es opcional. Se crea también la cuenta del cliente: su usuario es el email."
+            : `${cliente?.nombre ?? ""} ${cliente?.apellido ?? ""}`.trim()}
         </p>
       </div>
 
       <form onSubmit={(event) => void handleSubmit(event)} className="space-y-8">
+        {/* En solo lectura, el fieldset deshabilita todos los campos de una vez. */}
+        <fieldset disabled={readOnly} className="min-w-0 space-y-8">
         <section className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Datos de la persona
@@ -435,7 +592,7 @@ export default function ClienteFormPage() {
               ) : null}
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="mail">Email</Label>
+              <Label htmlFor="mail">{mailObligatorio ? "Email" : "Email (opcional)"}</Label>
               <Input
                 id="mail"
                 ref={(el) => {
@@ -450,7 +607,11 @@ export default function ClienteFormPage() {
                 <p className="text-xs text-destructive">{errors.mail}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Es el usuario del cliente para entrar al portal.
+                  {mode === "create"
+                    ? "Es el usuario del cliente para entrar al portal."
+                    : mailObligatorio
+                      ? "Es el usuario del cliente: si lo cambiás, cambia su usuario."
+                      : "Este cliente no tiene cuenta de acceso."}
                 </p>
               )}
             </div>
@@ -584,6 +745,38 @@ export default function ClienteFormPage() {
           ) : null}
         </section>
 
+        {cliente ? (
+          <section className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Cuenta de acceso
+            </h2>
+            {cliente.cuenta ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cuenta_usuario">Usuario</Label>
+                  <Input id="cuenta_usuario" value={cliente.cuenta.username} readOnly disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cuenta_estado">Estado</Label>
+                  <Input
+                    id="cuenta_estado"
+                    value={cliente.cuenta.habilitado ? "Habilitada" : "Inhabilitada"}
+                    readOnly
+                    disabled
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  El usuario es el email. La contraseña y la habilitación se manejan desde Admin →
+                  Usuarios.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Este cliente no tiene cuenta de acceso.</p>
+            )}
+          </section>
+        ) : null}
+        </fieldset>
+
         {submitError ? (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {submitError}
@@ -594,22 +787,32 @@ export default function ClienteFormPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate(-1)}
+            onClick={() => (mode === "view" ? navigate("/clientes") : navigate(-1))}
             disabled={isSubmitting}
           >
             <ArrowLeft className="size-4" />
-            Cancelar
+            {mode === "view" ? "Volver al listado" : "Cancelar"}
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Guardando…
-              </>
-            ) : (
-              "Guardar"
-            )}
-          </Button>
+          {mode === "view" && canEdit && clienteId !== null ? (
+            <Button type="button" asChild>
+              <Link to={`/clientes/${clienteId}/editar`}>
+                <Pencil className="size-4" />
+                Editar
+              </Link>
+            </Button>
+          ) : null}
+          {!readOnly ? (
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Guardando…
+                </>
+              ) : (
+                "Guardar"
+              )}
+            </Button>
+          ) : null}
         </div>
       </form>
 

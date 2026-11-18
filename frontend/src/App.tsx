@@ -12,10 +12,6 @@ import RolesPage from "./pages/admin/roles-page";
 import ParametrosPage from "./pages/admin/parametros-page";
 import ClientesPage from "./pages/clientes/clientes-page";
 import ClienteFormPage from "./pages/clientes/cliente-form-page";
-import {
-  ClienteDetallePage,
-  ClienteEditarPage,
-} from "./pages/clientes/stubs";
 import MascotasPage from "./pages/mascotas/mascotas-page";
 import MascotaFormPage from "./pages/mascotas/mascota-form-page";
 import MascotaEditPage from "./pages/mascotas/mascota-edit-page";
@@ -63,14 +59,25 @@ export default function App() {
             <Route index element={<ShellHome />} />
             <Route path="admin/usuarios" element={<UsuariosPage />} />
             <Route path="admin/usuarios/nuevo" element={<UsuarioFormPage mode="create" />} />
+            <Route
+              path="admin/usuarios/:id"
+              element={<UsuarioFormPage key="view" mode="view" />}
+            />
+            <Route
+              path="admin/usuarios/:id/editar"
+              element={<UsuarioFormPage key="edit" mode="edit" />}
+            />
             <Route path="admin/roles" element={<RolesPage />} />
             <Route path="admin/roles/:id" element={<RolesPage />} />
             <Route path="admin/parametros" element={<ParametrosPage />} />
             <Route path="admin/catalogos" element={<CatalogosPage />} />
             <Route path="clientes" element={<ClientesPage />} />
-            <Route path="clientes/nuevo" element={<ClienteFormPage />} />
-            <Route path="clientes/:id" element={<ClienteDetallePage />} />
-            <Route path="clientes/:id/editar" element={<ClienteEditarPage />} />
+            <Route path="clientes/nuevo" element={<ClienteFormPage key="create" />} />
+            <Route path="clientes/:id" element={<ClienteFormPage key="view" mode="view" />} />
+            <Route
+              path="clientes/:id/editar"
+              element={<ClienteFormPage key="edit" mode="edit" />}
+            />
             <Route path="mascotas" element={<MascotasPage />} />
             <Route path="mascotas/nuevo" element={<MascotaFormPage />} />
             <Route path="mascotas/:id/editar" element={<MascotaEditPage />} />
