@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+import string
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -18,6 +20,13 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+
+def generate_temp_password(length: int = 10) -> str:
+    alphabet = string.ascii_letters + string.digits
+    left = "".join(secrets.choice(alphabet) for _ in range(4))
+    right = "".join(secrets.choice(alphabet) for _ in range(length - 5))
+    return f"{left}-{right}"
 
 
 def _build_expiration(minutes: int) -> datetime:

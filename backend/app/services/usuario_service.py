@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import secrets
-import string
 import unicodedata
 
 from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.core.errors import APIError
-from app.core.security import hash_password
+from app.core.security import generate_temp_password, hash_password
 from app.models.auth.historial_contrasena import HistorialContrasena
 from app.models.auth.login import Login
 from app.models.auth.rol import Rol
@@ -20,6 +18,11 @@ from app.schemas.usuarios import (
     UsuarioCreateResponse,
     UsuarioListItem,
     UsuarioRestablecerResponse,
+)
+from app.services.cuenta_cliente_service import (
+    crear_cuenta_cliente,
+    es_rol_cliente,
+    validar_dni_disponible,
 )
 
 
@@ -48,13 +51,6 @@ def allocate_username(session: Session, nombre: str, apellido: str) -> str:
         if suffix > 9999:
             raise APIError(409, "USERNAME_AGOTADO", "No se pudo generar un username único")
     return candidate
-
-
-def generate_temp_password(length: int = 10) -> str:
-    alphabet = string.ascii_letters + string.digits
-    left = "".join(secrets.choice(alphabet) for _ in range(4))
-    right = "".join(secrets.choice(alphabet) for _ in range(length - 5))
-    return f"{left}-{right}"
 
 
 def _ultimo_login_subquery():
@@ -161,14 +157,46 @@ def set_usuario_habilitado(
     return get_usuario_list_item(session, usuario_id)
 
 
+def _create_usuario_cliente(session: Session, payload: UsuarioCreate) -> UsuarioCreateResponse:
+    """Un usuario con rol CLIENTE es siempre un cliente: se crea con la misma función que usa
+    Clientes → Nuevo cliente (persona con es_cliente = true y el mail como usuario)."""
+    if not payload.mail:
+        raise APIError(
+            422,
+            "MAIL_OBLIGATORIO",
+            "El mail es obligatorio para un usuario con rol CLIENTE: es su usuario para ingresar",
+        )
+    cuenta = crear_cuenta_cliente(
+        session,
+        nombre=payload.nombre,
+        apellido=payload.apellido,
+        celular=payload.celular,
+        mail=payload.mail,
+        dni=payload.dni,
+        sexo=payload.sexo,
+        fecha_nacimiento=payload.fecha_nacimiento,
+        domicilio=payload.domicilio,
+        habilitado=payload.habilitado,
+    )
+    session.commit()
+    session.refresh(cuenta.usuario)
+    return UsuarioCreateResponse(
+        id=cuenta.usuario.id or 0,
+        username=cuenta.usuario.username,
+        password_temporal=cuenta.password_temporal or "",
+        debe_cambiar=True,
+    )
+
+
 def create_usuario(session: Session, payload: UsuarioCreate) -> UsuarioCreateResponse:
-    existing_dni = session.exec(select(Persona).where(Persona.dni == payload.dni)).first()
-    if existing_dni is not None:
-        raise APIError(409, "DNI_DUPLICADO", "Ya existe una persona con ese DNI")
+    validar_dni_disponible(session, payload.dni)
 
     rol = session.get(Rol, payload.rol_id)
     if rol is None:
         raise APIError(404, "ROL_NO_ENCONTRADO", "No se encontró el rol solicitado")
+
+    if es_rol_cliente(rol):
+        return _create_usuario_cliente(session, payload)
 
     username = allocate_username(session, payload.nombre, payload.apellido)
     password_temporal = generate_temp_password()

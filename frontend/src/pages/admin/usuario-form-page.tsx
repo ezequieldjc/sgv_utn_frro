@@ -359,7 +359,15 @@ export default function UsuarioFormPage({
       setSuccess(created);
     } catch (error) {
       const status = (error as { status?: number }).status;
-      if (status === 409) {
+      const codigo = (error as { body?: { error?: string } }).body?.error;
+      if (codigo === "MAIL_OBLIGATORIO") {
+        const mensaje = "El email es obligatorio para el rol CLIENTE: es su usuario.";
+        setErrors((prev) => ({ ...prev, mail: mensaje }));
+        setSubmitError(mensaje);
+      } else if (codigo === "MAIL_EN_USO") {
+        setErrors((prev) => ({ ...prev, mail: "Ya existe una cuenta con ese email." }));
+        setSubmitError("Ya existe una cuenta con ese email.");
+      } else if (status === 409) {
         setSubmitError("Ya existe una persona con ese DNI.");
       } else if (status === 404) {
         setSubmitError("El rol seleccionado no es válido.");
@@ -509,7 +517,7 @@ export default function UsuarioFormPage({
               ) : null}
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="mail">Email (opcional)</Label>
+              <Label htmlFor="mail">Email</Label>
               <Input
                 id="mail"
                 ref={(el) => {
@@ -523,7 +531,11 @@ export default function UsuarioFormPage({
               />
               {errors.mail ? (
                 <p className="text-xs text-destructive">{errors.mail}</p>
-              ) : null}
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Opcional para empleados. Obligatorio si el rol es CLIENTE: es su usuario.
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -665,7 +677,8 @@ export default function UsuarioFormPage({
                 placeholder="Se genera automáticamente"
               />
               <p className="text-xs text-muted-foreground">
-                Se genera con la primera letra del nombre + apellido (sin espacios).
+                Se genera con la primera letra del nombre + apellido (sin espacios). Con rol
+                CLIENTE, el usuario es el email.
               </p>
             </div>
             <div className="space-y-2">

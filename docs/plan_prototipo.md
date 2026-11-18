@@ -55,8 +55,15 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
   `scripts/agenda/003_portal_pedir_turno.sql` (aplicado en Neon el 17/11). Detalle en
   `docs/prompts botones/portal_cliente.md`. Mergeada a `staging` (PR #33).
 - **Alta de mascota:** Canina y Felina aparecen primero en el selector de especie.
-- **Próxima rama `feature/cuentas-cliente`:** el mail es el usuario, todo cliente nace con
-  usuario, restablecer la contraseña por mail y registro desde el login.
+- **Rama `feature/cuentas-cliente` (18/11):** cuentas de cliente y alta de mascotas desde el
+  portal. Detalle en `docs/prompts botones/cuentas_cliente.md`.
+  - El mail es el usuario del cliente y todo cliente nace con su usuario CLIENTE, por los tres
+    caminos: Clientes → Nuevo cliente, Admin → Usuarios con rol CLIENTE y **Crear cuenta** desde
+    el login (el cliente elige su contraseña ahí, sin verificar el mail).
+  - El DNI no se repite en ningún alta.
+  - El cliente da de alta sus mascotas desde el portal (`portal:crear_mascota`).
+  - Requiere `scripts/auth/002_portal_crear_mascota.sql` (solo datos, pendiente de aplicar).
+  - Quedó para después: el envío de mails (bienvenida y "Olvidé mi contraseña").
 - **Rama `feature/vacunas-recordatorios-receta`:** el punto 5, simulado de forma simple. El
   diseño de lo que falta para la entrega final está en `docs/fase2_diseno.md`.
   - **Receta en PDF** desde la consulta firmada y en **Recetas → Historial de recetas**. Sale de

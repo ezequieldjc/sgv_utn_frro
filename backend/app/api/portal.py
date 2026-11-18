@@ -1,4 +1,4 @@
-"""Portal del cliente (solo lectura). Reglas de seguridad en services/portal_service.py."""
+"""Portal del cliente. Reglas de seguridad en services/portal_service.py."""
 
 from __future__ import annotations
 
@@ -15,6 +15,9 @@ from app.schemas.portal import (
     PortalConsultaItem,
     PortalDisponibilidad,
     PortalMascota,
+    PortalMascotaCreate,
+    PortalOpcion,
+    PortalRaza,
     PortalTurno,
     PortalTurnoCreate,
     PortalTurnoOpciones,
@@ -27,6 +30,7 @@ router = APIRouter(prefix="/api/portal", tags=["portal"])
 
 PERMISO_PORTAL = "portal:ver"
 PERMISO_PEDIR_TURNO = "portal:pedir_turno"
+PERMISO_CREAR_MASCOTA = "portal:crear_mascota"
 
 
 def _persona(
@@ -43,6 +47,38 @@ def get_mis_mascotas(
     session: Session = Depends(get_session),
 ) -> list[PortalMascota]:
     return portal_service.listar_mascotas(session, _persona(session, access_token))
+
+
+# Alta de mascota (portal:crear_mascota). Las rutas fijas van antes de /mascotas/{mascota_id}.
+
+
+@router.get("/mascotas/especies", response_model=list[PortalOpcion])
+def get_especies_para_alta(
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> list[PortalOpcion]:
+    persona = _persona(session, access_token, PERMISO_CREAR_MASCOTA)
+    return portal_service.especies_para_alta(session, persona)
+
+
+@router.get("/mascotas/razas", response_model=list[PortalRaza])
+def get_razas_para_alta(
+    especie_id: int = Query(...),
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> list[PortalRaza]:
+    persona = _persona(session, access_token, PERMISO_CREAR_MASCOTA)
+    return portal_service.razas_para_alta(session, persona, especie_id)
+
+
+@router.post("/mascotas", response_model=PortalMascota, status_code=status.HTTP_201_CREATED)
+def post_mascota(
+    body: PortalMascotaCreate,
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> PortalMascota:
+    persona = _persona(session, access_token, PERMISO_CREAR_MASCOTA)
+    return portal_service.crear_mascota(session, persona, body)
 
 
 @router.get("/mascotas/{mascota_id}", response_model=PortalMascota)

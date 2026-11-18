@@ -3,6 +3,7 @@ import type { PortalMascota } from "@/types/portal";
 
 export const PERMISO_PORTAL = "portal:ver";
 export const PERMISO_PEDIR_TURNO = "portal:pedir_turno";
+export const PERMISO_CREAR_MASCOTA = "portal:crear_mascota";
 
 /** Lo que se muestra cuando algo se resuelve llamando a la clínica. */
 export const COMUNICATE_CON_LA_CLINICA = "comunicate con la clínica";
@@ -129,4 +130,45 @@ export function puedeBuscarHorarios(form: PedidoTurnoForm): boolean {
 /** La fecha elegida es anterior al primer día permitido (mañana). Formato YYYY-MM-DD. */
 export function fechaAntesDePermitida(fecha: string, primerDia: string): boolean {
   return Boolean(fecha) && fecha < primerDia;
+}
+
+// ---------------------------------------------------------------------------
+// Alta de mascota (portal:crear_mascota)
+// ---------------------------------------------------------------------------
+
+export interface NuevaMascotaForm {
+  nombre: string;
+  especie_id: string;
+  raza_id: string;
+  sexo: "" | "M" | "H" | "U";
+  fecha_nacimiento: string;
+}
+
+export type NuevaMascotaErrores = Partial<Record<keyof NuevaMascotaForm, string>>;
+
+/** Hoy en formato yyyy-mm-dd (fecha local), para comparar con un input type="date". */
+export function hoyIso(hoy: Date = new Date()): string {
+  const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoy.getDate()).padStart(2, "0");
+  return `${hoy.getFullYear()}-${mes}-${dia}`;
+}
+
+export function validarNuevaMascota(
+  form: NuevaMascotaForm,
+  hoy: string = hoyIso(),
+): NuevaMascotaErrores {
+  const errores: NuevaMascotaErrores = {};
+  if (!form.nombre.trim()) {
+    errores.nombre = "Poné el nombre de tu mascota.";
+  }
+  if (!form.especie_id) {
+    errores.especie_id = "Elegí la especie.";
+  }
+  if (!form.raza_id) {
+    errores.raza_id = "Elegí la raza.";
+  }
+  if (form.fecha_nacimiento && form.fecha_nacimiento > hoy) {
+    errores.fecha_nacimiento = "La fecha de nacimiento no puede ser futura.";
+  }
+  return errores;
 }

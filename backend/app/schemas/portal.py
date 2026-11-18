@@ -12,7 +12,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class PortalMascota(BaseModel):
@@ -142,3 +144,40 @@ class PortalCompraDetalle(BaseModel):
     total: Decimal
     medio_pago: str
     items: list[PortalCompraRenglon]
+
+
+# ---------------------------------------------------------------------------
+# Alta de mascota desde el portal (portal:crear_mascota)
+# ---------------------------------------------------------------------------
+
+
+class PortalRaza(BaseModel):
+    id: int
+    nombre: str
+    especie_id: int
+
+
+class PortalMascotaCreate(BaseModel):
+    """Lo que carga el cliente. El dueño sale de la sesión y el estado es siempre ACTIVA: peso,
+    microchip, alertas médicas y estado los carga la clínica."""
+
+    nombre: str = Field(min_length=1, max_length=50)
+    especie_id: int
+    raza_id: int
+    sexo: Literal["M", "H", "U"] | None = None
+    fecha_nacimiento: date | None = None
+
+    @field_validator("nombre")
+    @classmethod
+    def nombre_no_vacio(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("El nombre es obligatorio")
+        return value
+
+    @field_validator("fecha_nacimiento")
+    @classmethod
+    def fecha_no_futura(cls, value: date | None) -> date | None:
+        if value is not None and value > date.today():
+            raise ValueError("La fecha de nacimiento no puede ser futura")
+        return value

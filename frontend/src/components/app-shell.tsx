@@ -86,6 +86,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Mi portal",
     icon: PawPrint,
     items: [
+      { to: "/portal", label: "Inicio", permiso: "portal:ver" },
       { to: "/portal/mascotas", label: "Mis mascotas", permiso: "portal:ver" },
       { to: "/portal/turnos", label: "Mis turnos", permiso: "portal:ver" },
       { to: "/portal/compras", label: "Mis compras", permiso: "portal:ver" },

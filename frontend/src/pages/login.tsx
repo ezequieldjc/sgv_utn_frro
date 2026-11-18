@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -36,12 +37,21 @@ function getApiErrorCode(err: unknown): string | null {
   return null;
 }
 
+/** Lo que deja la pantalla de registro al volver al login. */
+export interface LoginLocationState {
+  registrado?: string;
+}
+
 export default function LoginPage() {
   const { login, isLoading } = useAuth();
-  const [username, setUsername] = useState("");
+  const location = useLocation();
+  const registrado = (location.state as LoginLocationState | null)?.registrado ?? null;
+  const [username, setUsername] = useState(registrado ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(
+    registrado ? "Tu cuenta quedó creada. Ingresá con tu mail y tu contraseña." : null
+  );
   const [brand, setBrand] = useState<string | null>(null);
 
   const [changeUsername, setChangeUsername] = useState<string | null>(null);
@@ -210,14 +220,15 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm text-white/90">
-                Usuario
+                Usuario o mail
               </label>
               <input
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="mt-1 block w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-white/50"
-                placeholder="usuario"
+                placeholder="usuario o mail"
+                maxLength={100}
                 autoComplete="username"
                 required
               />
@@ -249,6 +260,13 @@ export default function LoginPage() {
               </button>
             </div>
           </form>
+
+          <p className="mt-4 text-center text-sm text-white/80">
+            ¿Sos cliente y no tenés cuenta?{" "}
+            <Link to="/registro" className="font-medium text-white underline-offset-4 hover:underline">
+              Crear cuenta
+            </Link>
+          </p>
         </div>
 
         <div className="mt-6 text-center text-sm text-white/60">

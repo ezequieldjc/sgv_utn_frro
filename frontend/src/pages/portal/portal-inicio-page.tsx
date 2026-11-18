@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { useAuth } from "@/context/auth-context";
-import { PERMISO_PEDIR_TURNO } from "@/lib/portal";
+import { PERMISO_CREAR_MASCOTA, PERMISO_PEDIR_TURNO } from "@/lib/portal";
 import type { PortalMascota, PortalTurnosResponse } from "@/types/portal";
 
 import {
@@ -19,6 +19,7 @@ const TURNOS_EN_INICIO = 3;
 export default function PortalInicioPage() {
   const { usuario, permisos } = useAuth();
   const puedePedir = permisos.includes("*") || permisos.includes(PERMISO_PEDIR_TURNO);
+  const puedeCrearMascota = permisos.includes("*") || permisos.includes(PERMISO_CREAR_MASCOTA);
   const mascotas = usePortal<PortalMascota[]>("/api/portal/mascotas", "tus mascotas");
   const turnos = usePortal<PortalTurnosResponse>("/api/portal/turnos", "tus turnos");
 
@@ -30,7 +31,14 @@ export default function PortalInicioPage() {
       />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Mis mascotas</h2>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold tracking-tight">Mis mascotas</h2>
+          {puedeCrearMascota ? (
+            <Link to="/portal/mascotas/nueva" className="text-sm text-primary hover:underline">
+              Agregar mascota
+            </Link>
+          ) : null}
+        </div>
         {mascotas.cargando ? <Cargando /> : null}
         {mascotas.error ? <ErrorPortal mensaje={mascotas.error} /> : null}
         {mascotas.data && mascotas.data.length === 0 ? (
