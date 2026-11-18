@@ -479,7 +479,7 @@ export default function MovimientosPage() {
                     return (
                       <TableRow key={m.id} className={automatico ? "bg-amber-500/5" : ""}>
                         <TableCell className="whitespace-nowrap tabular-nums">
-                          {new Date(m.fecha).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
+                          {new Date(m.fecha).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", hourCycle: "h23" })}
                         </TableCell>
                         {!producto ? <TableCell>{m.producto_nombre}</TableCell> : null}
                         <TableCell className="whitespace-nowrap">

@@ -65,7 +65,8 @@ function renovarSesion(): Promise<boolean> {
   return renovacionEnCurso;
 }
 
-export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+/** Hace la llamada y, si el access token venció, lo renueva una vez y la repite. */
+async function fetchConRenovacion(input: RequestInfo, init?: RequestInit): Promise<Response> {
   const url = buildUrl(input);
   let res = await fetch(url, { credentials: "include", ...init });
 
@@ -80,24 +81,60 @@ export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promi
       }
     }
   }
+  return res;
+}
 
+async function errorDeRespuesta(res: Response): Promise<Error & { status?: number; body?: unknown }> {
+  const body = await leerCuerpo(res);
+  const detalle =
+    typeof body === "object" &&
+    body !== null &&
+    "detalle" in body &&
+    typeof (body as { detalle: unknown }).detalle === "string"
+      ? (body as { detalle: string }).detalle
+      : res.statusText;
+  const error = new Error(detalle) as Error & { status?: number; body?: unknown };
+  error.status = res.status;
+  error.body = body;
+  return error;
+}
+
+export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const res = await fetchConRenovacion(input, init);
   const contentType = res.headers.get("content-type") || "";
   if (!res.ok) {
-    const body = await leerCuerpo(res);
-    const detalle =
-      typeof body === "object" &&
-      body !== null &&
-      "detalle" in body &&
-      typeof (body as { detalle: unknown }).detalle === "string"
-        ? (body as { detalle: string }).detalle
-        : res.statusText;
-    const error = new Error(detalle) as Error & { status?: number; body?: unknown };
-    error.status = res.status;
-    error.body = body;
-    throw error;
+    throw await errorDeRespuesta(res);
   }
   if (contentType.includes("application/json")) {
     return (await res.json()) as T;
   }
   return (await res.text()) as unknown as T;
+}
+
+/** Nombre de archivo del header Content-Disposition (attachment; filename="x.pdf"). */
+export function nombreDeArchivo(contentDisposition: string | null, porDefecto: string): string {
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(contentDisposition ?? "");
+  return match ? decodeURIComponent(match[1].trim()) : porDefecto;
+}
+
+/**
+ * Descarga un archivo de la API (por ejemplo, el PDF de una receta) con la sesión del usuario:
+ * renueva el token si hace falta y guarda el archivo con el nombre que manda el backend.
+ */
+export async function apiDescargar(input: string, porDefecto = "archivo"): Promise<string> {
+  const res = await fetchConRenovacion(input);
+  if (!res.ok) {
+    throw await errorDeRespuesta(res);
+  }
+  const nombre = nombreDeArchivo(res.headers.get("content-disposition"), porDefecto);
+  const url = URL.createObjectURL(await res.blob());
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombre;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  // Se libera después: algunos navegadores todavía están leyendo el blob al volver del click.
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  return nombre;
 }

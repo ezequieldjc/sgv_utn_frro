@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { EVENTO_SESION_EXPIRADA, apiFetch } from "@/lib/api";
+import { EVENTO_SESION_EXPIRADA, apiDescargar, apiFetch, nombreDeArchivo } from "@/lib/api";
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -98,5 +98,49 @@ describe("apiFetch con sesión vencida", () => {
     await expect(primera).resolves.toEqual({ ruta: "/api/consultas/1" });
     await expect(segunda).resolves.toEqual({ ruta: "/api/consultas/1/sugerencias" });
     expect(urls(fetchMock).filter((u) => u === "/api/auth/refresh")).toHaveLength(1);
+  });
+});
+
+describe("apiDescargar", () => {
+  it("test_toma_el_nombre_del_header_y_descarga_el_archivo", async () => {
+    const pdf = new Response(new Blob(["%PDF-1.4"], { type: "application/pdf" }), {
+      status: 200,
+      headers: {
+        "content-type": "application/pdf",
+        "content-disposition": 'attachment; filename="receta-felipe-2026-11-17.pdf"',
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(pdf));
+    const crear = vi.fn(() => "blob:receta");
+    vi.stubGlobal("URL", { ...URL, createObjectURL: crear, revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    await expect(apiDescargar("/api/consultas/7/receta.pdf", "receta.pdf")).resolves.toBe(
+      "receta-felipe-2026-11-17.pdf",
+    );
+    expect(crear).toHaveBeenCalledOnce();
+    expect(click).toHaveBeenCalledOnce();
+    click.mockRestore();
+  });
+
+  it("test_un_error_del_backend_se_propaga_con_su_detalle", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        json(409, { error: "RECETA_SIN_INDICACIONES", detalle: "La consulta no tiene indicaciones" }),
+      ),
+    );
+    await expect(apiDescargar("/api/consultas/7/receta.pdf")).rejects.toMatchObject({
+      status: 409,
+      message: "La consulta no tiene indicaciones",
+    });
+  });
+});
+
+describe("nombreDeArchivo", () => {
+  it("test_lee_el_nombre_o_usa_el_de_respaldo", () => {
+    expect(nombreDeArchivo('attachment; filename="a.pdf"', "x")).toBe("a.pdf");
+    expect(nombreDeArchivo("attachment; filename=b.pdf", "x")).toBe("b.pdf");
+    expect(nombreDeArchivo(null, "x.pdf")).toBe("x.pdf");
   });
 });

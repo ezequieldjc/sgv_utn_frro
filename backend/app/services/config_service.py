@@ -14,6 +14,10 @@ INTEGER_PARAMETROS = frozenset(
         "ACCESS_TOKEN_EXPIRACION",
         "REFRESH_TOKEN_EXPIRACION",
         "PERSONA_ID_TUTOR_EVENTUAL",
+        "DIAS_REFUERZO_VACUNA",
+        "DIAS_REFUERZO_DESPARASITACION",
+        "DIAS_AVISO_DOSIS",
+        "DIAS_AVISO_DOSIS_VENCIDA",
     }
 )
 # Listas de ids separados por coma (por ejemplo "5,4").

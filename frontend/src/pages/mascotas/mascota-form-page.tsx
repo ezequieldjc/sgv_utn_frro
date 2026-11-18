@@ -400,7 +400,7 @@ export default function MascotaFormPage() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Nueva Mascota</h1>
         <p className="text-sm text-muted-foreground">
-          Alta rápida de admisión. El estado operativo se registra como ACTIVA
+          Alta rápida de admisión. El estado operativo se registra como Activo
           {permitidos.length > 0
             ? `; si no tiene tutor registrado, queda ${nombresPermitidos(tutorEventual)}.`
             : "."}
@@ -528,7 +528,7 @@ export default function MascotaFormPage() {
                   </select>
                   <p className="text-xs text-muted-foreground">
                     Sin tutor registrado, la mascota queda {nombresPermitidos(tutorEventual)}. Al
-                    asignarle un dueño pasa a ACTIVA.
+                    asignarle un dueño pasa a Activo.
                   </p>
                 </div>
               ) : null}
@@ -815,7 +815,7 @@ export default function MascotaFormPage() {
           <DialogHeader>
             <DialogTitle>Mascota creada correctamente</DialogTitle>
             <DialogDescription>
-              Se registró «{success?.nombre}» con estado {success?.mascota_estado_nombre ?? "ACTIVA"}
+              Se registró «{success?.nombre}» con estado {success?.mascota_estado_nombre ?? "Activo"}
               {success?.peso_registrado ? " y se guardó el peso inicial." : "."}
             </DialogDescription>
           </DialogHeader>

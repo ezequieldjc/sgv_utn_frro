@@ -48,6 +48,7 @@ Estado: **implementado** (no reimplementar desde cero; esta spec describe el as-
 | Botón / alta Nueva Mascota | `mascotas:crear` o `*` |
 | Botón Editar | `mascotas:editar` o `*` → `/mascotas/:id/editar` |
 | Botón Historial de consultas | `consultas:ver_historial` o `*` → `/consultas/historial?mascota_id=` |
+| Botón Vacunas y desparasitaciones | `vacunas:ver`, `vacunas:registrar`, `consultas:crear`, `consultas:ver_historia_clinica` o `*` → `/mascotas/:id/vacunas` |
 
 No usar `mascotas:create` / `mascotas:update`.
 
@@ -92,6 +93,10 @@ Con `mascotas:editar` → `/mascotas/:id/editar` (ver `mascotas_listado_editar.m
 
 ### Historial de consultas
 Con `consultas:ver_historial` → `/consultas/historial?mascota_id={id}` (stub de pantalla por ahora).
+
+### Vacunas y desparasitaciones
+Ícono de jeringa → `/mascotas/{id}/vacunas`: carnet y registro de aplicaciones (ver
+`vacunas_mascota.md`).
 
 ### Paginación
 - `page_size = 50` (fijo en v1).

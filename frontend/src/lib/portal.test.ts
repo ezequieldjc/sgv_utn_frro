@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  esEstadoActivo,
   estadoTurnoLabel,
   fechaAntesDePermitida,
   puedeBuscarHorarios,
@@ -9,6 +10,7 @@ import {
   pesoLabel,
   resumenMascota,
   tienePortalComoInicio,
+  turnoLabel,
 } from "@/lib/portal";
 import type { PortalMascota } from "@/types/portal";
 
@@ -26,6 +28,19 @@ const COCO: PortalMascota = {
 };
 
 describe("portal — helpers", () => {
+  it("test_el_estado_activo_no_se_marca", () => {
+    // En Neon el estado 1 se llama "Activo"; los demás (En Tránsito, Extraviado) sí se muestran.
+    expect(esEstadoActivo("Activo")).toBe(true);
+    expect(esEstadoActivo("ACTIVA")).toBe(true);
+    expect(esEstadoActivo("En Tránsito / Rescate")).toBe(false);
+    expect(esEstadoActivo("Inactivo")).toBe(false);
+  });
+
+  it("test_hora_del_turno_en_24_horas", () => {
+    expect(turnoLabel("2026-11-26T09:00:00")).toMatch(/, 09:00$/);
+    expect(turnoLabel("2026-11-26T17:30:00")).toMatch(/, 17:30$/);
+  });
+
   it("test_tiene_portal_como_inicio_solo_con_el_permiso_explicito", () => {
     expect(tienePortalComoInicio(["portal:ver"])).toBe(true);
     // El comodín ve el menú del portal, pero su inicio sigue siendo el de la clínica.

@@ -36,6 +36,7 @@ from app.services.consulta_service import (
     listar_sintomas,
     registrar_dictado,
 )
+from app.services.receta_service import generar_receta_pdf
 from app.services.turno_service import buscar_mascotas
 
 router = APIRouter(prefix="/api/consultas", tags=["consultas"])
@@ -49,6 +50,8 @@ PERMISOS_LECTURA = (
     "consultas:ver_historial",
 )
 PERMISOS_HISTORIAL = ("consultas:ver_historial", "consultas:ver_historia_clinica")
+# Quien puede descargar la receta de una consulta firmada.
+PERMISOS_RECETA = (*PERMISOS_LECTURA, "recetas:crear", "recetas:ver_historial")
 
 
 @router.get("/catalogos/sintomas", response_model=list[SintomaOpcion])
@@ -205,3 +208,22 @@ def post_firmar(
 ) -> ConsultaDetalle:
     sesion = require_permission(session, access_token, "consultas:firmar")
     return firmar_consulta(session, consulta_id, body, sesion.usuario.id)
+
+
+@router.get(
+    "/{consulta_id}/receta.pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+def get_receta_pdf(
+    consulta_id: int,
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> Response:
+    require_any_permission(session, access_token, *PERMISOS_RECETA)
+    contenido, nombre = generar_receta_pdf(session, consulta_id)
+    return Response(
+        content=contenido,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )

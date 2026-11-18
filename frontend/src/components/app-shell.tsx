@@ -66,6 +66,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/auth-context";
+import { PERMISOS_RECETAS } from "@/lib/recetas";
 
 interface NavLink {
   to: string;
@@ -111,11 +112,17 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Recetas",
     icon: Pill,
     items: [
-      { to: "/recetas/nueva", label: "Nueva Receta", permiso: "recetas:crear" },
+      // La receta sale de la consulta firmada: quien puede atender ve "Nueva Receta", y el
+      // historial usa los mismos permisos que GET /api/recetas.
+      {
+        to: "/recetas/nueva",
+        label: "Nueva Receta",
+        permiso: ["recetas:crear", "consultas:crear"],
+      },
       {
         to: "/recetas/historial",
         label: "Historial de Recetas",
-        permiso: "recetas:ver_historial",
+        permiso: PERMISOS_RECETAS,
       },
     ],
   },
@@ -125,6 +132,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: "/agenda/nuevo-turno", label: "Nuevo Turno", permiso: "agenda:crear_turno" },
       { to: "/agenda", label: "Ver Agenda", permiso: "agenda:ver" },
+      { to: "/recordatorios", label: "Recordatorios", permiso: "recordatorios:enviar" },
     ],
   },
   {
@@ -190,6 +198,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   "historia-clinica": "Historia Clínica",
   recetas: "Recetas",
   agenda: "Agenda",
+  recordatorios: "Recordatorios",
+  vacunas: "Vacunas",
   "nuevo-turno": "Nuevo Turno",
   mascotas: "Mascotas",
   clientes: "Clientes",

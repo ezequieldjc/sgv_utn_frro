@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Save, Signature, Stethoscope, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Signature, Stethoscope, Syringe, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +35,8 @@ import {
   type FichaErrors,
   type FichaForm,
 } from "@/lib/consultas";
+import { PERMISOS_RECETAS, tieneReceta } from "@/lib/recetas";
+import { PERMISOS_VER_VACUNAS } from "@/lib/vacunas";
 import type {
   ConsultaDetalle,
   ConsultaListItem,
@@ -56,6 +58,7 @@ import {
   TarjetaSignos,
 } from "./consulta-componentes";
 import { TarjetaControl, TarjetaControles } from "./control-componentes";
+import { BotonRecetaPdf } from "../recetas/boton-receta-pdf";
 
 const MANUAL_VACIO: DiagnosticoManual = { patologia_id: null, descripcion: "" };
 
@@ -67,6 +70,8 @@ export default function ConsultaPage() {
   const canVer = hasAnyPermission(permisos, PERMISOS_LECTURA);
   const canEditar = hasAnyPermission(permisos, PERMISOS_EDICION);
   const canFirmar = hasPermission(permisos, "consultas:firmar");
+  const canReceta = hasAnyPermission(permisos, [...PERMISOS_LECTURA, ...PERMISOS_RECETAS]);
+  const canVacunas = hasAnyPermission(permisos, PERMISOS_VER_VACUNAS);
   const canProgramarControl = hasPermission(permisos, "agenda:crear_turno");
 
   const [detalle, setDetalle] = React.useState<ConsultaDetalle | null>(null);
@@ -352,7 +357,11 @@ export default function ConsultaPage() {
       });
       aplicarDetalle(data);
       setConfirmarFirma(false);
-      setExito("Consulta firmada. Quedó en la historia clínica y en solo lectura.");
+      setExito(
+        tieneReceta(data)
+          ? "Consulta firmada. Quedó en la historia clínica y la receta ya se puede descargar en PDF."
+          : "Consulta firmada. Quedó en la historia clínica y en solo lectura.",
+      );
     } catch (err) {
       setConfirmarFirma(false);
       setError(mensajeError(err, "No se pudo firmar la consulta."));
@@ -429,11 +438,24 @@ export default function ConsultaPage() {
             {detalle.fecha_firma ? ` · firmada el ${fechaHoraLabel(detalle.fecha_firma)}` : ""}
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link to={`/consultas/historial?mascota_id=${detalle.mascota.id}`}>
-            Historia clínica
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {canReceta && tieneReceta(detalle) ? (
+            <BotonRecetaPdf consultaId={detalle.id} size="default" onError={setError} />
+          ) : null}
+          {canVacunas ? (
+            <Button variant="outline" asChild>
+              <Link to={`/mascotas/${detalle.mascota.id}/vacunas?consulta_id=${detalle.id}`}>
+                <Syringe />
+                Vacunas
+              </Link>
+            </Button>
+          ) : null}
+          <Button variant="outline" asChild>
+            <Link to={`/consultas/historial?mascota_id=${detalle.mascota.id}`}>
+              Historia clínica
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error ? <BannerError>{error}</BannerError> : null}

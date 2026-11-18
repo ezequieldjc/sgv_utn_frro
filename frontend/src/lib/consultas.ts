@@ -62,6 +62,15 @@ export const DICTADOS_DEMO: Record<string, string> = {
     "El dueño cuenta que no vomita ni tiene diarrea. " +
     "Pesa 33 kilos, temperatura 38,5. Presenta dolor de cadera a la manipulación. " +
     "Pido radiografía de cadera.",
+  // Caso 11 de docs/casos_prueba_dictado.md (Felipe, dermatitis): es el que muestra el sesgo por
+  // raza en la demo. Para Simón (caso 12, otitis) el texto se pega a mano.
+  "chinese-shar-pei":
+    "Viene porque se rasca todo el día y se lame las patas desde hace un mes. " +
+    "El dueño cuenta que empeora en primavera, que no vomita ni tiene diarrea y que come bien. " +
+    "Pesa 21,5 kilos, temperatura 38,7. Presenta enrojecimiento en los pliegues de la cara, " +
+    "en las axilas y entre los dedos. No sacude la cabeza. Pido raspado cutáneo. " +
+    "Indico baño con clorhexidina cada tres días, oclacitinib 16 mg un comprimido cada 12 horas " +
+    "por 14 días y control en quince días.",
 };
 
 export const DICTADO_DEMO_GENERICO =
@@ -137,6 +146,7 @@ export function fechaHoraLabel(iso: string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hourCycle: "h23",
   });
 }
 

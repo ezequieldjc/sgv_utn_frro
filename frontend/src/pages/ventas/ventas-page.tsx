@@ -134,7 +134,7 @@ export default function VentasPage() {
                 <TableRow key={v.id} className="cursor-pointer" onClick={() => setSeleccionada(v.id)}>
                   <TableCell className="tabular-nums text-muted-foreground">{v.id}</TableCell>
                   <TableCell className="whitespace-nowrap tabular-nums">
-                    {new Date(v.fecha).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
+                    {new Date(v.fecha).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", hourCycle: "h23" })}
                   </TableCell>
                   <TableCell>{v.cliente_nombre ?? <span className="text-muted-foreground">Sin cliente</span>}</TableCell>
                   <TableCell className="text-right tabular-nums">{v.cantidad_items}</TableCell>

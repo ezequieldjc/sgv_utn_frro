@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   ShieldOff,
+  Syringe,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { useAuth } from "@/context/auth-context";
 import { useSelectTypeahead } from "@/hooks/use-select-typeahead";
 import { apiFetch } from "@/lib/api";
 import { FILTRO_ATENDIBLES, etiquetaAtendibles } from "@/lib/mascotas";
+import { PERMISOS_VER_VACUNAS } from "@/lib/vacunas";
 import type {
   CatalogoOpcion,
   MascotaListResponse,
@@ -105,6 +107,7 @@ export default function MascotasPage() {
   const canCreate = hasPermission(permisos, "mascotas:crear");
   const canEdit = hasPermission(permisos, "mascotas:editar");
   const canViewHistorial = hasPermission(permisos, "consultas:ver_historial");
+  const canVacunas = PERMISOS_VER_VACUNAS.some((p) => hasPermission(permisos, p));
 
   const clienteIdParam = searchParams.get("cliente_id");
   const especieFromUrl = searchParams.get("especie_id");
@@ -500,6 +503,15 @@ export default function MascotasPage() {
                               to={`/consultas/historial?mascota_id=${mascota.id}`}
                             >
                               <ClipboardList className="size-4" />
+                            </ActionIconButton>
+                          ) : null}
+
+                          {canVacunas ? (
+                            <ActionIconButton
+                              label="Vacunas y desparasitaciones"
+                              to={`/mascotas/${mascota.id}/vacunas`}
+                            >
+                              <Syringe className="size-4" />
                             </ActionIconButton>
                           ) : null}
                         </div>

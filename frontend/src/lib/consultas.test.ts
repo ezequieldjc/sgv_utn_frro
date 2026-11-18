@@ -14,6 +14,7 @@ import {
   cambiosFicha,
   dictadoDemoPara,
   edadLabel,
+  fechaHoraLabel,
   formatearCronometro,
   mensajeError,
   porcentajeLabel,
@@ -64,6 +65,13 @@ describe("dictado simulado", () => {
     expect(dictadoDemoPara({ raza_codigo: "french-bulldog" })).toBe(DICTADOS_DEMO["french-bulldog"]);
     expect(dictadoDemoPara({ raza_codigo: null })).toBe(DICTADO_DEMO_GENERICO);
     expect(dictadoDemoPara({ raza_codigo: "beagle" })).toBe(DICTADO_DEMO_GENERICO);
+    // El Shar Pei es Felipe (caso 11, dermatitis): el que muestra la predisposición de raza.
+    expect(dictadoDemoPara({ raza_codigo: "chinese-shar-pei" })).toContain("se lame las patas");
+  });
+
+  it("test_fecha_y_hora_en_24_horas", () => {
+    expect(fechaHoraLabel("2026-11-17T18:02:00")).toBe("17/11/2026, 18:02");
+    expect(fechaHoraLabel("2026-11-17T09:05:00")).toBe("17/11/2026, 09:05");
   });
 
   it("test_cronometro_formatea_minutos_y_segundos", () => {

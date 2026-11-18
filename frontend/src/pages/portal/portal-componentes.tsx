@@ -5,7 +5,7 @@ import { AlertTriangle, CalendarClock, ChevronRight, PawPrint } from "lucide-rea
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
-import { estadoTurnoLabel, mensajePortal, resumenMascota, turnoLabel } from "@/lib/portal";
+import { esEstadoActivo, estadoTurnoLabel, mensajePortal, resumenMascota, turnoLabel } from "@/lib/portal";
 import type { PortalMascota, PortalTurno } from "@/types/portal";
 
 import { BannerError } from "../stock/shared";
@@ -114,7 +114,7 @@ export function MascotaCard({ mascota }: { mascota: PortalMascota }) {
     <TarjetaLink to={`/portal/mascotas/${mascota.id}`}>
       <div className="flex items-center gap-2">
         <span className="font-medium">{mascota.nombre}</span>
-        {mascota.estado_nombre.toUpperCase() !== "ACTIVA" ? (
+        {!esEstadoActivo(mascota.estado_nombre) ? (
           <Badge variant="secondary">{mascota.estado_nombre}</Badge>
         ) : null}
       </div>

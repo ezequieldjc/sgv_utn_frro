@@ -44,7 +44,7 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
   - Los estados permitidos son un parámetro (`ESTADOS_MASCOTA_TUTOR_EVENTUAL`) que crea
     `scripts/clinica/007_tutor_eventual_estados.sql`. Ese script además corrige las mascotas
     que hoy están ACTIVAS con el tutor eventual.
-  - Mergeada a `staging` (PR #32).
+  - Mergeada a `staging` (PR #32). El 007 se aplicó en Neon el 17/11.
 - **`scripts/auth/001_portal_y_cuentas_cliente.sql` (aplicado en Neon el 17/11):** `username` a
   100 caracteres, `portal:ver` para CLIENTE, `ventas:ver` para RECEPCIONISTA y
   `agenda:crear_turno` para VETERINARIO.
@@ -53,33 +53,51 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
   lo ajeno responde 404. Además pide turnos (desde mañana, quedan solicitados hasta que la
   clínica los confirme) y cancela los que siguen solicitados. Requiere
   `scripts/agenda/003_portal_pedir_turno.sql` (aplicado en Neon el 17/11). Detalle en
-  `docs/prompts botones/portal_cliente.md`.
+  `docs/prompts botones/portal_cliente.md`. Mergeada a `staging` (PR #33).
 - **Alta de mascota:** Canina y Felina aparecen primero en el selector de especie.
 - **Próxima rama `feature/cuentas-cliente`:** el mail es el usuario, todo cliente nace con
   usuario, restablecer la contraseña por mail y registro desde el login.
+- **Rama `feature/vacunas-recordatorios-receta`:** el punto 5, simulado de forma simple. El
+  diseño de lo que falta para la entrega final está en `docs/fase2_diseno.md`.
+  - **Receta en PDF** desde la consulta firmada y en **Recetas → Historial de recetas**. Sale de
+    las indicaciones (`tratamiento`) y no usa tablas nuevas.
+  - **Vacunas y desparasitaciones** por mascota (`/mascotas/:id/vacunas`): aplicar ahora con
+    un producto del stock (descuenta un envase y, si se cobra, arma la venta al tutor) o
+    registrar una dosis anterior. Cada una con su próxima dosis y el refuerzo vinculado. Desde
+    un turno de Vacunación, "Registrar vacuna" lo marca atendido.
+  - **Recordatorios por WhatsApp** (**Agenda → Recordatorios**): turnos de mañana y dosis por
+    vencer o vencidas, con el mensaje armado y un link `wa.me` que la recepción envía con un
+    clic. El envío queda registrado.
+  - El Shar Pei suma predisposición a la dermatitis atópica y a la otitis en el motor, y los
+    casos 11 y 12 de `docs/casos_prueba_dictado.md` son los de Felipe y Simón.
+  - Requiere `scripts/clinica/008_vacunas_recordatorios.sql` (tablas, permisos, parámetros
+    PREVENTIVA y el código del Shar Pei; aplicado en Neon el 17/11) y
+    `pip install -r requirements.txt` por `reportlab`.
+  - Datos de demo: Joaquín Ferreyra (celular de Bruno) con Felipe y Simón, dos Shar Pei. Felipe
+    tiene su carnet (la séxtuple de la libreta, que vence el 20/11, y un Bravecto aplicado y
+    cobrado el 17/11, venta #3) y un turno de Vacunación el 20/11 a las 9:00. Su consulta no
+    está hecha: se dicta en vivo con **Iniciar dictado**. Simón tiene su carnet (un Bravecto
+    vencido el 08/11 y la antirrábica del 17/11) y un turno de consulta el 18/11 a las 10:00.
+    Los dos turnos son con Valeria Sosa.
 
 ## Qué falta, en orden
 
-1. **Mergear `feature/tutor-eventual-estados` a `staging`** (con revisión y el CI en verde) y
-   **después aplicar `scripts/clinica/007_tutor_eventual_estados.sql` en Neon**, como DBA. El
-   orden importa:
-   - El código nuevo sin el script se comporta como antes: el tutor eventual no tiene
-     restricción.
-   - El script sin el código nuevo, no: el código anterior solo da turnos a mascotas ACTIVAS,
-     así que las del tutor eventual dejarían de aparecer en la agenda.
-   - Si alguien usa la app publicada (`main`), conviene pasar `staging` a `main` antes de
-     correr el script.
-2. ~~Decidir si VETERINARIO puede agendar turnos~~: resuelto, `agenda:crear_turno` se le asignó
+1. **Pasar `staging` a `main`.** El 007 ya está aplicado en Neon, y el código de `main` todavía
+   solo da turnos a mascotas ACTIVAS: hasta el pase, la app publicada no atiende a las mascotas
+   del tutor eventual (Lola, Bela, Bestia y Negrito).
+2. **Mergear `feature/vacunas-recordatorios-receta` a `staging`.** El 008 ya está aplicado: el
+   código anterior no usa nada de ese script, así que no hay apuro de orden.
+3. ~~Decidir si VETERINARIO puede agendar turnos~~: resuelto, `agenda:crear_turno` se le asignó
    con `scripts/auth/001_portal_y_cuentas_cliente.sql`.
-3. **Turnos para el día de la presentación**: uno confirmado para cada caso del guion, el mismo
+4. **Turnos para el día de la presentación**: uno confirmado para cada caso del guion, el mismo
    día. La consulta toma la fecha y hora en que se inicia.
-4. **Ensayar la demo completa contra Neon** al menos una vez, con el usuario veterinario. El
+5. **Ensayar la demo completa contra Neon** al menos una vez, con el usuario veterinario. El
    turno de Luna del 17/11 quedó libre para eso.
-5. **Ajustes de contenido (opcional):** revisar las frecuencias de `BASE_CONOCIMIENTO`
+6. **Ajustes de contenido (opcional):** revisar las frecuencias de `BASE_CONOCIMIENTO`
    (`backend/app/services/motor_simulado.py`) y los textos de `DICTADOS_DEMO`
    (`frontend/src/lib/consultas.ts`). Si se cambia un código, cambiarlo también en el script 006.
 
-## Guion de la demo (4 casos)
+## Guion de la demo (5 casos)
 
 | Caso | Paciente | Qué se dicta | Qué tiene que pasar |
 |------|----------|--------------|---------------------|
@@ -87,6 +105,7 @@ Por acuerdo del equipo, el NLP y el motor de diagnóstico están **simulados**.
 | 2 | Luna, Cocker Spaniel Inglés (ya existe) | Sacude la cabeza, se rasca las orejas, secreción marrón, **no tiene fiebre** | Primera sugerencia: otitis externa. Mostrar «¿Por qué?» y una corrección a mano de un signo. |
 | 3 | Thor, Labrador Retriever (ya existe) | Renguea, le cuesta levantarse, dolor de cadera | Primera sugerencia: displasia de cadera. Firmar con un diagnóstico manual secundario. |
 | 4 | Coco, control (turno del 26/11 o uno nuevo con "Programar control") | "Viene a control. Sigue roncando de noche pero ya no se cansa al caminar y no tose." | La consulta se vincula sola a la anterior. La evolución marca ronquido **Persiste** y tos e intolerancia al ejercicio **Resuelto**. El motor avisa que la evidencia no alcanza (es un control) y se firma con "Usar el diagnóstico anterior". |
+| 5 | Felipe y Simón, Shar Pei de Joaquín Ferreyra (ya existen, con su carnet) | Felipe, con **Iniciar dictado** (caso 11): se rasca todo el día, se lame las patas, **no sacude la cabeza**, enrojecimiento en pliegues, axilas y entre los dedos | Primera sugerencia: dermatitis atópica (predisposición de raza ×4). Se firma y, desde la consulta, **Receta (PDF)**. En **Agenda → Recordatorios**, enviar el recordatorio del turno de Simón y el de la séxtuple de Felipe: llegan al WhatsApp de Bruno. Desde el turno de Vacunación de Felipe, **Registrar vacuna** con la séxtuple del stock: va como consumo clínico porque las vacunas no tienen precio, baja el stock, el turno queda atendido y el recordatorio de esa dosis desaparece porque queda como su refuerzo. En **Ventas → Historial de Ventas** ya está la del Bravecto de Felipe. |
 
 Al final, abrir la historia clínica de una de las mascotas y mostrar la consulta firmada en solo
 lectura, con sus signos, sus diagnósticos y el dictado original.
