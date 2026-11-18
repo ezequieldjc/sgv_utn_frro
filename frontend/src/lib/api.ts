@@ -11,6 +11,7 @@ const RUTAS_SIN_RENOVACION = [
   "/api/auth/refresh",
   "/api/auth/logout",
   "/api/auth/cambiar-contrasena-obligatorio",
+  "/api/auth/registro",
 ];
 
 function buildUrl(input: RequestInfo): RequestInfo {

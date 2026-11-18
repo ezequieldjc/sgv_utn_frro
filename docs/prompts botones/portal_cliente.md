@@ -10,7 +10,8 @@ cliente por cliente.
 | Ruta | Qué muestra |
 |------|-------------|
 | `/` (inicio) | Para quien tiene `portal:ver` asignado: saludo, mis mascotas y los próximos 3 turnos. Con el comodín `*` el inicio sigue siendo el de la clínica. |
-| `/portal/mascotas` | Tarjetas de mis mascotas (especie, raza, sexo, edad, estado y alerta médica). |
+| `/portal/mascotas` | Tarjetas de mis mascotas (especie, raza, sexo, edad, estado y alerta médica). Botón "Agregar mascota". |
+| `/portal/mascotas/nueva` | Alta de mascota: nombre, especie (Canina y Felina primero), raza, sexo y fecha de nacimiento. |
 | `/portal/mascotas/:id` | Datos de la mascota y su historia clínica. |
 | `/portal/consultas/:id` | La consulta firmada, en solo lectura. Si es un control, enlaza la consulta anterior. |
 | `/portal/turnos` | Próximos (futuros, solicitados o confirmados) y anteriores, con su estado. Botón "Pedir turno" y "Cancelar turno" en los solicitados. |
@@ -31,8 +32,8 @@ Todos `GET`, con `portal:ver`: `/api/portal/mascotas`, `/mascotas/{id}`,
 `POST /api/portal/turnos` y `POST /api/portal/turnos/{id}/cancelar`. El permiso y el parámetro
 los crea `scripts/agenda/003_portal_pedir_turno.sql`.
 
-- Solo para mascotas propias que se pueden atender. **El cliente no da de alta mascotas**: se
-  registran en el mostrador. Sin mascotas, el portal le indica que se comunique con la clínica.
+- Solo para mascotas propias que se pueden atender. Sin mascotas, el portal lo manda a
+  agregarla (si tiene `portal:crear_mascota`) o le indica que se comunique con la clínica.
 - Solo los tipos del parámetro `TIPOS_TURNO_PORTAL` (AGENDA): Consulta, Control y Vacunación.
   Cirugía no: la indica el veterinario.
 - **Desde mañana en adelante.** Un turno para hoy se pide comunicándose con la clínica.
@@ -45,6 +46,21 @@ los crea `scripts/agenda/003_portal_pedir_turno.sql`.
 - La disponibilidad devuelve solo los horarios libres: no dice por qué un horario está ocupado
   (el detalle interno nombra a otros pacientes).
 - Reprogramar desde el portal queda para después: se cancela y se pide otro.
+
+## Alta de mascota (`portal:crear_mascota`)
+
+Decisión del equipo del 18/11/2026: reemplaza la regla anterior ("el cliente no da de alta
+mascotas"). El permiso lo crea `scripts/auth/002_portal_crear_mascota.sql`.
+
+- `GET /api/portal/mascotas/especies` y `GET /api/portal/mascotas/razas?especie_id=`: solo las
+  activas. `POST /api/portal/mascotas` devuelve la mascota como la ve el portal.
+- El cliente carga **nombre, especie, raza, sexo y fecha de nacimiento** (no futura). Peso,
+  microchip, alertas médicas y estado los carga la clínica.
+- El dueño es **siempre la persona de la sesión**: un `persona_id` en el body se ignora. La
+  mascota nace **ACTIVA**.
+- No se controlan duplicados (puede tener dos perros con el mismo nombre). Si carga una
+  mascota que ya estaba registrada en el mostrador, la recepción la corrige a mano.
+- El usuario del tutor eventual recibe 403 `PORTAL_NO_DISPONIBLE`.
 
 ## Reglas de seguridad (`backend/app/services/portal_service.py`)
 
@@ -69,13 +85,13 @@ De una compra no ve quién la vendió.
 
 ## Tests
 
-- Backend: `backend/tests/test_portal.py`. Las consultas se arman con el flujo real del
+- Backend: `backend/tests/test_portal.py` y `backend/tests/test_portal_alta_mascota.py`. Las consultas se arman con el flujo real del
   veterinario (abrir, dictar, firmar), así se comprueba que dictado, signos y porcentajes existen
   en la base y no llegan al cliente.
 - Frontend: `frontend/src/lib/portal.test.ts`, `frontend/src/pages/portal/*.test.tsx`.
 
 ## Fuera del prototipo
 
-Reprogramar turnos desde el portal, pre-registro de mascotas por el cliente, auditoría de accesos a la historia
+Reprogramar turnos desde el portal, auditoría de accesos a la historia
 clínica, empleados que también son clientes (una persona tiene un solo usuario) y la mascota que
 cambia de dueño (el anterior deja de verla: el filtro usa el dueño actual).

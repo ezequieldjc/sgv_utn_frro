@@ -31,10 +31,9 @@ export interface ClienteCreatePayload {
   fecha_nacimiento: string | null;
   sexo: "M" | "F" | "X" | null;
   celular: string;
-  mail: string | null;
+  /** Obligatorio: es el usuario del cliente (se guarda en minúsculas). */
+  mail: string;
   domicilio: DomicilioCreatePayload | null;
-  crear_usuario: boolean;
-  habilitado: boolean;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
@@ -43,7 +42,7 @@ export interface ClienteCreateResponse {
   nombre: string;
   apellido: string;
   dni: string | null;
-  usuario_creado: boolean;
-  username: string | null;
-  password_temporal: string | null;
+  /** El mail del cliente, en minúsculas. */
+  username: string;
+  password_temporal: string;
 }

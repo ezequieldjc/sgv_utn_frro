@@ -27,6 +27,10 @@ alwaysApply: false
   `ADMIN` (nombre case-insensitive) en Admin → Roles y Permisos para hacerlo **inmutable**
   (solo lectura; no editar `rol_permiso`; no recrear `ADMIN`). El comodín `*` no se asigna
   manualmente a roles operativos desde la UI/API de mapeo.
+- Excepción documentada (alta de clientes): en un alta de usuario se puede detectar el rol
+  *objetivo* `CLIENTE` (`cuenta_cliente_service.es_rol_cliente`) para saber **qué se crea**: un
+  usuario CLIENTE es siempre un cliente completo (persona con `es_cliente = true` y el mail como
+  usuario). Quien da el alta se sigue autorizando con `usuarios:crear`.
 
 - Los roles, sus permisos y la visibilidad de los menús se resuelven desde la base de datos
   al iniciar sesión. El backend carga `auth.usuario`, su `rol` y sus `permisos`, los incluye

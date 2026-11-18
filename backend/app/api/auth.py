@@ -11,11 +11,14 @@ from app.schemas.auth import (
     CambiarContrasenaObligatorioRequest,
     CambiarContrasenaObligatorioResponse,
     LoginRequest,
+    RegistroRequest,
+    RegistroResponse,
 )
 from app.services.auth_service import (
     build_session_response,
     cambiar_contrasena_obligatorio,
     create_login_audit,
+    registrar_cliente,
     validate_login,
 )
 from app.services.authorization_service import get_current_authenticated_session, validar_renovacion
@@ -140,6 +143,15 @@ def post_cambiar_contrasena_obligatorio(
     session: Session = Depends(get_session),
 ) -> CambiarContrasenaObligatorioResponse:
     return cambiar_contrasena_obligatorio(session, payload)
+
+
+@router.post("/registro", response_model=RegistroResponse, status_code=201)
+def post_registro(
+    payload: RegistroRequest,
+    session: Session = Depends(get_session),
+) -> RegistroResponse:
+    """Público: un cliente crea su cuenta desde el login. No inicia sesión solo."""
+    return registrar_cliente(session, payload)
 
 
 @router.get("/me", response_model=AuthSessionResponse)

@@ -109,3 +109,18 @@ export interface PortalCompraDetalle {
     subtotal: string;
   }[];
 }
+
+// Alta de mascota desde el portal (portal:crear_mascota).
+export interface PortalRaza {
+  id: number;
+  nombre: string;
+  especie_id: number;
+}
+
+export interface PortalMascotaCreate {
+  nombre: string;
+  especie_id: number;
+  raza_id: number;
+  sexo: "M" | "H" | "U" | null;
+  fecha_nacimiento: string | null;
+}

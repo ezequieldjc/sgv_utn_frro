@@ -274,17 +274,15 @@ def test_list_clientes_con_wildcard_devuelve_200(client, session) -> None:
 def _cliente_create_payload(
     *,
     dni: str | None = "60111222",
-    crear_usuario: bool = False,
-    habilitado: bool = True,
+    mail: str | None = "Laura@Example.com",
 ) -> dict:
-    return {
+    payload = {
         "nombre": "Laura",
         "apellido": "Martínez",
         "dni": dni,
         "fecha_nacimiento": "1990-03-15",
         "sexo": "F",
         "celular": "11 4444-5555",
-        "mail": "laura@example.com",
         "domicilio": {
             "pais": "Argentina",
             "provincia": "Buenos Aires",
@@ -295,9 +293,31 @@ def _cliente_create_payload(
             "departamento": None,
             "notas": None,
         },
-        "crear_usuario": crear_usuario,
-        "habilitado": habilitado,
     }
+    if mail is not None:
+        payload["mail"] = mail
+    return payload
+
+
+def _login_recepcion(client, session, *, con_rol_cliente: bool = True) -> None:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="clientes:crear",
+    )
+    if con_rol_cliente:
+        session.add(Rol(nombre="CLIENTE", descripcion="Cliente de la clínica"))
+        session.commit()
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
 
 
 def test_create_cliente_sin_auth_devuelve_401(client, session) -> None:
@@ -332,109 +352,72 @@ def test_create_cliente_sin_permiso_devuelve_403(client, session) -> None:
     assert response.json()["error"] == "PERMISOS_INSUFICIENTES"
 
 
-def test_create_cliente_sin_usuario_devuelve_201(client, session) -> None:
-    _seed_jwt_config(session)
-    seed_usuario_con_permiso(
-        session,
-        username="admin",
-        password="Secret123!",
-        nombre="María",
-        apellido="Gómez",
-        dni="20111222",
-        permiso_nombre="clientes:crear",
-    )
+def test_create_cliente_crea_siempre_usuario_cliente_con_mail_en_minusculas(
+    client, session
+) -> None:
+    from app.core.security import verify_password
 
-    login_response = client.post(
-        "/api/auth/login",
-        json={"username": "admin", "password": "Secret123!"},
-    )
-    assert login_response.status_code == 200
+    _login_recepcion(client, session)
 
     response = client.post("/api/clientes", json=_cliente_create_payload())
     assert response.status_code == 201
     payload = response.json()
     assert payload["nombre"] == "Laura"
-    assert payload["apellido"] == "Martínez"
     assert payload["dni"] == "60111222"
-    assert payload["usuario_creado"] is False
-    assert payload["username"] is None
-    assert payload["password_temporal"] is None
-
-    persona = session.get(Persona, payload["id"])
-    assert persona is not None
-    assert persona.es_cliente is True
-    assert persona.celular == "1144445555"
-    assert persona.domicilio_id is not None
-
-    usuarios = session.exec(select(Usuario).where(Usuario.persona_id == persona.id)).all()
-    assert len(usuarios) == 0
-
-
-def test_create_cliente_con_usuario_devuelve_201_y_password(client, session) -> None:
-    from app.core.security import verify_password
-
-    _seed_jwt_config(session)
-    seed_usuario_con_permiso(
-        session,
-        username="admin",
-        password="Secret123!",
-        nombre="María",
-        apellido="Gómez",
-        dni="20111222",
-        permiso_nombre="clientes:crear",
-    )
-    session.add(Rol(nombre="CLIENTE", descripcion="Cliente de la clínica"))
-    session.commit()
-
-    login_response = client.post(
-        "/api/auth/login",
-        json={"username": "admin", "password": "Secret123!"},
-    )
-    assert login_response.status_code == 200
-
-    response = client.post(
-        "/api/clientes",
-        json=_cliente_create_payload(crear_usuario=True),
-    )
-    assert response.status_code == 201
-    payload = response.json()
-    assert payload["usuario_creado"] is True
-    assert payload["username"] == "lmartinez"
-    assert isinstance(payload["password_temporal"], str)
+    assert payload["username"] == "laura@example.com"
     assert "-" in payload["password_temporal"]
 
     persona = session.get(Persona, payload["id"])
     assert persona is not None
     assert persona.es_cliente is True
+    assert persona.mail == "laura@example.com"
+    assert persona.celular == "1144445555"
+    assert persona.domicilio_id is not None
 
-    usuario = session.exec(select(Usuario).where(Usuario.persona_id == persona.id)).first()
-    assert usuario is not None
-    assert usuario.username == "lmartinez"
+    usuario = session.exec(select(Usuario).where(Usuario.persona_id == persona.id)).one()
+    assert usuario.username == "laura@example.com"
     assert usuario.habilitado is True
-
     rol = session.get(Rol, usuario.rol_id)
-    assert rol is not None
-    assert rol.nombre == "CLIENTE"
+    assert rol is not None and rol.nombre == "CLIENTE"
 
     historial = session.exec(
         select(HistorialContrasena).where(HistorialContrasena.usuario_id == usuario.id)
-    ).first()
-    assert historial is not None
+    ).one()
     assert historial.debe_cambiar is True
     assert verify_password(payload["password_temporal"], historial.hashed_password)
 
 
-def test_create_cliente_dni_duplicado_permite_crear_otra_persona(client, session) -> None:
-    _seed_jwt_config(session)
-    seed_usuario_con_permiso(
-        session,
-        username="admin",
-        password="Secret123!",
-        nombre="María",
-        apellido="Gómez",
-        dni="20111222",
-        permiso_nombre="clientes:crear",
+def test_create_cliente_sin_mail_devuelve_422(client, session) -> None:
+    _login_recepcion(client, session)
+
+    response = client.post("/api/clientes", json=_cliente_create_payload(mail=None))
+    assert response.status_code == 422
+    assert session.exec(select(Persona).where(Persona.dni == "60111222")).first() is None
+
+
+def test_create_cliente_mail_vacio_devuelve_422(client, session) -> None:
+    _login_recepcion(client, session)
+
+    response = client.post("/api/clientes", json=_cliente_create_payload(mail="   "))
+    assert response.status_code == 422
+
+
+def test_create_cliente_mail_de_otro_usuario_devuelve_409(client, session) -> None:
+    _login_recepcion(client, session)
+    primero = client.post("/api/clientes", json=_cliente_create_payload(dni="60111222"))
+    assert primero.status_code == 201
+
+    response = client.post(
+        "/api/clientes",
+        json=_cliente_create_payload(dni="60999888", mail="LAURA@example.com "),
     )
+    assert response.status_code == 409
+    assert response.json()["error"] == "MAIL_EN_USO"
+    assert session.exec(select(Persona).where(Persona.dni == "60999888")).first() is None
+
+
+def test_create_cliente_dni_duplicado_devuelve_409(client, session) -> None:
+    _login_recepcion(client, session)
     seed_cliente(
         session,
         nombre="Ana",
@@ -443,44 +426,21 @@ def test_create_cliente_dni_duplicado_permite_crear_otra_persona(client, session
         fecha_nacimiento=date(1990, 1, 1),
     )
 
-    login_response = client.post(
-        "/api/auth/login",
-        json={"username": "admin", "password": "Secret123!"},
-    )
-    assert login_response.status_code == 200
-
     response = client.post("/api/clientes", json=_cliente_create_payload(dni="60111222"))
-    assert response.status_code == 201
+    assert response.status_code == 409
+    assert response.json()["error"] == "DNI_DUPLICADO"
     personas = session.exec(select(Persona).where(Persona.dni == "60111222")).all()
-    assert len(personas) == 2
+    assert len(personas) == 1
 
 
-def test_create_cliente_sin_dni_datos_opcionales_ni_domicilio_persiste_nulls(
-    client, session
-) -> None:
-    _seed_jwt_config(session)
-    seed_usuario_con_permiso(
-        session,
-        username="admin",
-        password="Secret123!",
-        nombre="María",
-        apellido="Gómez",
-        dni="20111222",
-        permiso_nombre="clientes:crear",
-    )
-
-    login_response = client.post(
-        "/api/auth/login",
-        json={"username": "admin", "password": "Secret123!"},
-    )
-    assert login_response.status_code == 200
+def test_create_cliente_sin_dni_ni_domicilio_persiste_nulls(client, session) -> None:
+    _login_recepcion(client, session)
 
     payload = {
         "nombre": "Cliente",
         "apellido": "Rápido",
         "celular": "341 555-0000",
-        "crear_usuario": False,
-        "habilitado": True,
+        "mail": "rapido@example.com",
     }
     response = client.post("/api/clientes", json=payload)
 
@@ -492,33 +452,56 @@ def test_create_cliente_sin_dni_datos_opcionales_ni_domicilio_persiste_nulls(
     assert persona.dni is None
     assert persona.sexo is None
     assert persona.fecha_nacimiento is None
-    assert persona.mail is None
     assert persona.domicilio_id is None
     assert persona.celular == "3415550000"
     assert persona.es_cliente is True
 
 
+def test_create_cliente_dos_sin_dni_no_se_consideran_duplicados(client, session) -> None:
+    _login_recepcion(client, session)
+
+    for mail in ("uno@example.com", "dos@example.com"):
+        response = client.post(
+            "/api/clientes",
+            json={"nombre": "Sin", "apellido": "Dni", "celular": "341", "mail": mail},
+        )
+        assert response.status_code == 201
+
+
 def test_create_cliente_sin_rol_cliente_devuelve_404(client, session) -> None:
-    _seed_jwt_config(session)
-    seed_usuario_con_permiso(
-        session,
-        username="admin",
-        password="Secret123!",
-        nombre="María",
-        apellido="Gómez",
-        dni="20111222",
-        permiso_nombre="clientes:crear",
-    )
+    _login_recepcion(client, session, con_rol_cliente=False)
 
-    login_response = client.post(
-        "/api/auth/login",
-        json={"username": "admin", "password": "Secret123!"},
-    )
-    assert login_response.status_code == 200
-
-    response = client.post(
-        "/api/clientes",
-        json=_cliente_create_payload(crear_usuario=True),
-    )
+    response = client.post("/api/clientes", json=_cliente_create_payload())
     assert response.status_code == 404
     assert response.json()["error"] == "ROL_NO_ENCONTRADO"
+    assert session.exec(select(Persona).where(Persona.dni == "60111222")).first() is None
+
+
+def test_cliente_creado_puede_ingresar_con_el_mail_en_mayusculas(client, session) -> None:
+    _login_recepcion(client, session)
+    alta = client.post("/api/clientes", json=_cliente_create_payload()).json()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"username": "  LAURA@EXAMPLE.COM ", "password": alta["password_temporal"]},
+    )
+    # Contraseña temporal: entra al cambio obligatorio, que también acepta el mail en mayúsculas.
+    assert response.status_code == 403
+    assert response.json()["error"] == "DEBE_CAMBIAR_CONTRASENA"
+
+    cambio = client.post(
+        "/api/auth/cambiar-contrasena-obligatorio",
+        json={
+            "username": "Laura@Example.com",
+            "password_actual": alta["password_temporal"],
+            "password_nueva": "NuevaClave123",
+        },
+    )
+    assert cambio.status_code == 200
+
+    login = client.post(
+        "/api/auth/login",
+        json={"username": "LAURA@example.com", "password": "NuevaClave123"},
+    )
+    assert login.status_code == 200
+    assert login.json()["usuario"]["username"] == "laura@example.com"

@@ -36,8 +36,6 @@ export interface FormState {
   departamento: string;
   notas: string;
   incluir_domicilio: boolean;
-  crear_usuario: boolean;
-  habilitado: boolean;
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -59,8 +57,6 @@ export const INITIAL_FORM: FormState = {
   departamento: "",
   notas: "",
   incluir_domicilio: false,
-  crear_usuario: false,
-  habilitado: true,
 };
 
 const FIELD_ORDER: Array<keyof FormState> = [
@@ -83,19 +79,6 @@ const FIELD_ORDER: Array<keyof FormState> = [
 
 function hasPermission(permisos: string[], required: string): boolean {
   return permisos.includes("*") || permisos.includes(required);
-}
-
-function stripAccents(value: string): string {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-}
-
-function previewUsername(nombre: string, apellido: string): string {
-  const n = stripAccents(nombre).trim().toLowerCase();
-  const a = stripAccents(apellido).replace(/\s+/g, "").toLowerCase();
-  if (!n || !a) {
-    return "";
-  }
-  return `${n[0]}${a}`;
 }
 
 function maskFechaNacimiento(raw: string): string {
@@ -152,7 +135,9 @@ export function validateForm(form: FormState): FormErrors {
   } else if (!sanitizeCelular(form.celular)) {
     errors.celular = "El celular debe incluir números.";
   }
-  if (form.mail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.mail.trim())) {
+  if (!form.mail.trim()) {
+    errors.mail = "El email es obligatorio: es el usuario del cliente para entrar al portal.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.mail.trim())) {
     errors.mail = "Ingresá un email válido.";
   }
   if (form.incluir_domicilio) {
@@ -185,7 +170,7 @@ export function buildClientePayload(form: FormState): ClienteCreatePayload {
       : null,
     sexo: form.sexo || null,
     celular: sanitizeCelular(form.celular),
-    mail: form.mail.trim() ? form.mail.trim() : null,
+    mail: form.mail.trim().toLowerCase(),
     domicilio: form.incluir_domicilio
       ? {
           pais: form.pais,
@@ -198,8 +183,6 @@ export function buildClientePayload(form: FormState): ClienteCreatePayload {
           notas: form.notas.trim() ? form.notas.trim() : null,
         }
       : null,
-    crear_usuario: form.crear_usuario,
-    habilitado: form.habilitado,
   };
 }
 
@@ -242,8 +225,6 @@ export default function ClienteFormPage() {
     return <AccessDenied message="No tenés permiso para crear clientes." />;
   }
 
-  const usernamePreview = previewUsername(form.nombre, form.apellido);
-
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => {
@@ -280,7 +261,14 @@ export default function ClienteFormPage() {
       setSuccess(created);
     } catch (error) {
       const status = (error as { status?: number }).status;
-      if (status === 404) {
+      const codigo = (error as { body?: { error?: string } }).body?.error;
+      if (codigo === "MAIL_EN_USO") {
+        setErrors((prev) => ({ ...prev, mail: "Ya existe una cuenta con ese email." }));
+        setSubmitError("Ya existe una cuenta con ese email.");
+      } else if (codigo === "DNI_DUPLICADO") {
+        setErrors((prev) => ({ ...prev, dni: "Ya existe una persona con ese DNI." }));
+        setSubmitError("Ya existe una persona con ese DNI.");
+      } else if (status === 404) {
         setSubmitError("No se encontró el rol CLIENTE en el sistema.");
       } else if (status === 403) {
         setSubmitError("No tenés permisos para crear clientes.");
@@ -331,7 +319,8 @@ export default function ClienteFormPage() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Nuevo Cliente</h1>
         <p className="text-sm text-muted-foreground">
-          Completá los datos básicos. El domicilio y la cuenta de acceso son opcionales.
+          Completá los datos básicos. El domicilio es opcional. Se crea también la cuenta del
+          cliente: su usuario es el email.
         </p>
       </div>
 
@@ -446,7 +435,7 @@ export default function ClienteFormPage() {
               ) : null}
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="mail">Email (opcional)</Label>
+              <Label htmlFor="mail">Email</Label>
               <Input
                 id="mail"
                 ref={(el) => {
@@ -459,7 +448,11 @@ export default function ClienteFormPage() {
               />
               {errors.mail ? (
                 <p className="text-xs text-destructive">{errors.mail}</p>
-              ) : null}
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Es el usuario del cliente para entrar al portal.
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -591,55 +584,6 @@ export default function ClienteFormPage() {
           ) : null}
         </section>
 
-        <section className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="crear_usuario"
-              checked={form.crear_usuario}
-              onCheckedChange={(checked) =>
-                updateField("crear_usuario", checked === true)
-              }
-            />
-            <Label htmlFor="crear_usuario">Crear usuario</Label>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Si lo activás, se creará una cuenta de acceso con rol fijo CLIENTE y una
-            contraseña temporal.
-          </p>
-
-          {form.crear_usuario ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="username">Nombre de usuario</Label>
-                <Input
-                  id="username"
-                  value={usernamePreview ? `@${usernamePreview}` : ""}
-                  readOnly
-                  disabled
-                  placeholder="Se genera automáticamente"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Se genera con la primera letra del nombre + apellido (sin espacios).
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="rol_fijo">Rol</Label>
-                <Input id="rol_fijo" value="CLIENTE" readOnly disabled />
-              </div>
-              <div className="flex items-center gap-2 sm:col-span-2">
-                <Checkbox
-                  id="habilitado"
-                  checked={form.habilitado}
-                  onCheckedChange={(checked) =>
-                    updateField("habilitado", checked === true)
-                  }
-                />
-                <Label htmlFor="habilitado">Usuario habilitado</Label>
-              </div>
-            </div>
-          ) : null}
-        </section>
-
         {submitError ? (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {submitError}
@@ -718,19 +662,26 @@ export default function ClienteFormPage() {
           <DialogHeader>
             <DialogTitle>Cliente creado correctamente</DialogTitle>
             <DialogDescription>
-              {success?.usuario_creado
-                ? `Se creó el cliente y la cuenta @${success.username}. Deberá cambiar la contraseña al ingresar.`
-                : "El alta del cliente se completó con éxito."}
+              Se creó el cliente y su cuenta. Pasale estos datos: con la contraseña temporal
+              entra y elige una nueva.
             </DialogDescription>
           </DialogHeader>
-          {success?.usuario_creado && success.password_temporal ? (
-            <div className="rounded-xl border bg-muted/50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Contraseña temporal
-              </p>
-              <p className="mt-1 font-mono text-lg tracking-wide">
-                {success.password_temporal}
-              </p>
+          {success ? (
+            <div className="space-y-3 rounded-xl border bg-muted/50 px-4 py-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Usuario
+                </p>
+                <p className="mt-1 font-mono text-base">{success.username}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Contraseña temporal
+                </p>
+                <p className="mt-1 font-mono text-lg tracking-wide">
+                  {success.password_temporal}
+                </p>
+              </div>
             </div>
           ) : null}
           <DialogFooter>

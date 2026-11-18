@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.common import validar_mail_cliente
 from app.schemas.usuarios import DomicilioCreate
 
 
@@ -27,10 +28,9 @@ class ClienteCreate(BaseModel):
     fecha_nacimiento: date | None = None
     sexo: Literal["M", "F", "X"] | None = None
     celular: str = Field(min_length=1, max_length=30)
-    mail: str | None = Field(default=None, max_length=100)
+    # Obligatorio: es el usuario del cliente para entrar al portal (se guarda en minúsculas).
+    mail: str = Field(min_length=1, max_length=100)
     domicilio: DomicilioCreate | None = None
-    crear_usuario: bool = False
-    habilitado: bool = True
 
     @field_validator("dni")
     @classmethod
@@ -52,13 +52,8 @@ class ClienteCreate(BaseModel):
 
     @field_validator("mail")
     @classmethod
-    def mail_formato(cls, value: str | None) -> str | None:
-        if value is None or value.strip() == "":
-            return None
-        normalized = value.strip()
-        if "@" not in normalized or "." not in normalized.split("@")[-1]:
-            raise ValueError("El email no tiene un formato válido")
-        return normalized
+    def mail_formato(cls, value: str) -> str:
+        return validar_mail_cliente(value)
 
 
 class ClienteCreateResponse(BaseModel):
@@ -66,6 +61,5 @@ class ClienteCreateResponse(BaseModel):
     nombre: str
     apellido: str
     dni: str | None = None
-    usuario_creado: bool
-    username: str | None = None
-    password_temporal: str | None = None
+    username: str
+    password_temporal: str

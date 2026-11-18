@@ -13,7 +13,7 @@ class Login(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     usuario_id: int | None = Field(default=None, foreign_key="auth.usuario.id")
-    username_ingresado: str = Field(max_length=50, nullable=False)
+    username_ingresado: str = Field(max_length=100, nullable=False)
     fecha: datetime = Field(
         default_factory=utc_now,
         sa_column=Column(DateTime(timezone=True), nullable=False),

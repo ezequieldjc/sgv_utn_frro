@@ -15,9 +15,16 @@ from app.schemas.auth import (
     AuthSessionResponse,
     CambiarContrasenaObligatorioRequest,
     CambiarContrasenaObligatorioResponse,
+    RegistroRequest,
+    RegistroResponse,
     UsuarioSesion,
 )
+from app.services.cuenta_cliente_service import crear_cuenta_cliente
 from app.services.permission_service import get_user_permissions
+
+MENSAJE_CUENTA_EXISTENTE = (
+    "Ya existe una cuenta con esos datos. Si es tuya, comunicate con la clínica para recuperarla."
+)
 
 
 @dataclass(slots=True)
@@ -27,7 +34,15 @@ class LoginValidationResult:
     failure_reason: str | None
 
 
+def normalizar_usuario_ingresado(username: str) -> str:
+    """El cliente entra con su mail, que se guarda en minúsculas: si lo ingresado tiene "@" se
+    compara en minúsculas. Los empleados entran con su usuario tal cual."""
+    username = username.strip()
+    return username.lower() if "@" in username else username
+
+
 def get_user_by_username(session: Session, username: str) -> Usuario | None:
+    username = normalizar_usuario_ingresado(username)
     stmt = (
         select(Usuario)
         .where(Usuario.username == username)
@@ -130,6 +145,36 @@ def cambiar_contrasena_obligatorio(
 
     return CambiarContrasenaObligatorioResponse(
         mensaje="Contraseña actualizada correctamente. Por favor, inicia sesión con tus nuevas credenciales."
+    )
+
+
+def registrar_cliente(session: Session, payload: RegistroRequest) -> RegistroResponse:
+    """Registro desde el login: crea juntas la persona (cliente) y su usuario CLIENTE, con el mail
+    como usuario y la contraseña que eligió. Queda habilitado y sin cambio obligatorio.
+
+    Si el DNI o el mail ya existen se responde un único 409 sin decir cuál de los dos.
+    """
+    try:
+        cuenta = crear_cuenta_cliente(
+            session,
+            nombre=payload.nombre,
+            apellido=payload.apellido,
+            celular=payload.celular,
+            mail=payload.mail,
+            dni=payload.dni,
+            sexo=payload.sexo,
+            fecha_nacimiento=payload.fecha_nacimiento,
+            password=payload.password,
+        )
+    except APIError as exc:
+        if exc.error in {"DNI_DUPLICADO", "MAIL_EN_USO"}:
+            session.rollback()
+            raise APIError(409, "CUENTA_EXISTENTE", MENSAJE_CUENTA_EXISTENTE) from exc
+        raise
+    session.commit()
+    return RegistroResponse(
+        mensaje="Tu cuenta quedó creada. Ya podés ingresar con tu mail y tu contraseña.",
+        username=cuenta.usuario.username,
     )
 
 

@@ -9,6 +9,7 @@ import { useAuth } from "@/context/auth-context";
 import { apiFetch } from "@/lib/api";
 import {
   fechaAntesDePermitida,
+  PERMISO_CREAR_MASCOTA,
   horaLabel,
   mensajePortal,
   PERMISO_PEDIR_TURNO,
@@ -47,6 +48,7 @@ export default function PedirTurnoPage() {
   const navigate = useNavigate();
   const { permisos } = useAuth();
   const puedePedir = permisos.includes("*") || permisos.includes(PERMISO_PEDIR_TURNO);
+  const puedeCrearMascota = permisos.includes("*") || permisos.includes(PERMISO_CREAR_MASCOTA);
   const opciones = usePortal<PortalTurnoOpciones>(
     puedePedir ? "/api/portal/turnos/opciones" : null,
     "las opciones para pedir turno",
@@ -172,9 +174,21 @@ export default function PedirTurnoPage() {
 
       {opciones.data && opciones.data.mascotas.length === 0 ? (
         <Vacio>
-          <Phone className="mx-auto mb-2 size-5" />
-          Todavía no tenés mascotas registradas. Para registrar a tu mascota y sacar el primer
-          turno, comunicate con la clínica.
+          {puedeCrearMascota ? (
+            <>
+              Todavía no tenés mascotas registradas.{" "}
+              <Link to="/portal/mascotas/nueva" className="text-primary hover:underline">
+                Agregá a tu mascota
+              </Link>{" "}
+              y después pedí el turno.
+            </>
+          ) : (
+            <>
+              <Phone className="mx-auto mb-2 size-5" />
+              Todavía no tenés mascotas registradas. Para registrar a tu mascota y sacar el primer
+              turno, comunicate con la clínica.
+            </>
+          )}
         </Vacio>
       ) : null}
 

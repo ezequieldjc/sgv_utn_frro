@@ -41,6 +41,8 @@ import MisTurnosPage from "./pages/portal/mis-turnos-page";
 import MisComprasPage from "./pages/portal/mis-compras-page";
 import PortalInicioPage from "./pages/portal/portal-inicio-page";
 import PedirTurnoPage from "./pages/portal/pedir-turno-page";
+import NuevaMascotaPage from "./pages/portal/nueva-mascota-page";
+import RegistroPage from "./pages/registro-page";
 
 export default function App() {
   return (
@@ -48,6 +50,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegistroPage />} />
 
           <Route
             path="/*"
@@ -90,6 +93,7 @@ export default function App() {
             <Route path="ventas/nueva" element={<NuevaVentaPage />} />
             <Route path="portal" element={<PortalInicioPage />} />
             <Route path="portal/mascotas" element={<MisMascotasPage />} />
+            <Route path="portal/mascotas/nueva" element={<NuevaMascotaPage />} />
             <Route path="portal/mascotas/:id" element={<PortalMascotaPage />} />
             <Route path="portal/consultas/:id" element={<PortalConsultaPage />} />
             <Route path="portal/turnos" element={<MisTurnosPage />} />

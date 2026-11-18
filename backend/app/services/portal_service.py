@@ -25,7 +25,14 @@ Pedir turnos (permiso `portal:pedir_turno`):
   llamando a la clínica.
 - La disponibilidad devuelve solo los horarios libres, sin decir por qué un horario está
   ocupado (el detalle interno nombra a otros pacientes).
-- El cliente no da de alta mascotas: se registran en el mostrador.
+
+Alta de mascotas (permiso `portal:crear_mascota`):
+
+- El cliente da de alta sus mascotas: nombre, especie, raza, sexo y fecha de nacimiento. El dueño
+  es siempre la persona de la sesión y la mascota nace ACTIVA. Peso, microchip, alertas médicas y
+  estado los carga la clínica. No se controlan duplicados (puede tener dos perros con el mismo
+  nombre).
+- Solo se ofrecen y se aceptan especies y razas activas.
 """
 
 from __future__ import annotations
@@ -51,6 +58,7 @@ from app.models.comercial.detalle_venta import DetalleVenta
 from app.models.comercial.venta import Venta
 from app.models.core.persona import Persona
 from app.models.stock.producto import Producto
+from app.schemas.mascotas import MascotaCreate
 from app.schemas.portal import (
     PortalCompraDetalle,
     PortalDisponibilidad,
@@ -66,12 +74,18 @@ from app.schemas.portal import (
     PortalConsultaReferencia,
     PortalDiagnostico,
     PortalMascota,
+    PortalMascotaCreate,
+    PortalRaza,
     PortalTurno,
     PortalTurnosResponse,
 )
 from app.services.config_service import get_parametro_valor_por_nombre
 from app.services import turno_service
-from app.services.mascota_service import PARAM_TUTOR_EVENTUAL, ids_estados_atendibles
+from app.services.mascota_service import (
+    PARAM_TUTOR_EVENTUAL,
+    create_mascota,
+    ids_estados_atendibles,
+)
 from app.services.turno_service import get_zona_horaria
 
 ESTADOS_TURNO_PROXIMO = ("solicitado", "confirmado")
@@ -583,3 +597,61 @@ def get_compra(session: Session, persona_id: int | None, venta_id: int) -> Porta
             for detalle, nombre in renglones
         ],
     )
+
+
+# ---------------------------------------------------------------------------
+# Alta de mascota (portal:crear_mascota)
+# ---------------------------------------------------------------------------
+
+
+def _sin_portal() -> APIError:
+    return APIError(403, "PORTAL_NO_DISPONIBLE", "Tu usuario no tiene portal de cliente")
+
+
+def especies_para_alta(session: Session, persona_id: int | None) -> list[PortalOpcion]:
+    if persona_id is None:
+        raise _sin_portal()
+    especies = session.exec(
+        select(Especie).where(Especie.activo.is_(True)).order_by(col(Especie.nombre))
+    ).all()
+    return [PortalOpcion(id=e.id or 0, nombre=e.nombre) for e in especies]
+
+
+def razas_para_alta(
+    session: Session, persona_id: int | None, especie_id: int
+) -> list[PortalRaza]:
+    if persona_id is None:
+        raise _sin_portal()
+    razas = session.exec(
+        select(Raza)
+        .where(Raza.especie_id == especie_id, Raza.activo.is_(True))
+        .order_by(col(Raza.nombre))
+    ).all()
+    return [PortalRaza(id=r.id or 0, nombre=r.nombre, especie_id=r.especie_id) for r in razas]
+
+
+def crear_mascota(
+    session: Session, persona_id: int | None, payload: PortalMascotaCreate
+) -> PortalMascota:
+    if persona_id is None:
+        raise _sin_portal()
+
+    especie = session.get(Especie, payload.especie_id)
+    raza = session.get(Raza, payload.raza_id)
+    if especie is None or not especie.activo:
+        raise APIError(400, "ESPECIE_INVALIDA", "La especie no es válida")
+    if raza is None or not raza.activo or raza.especie_id != payload.especie_id:
+        raise APIError(400, "RAZA_INVALIDA", "La raza no pertenece a la especie seleccionada")
+
+    creada = create_mascota(
+        session,
+        MascotaCreate(
+            persona_id=persona_id,
+            nombre=payload.nombre,
+            especie_id=payload.especie_id,
+            raza_id=payload.raza_id,
+            sexo=payload.sexo,
+            fecha_nacimiento=payload.fecha_nacimiento,
+        ),
+    )
+    return get_mascota(session, persona_id, creada.id)

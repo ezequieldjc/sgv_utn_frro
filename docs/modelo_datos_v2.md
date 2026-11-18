@@ -42,18 +42,24 @@ Este documento define la estructura de la base de datos para generar los modelos
 - **id**: integer, PK.
 - **nombre**: varchar(100), Obligatorio.
 - **apellido**: varchar(100), Obligatorio.
-- **dni**: varchar(20), Opcional. No tiene restricción unique; se permiten duplicados.
+- **dni**: varchar(20), Opcional. En la base no tiene restricción unique, pero **la app no
+  permite repetirlo** en ningún alta (Clientes, Admin → Usuarios y registro): 409
+  `DNI_DUPLICADO`. Los duplicados que ya existían no se migran.
 - **sexo**: char(1), Opcional. (M/F/X).
 - **fecha_nacimiento**: date, Opcional.
 - **domicilio_id**: integer, Opcional. *FK a domicilio.id.*
-- **mail**: varchar(100), Opcional.
+- **mail**: varchar(100), Opcional en la base. **Obligatorio para los clientes** (regla de la
+  app): es su usuario y se guarda en minúsculas. Para los empleados sigue siendo opcional.
 - **celular**: varchar(30), Obligatorio.
 - **fecha_alta**: timestamp, Obligatorio. *Default: NOW()*.
 - **es_cliente**: boolean, Obligatorio. *Default: True*. Indica si la persona es
   cliente/dueño de la clínica. El listado de clientes (`GET /api/clientes`) solo incluye
-  filas con `es_cliente = true`. Al dar de alta un usuario/empleado del sistema
-  (`POST /api/usuarios`) se debe persistir `es_cliente = false`. Una misma persona puede
-  ser empleado (`auth.usuario`) y cliente (`es_cliente = true`) a la vez.
+  filas con `es_cliente = true`. **Cliente y usuario van siempre juntos:** un cliente tiene
+  siempre un usuario con rol CLIENTE y un usuario con rol CLIENTE es siempre un cliente
+  (`backend/app/services/cuenta_cliente_service.py`). Un empleado (`POST /api/usuarios` con
+  otro rol) se guarda con `es_cliente = false`. Como una persona tiene un solo usuario, un
+  empleado no puede ser además cliente. Única excepción: la persona del tutor eventual, que es
+  cliente sin usuario.
 
 ---
 
@@ -79,7 +85,9 @@ La asignación concreta de permisos a cada rol vive en la base de datos y no deb
 ### Entidad: `Usuario`
 - **id**: integer, PK.
 - **persona_id**: integer, Obligatorio. *FK a persona.id*. *Restricción: Unique (un usuario por persona).*
-- **username**: varchar(100), Obligatorio. *Restricción: Unique (`UQ_Usuario_Username`).* (De 50 a 100 con `scripts/auth/001_portal_y_cuentas_cliente.sql`: el usuario de un cliente es su mail.)
+- **username**: varchar(100), Obligatorio. *Restricción: Unique (`UQ_Usuario_Username`).* (De 50 a 100 con `scripts/auth/001_portal_y_cuentas_cliente.sql`.) Para un cliente es su
+  mail en minúsculas; para un empleado, primera letra del nombre + apellido. El login compara en
+  minúsculas cuando lo ingresado tiene "@".
 - **habilitado**: boolean, Obligatorio. *Default: True*.
 - **rol_id**: integer, Obligatorio. *FK a rol.id*.
 - **version_token**: integer, Obligatorio. *Default: 1*. (Para invalidación de JWT).

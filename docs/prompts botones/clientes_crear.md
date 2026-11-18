@@ -2,6 +2,10 @@
 
 Spec de implementación del formulario de alta de cliente y `POST /api/clientes`.
 
+> **Actualizado el 18/11/2026 por `cuentas_cliente.md`:** el mail es obligatorio y es el usuario
+> del cliente, ya no existe el check "Crear usuario" (todo cliente nace con su usuario CLIENTE) y
+> el DNI no se puede repetir. Lo que sigue describe la versión anterior.
+
 ## Objetivo
 
 Permitir crear rápidamente un cliente (`core.persona` con `es_cliente = true`), con
