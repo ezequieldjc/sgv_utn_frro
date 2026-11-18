@@ -505,3 +505,166 @@ def test_cliente_creado_puede_ingresar_con_el_mail_en_mayusculas(client, session
     )
     assert login.status_code == 200
     assert login.json()["usuario"]["username"] == "laura@example.com"
+
+
+# ---------------------------------------------------------------------------
+# Ver detalle y editar (GET / PUT /api/clientes/{id})
+# ---------------------------------------------------------------------------
+
+
+def _login_con_permisos(client, session, permisos: tuple[str, ...]) -> None:
+    _seed_jwt_config(session)
+    for i, permiso in enumerate(permisos):
+        seed_usuario_con_permiso(
+            session,
+            username="admin" if i == 0 else f"admin{i}",
+            password="Secret123!",
+            nombre="María",
+            apellido="Gómez",
+            dni=f"2011122{i}",
+            permiso_nombre=permiso,
+        )
+    session.add(Rol(nombre="CLIENTE", descripcion="Cliente de la clínica"))
+    session.commit()
+    assert client.post(
+        "/api/auth/login", json={"username": "admin", "password": "Secret123!"}
+    ).status_code == 200
+
+
+def _crear_cliente(client) -> dict:
+    response = client.post("/api/clientes", json=_cliente_create_payload())
+    assert response.status_code == 201
+    return response.json()
+
+
+def _update_payload(**cambios) -> dict:
+    payload = _cliente_create_payload()
+    payload.update(cambios)
+    return payload
+
+
+PERMISOS_EDICION = ("clientes:crear", "clientes:ver_listado", "clientes:editar")
+
+
+def test_get_cliente_devuelve_datos_domicilio_y_cuenta(client, session) -> None:
+    _login_con_permisos(client, session, PERMISOS_EDICION)
+    alta = _crear_cliente(client)
+
+    response = client.get(f"/api/clientes/{alta['id']}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["nombre"] == "Laura"
+    assert body["mail"] == "laura@example.com"
+    assert body["domicilio"]["ciudad"] == "La Plata"
+    assert body["cuenta"]["username"] == "laura@example.com"
+    assert body["cuenta"]["habilitado"] is True
+
+
+def test_get_cliente_de_una_persona_que_no_es_cliente_devuelve_404(client, session) -> None:
+    _login_con_permisos(client, session, PERMISOS_EDICION)
+    empleado = session.exec(select(Persona).where(Persona.dni == "20111220")).one()
+
+    response = client.get(f"/api/clientes/{empleado.id}")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "CLIENTE_NO_ENCONTRADO"
+
+
+def test_get_cliente_sin_permiso_devuelve_403(client, session) -> None:
+    _login_con_permisos(client, session, ("clientes:crear",))
+    alta = _crear_cliente(client)
+
+    assert client.get(f"/api/clientes/{alta['id']}").status_code == 403
+
+
+def test_put_cliente_sin_permiso_editar_devuelve_403(client, session) -> None:
+    _login_con_permisos(client, session, ("clientes:crear", "clientes:ver_listado"))
+    alta = _crear_cliente(client)
+
+    response = client.put(f"/api/clientes/{alta['id']}", json=_update_payload())
+
+    assert response.status_code == 403
+
+
+def test_put_cliente_actualiza_datos_y_el_mail_cambia_el_usuario(client, session) -> None:
+    _login_con_permisos(client, session, PERMISOS_EDICION)
+    alta = _crear_cliente(client)
+
+    response = client.put(
+        f"/api/clientes/{alta['id']}",
+        json=_update_payload(apellido="Martínez Paz", mail="Laura.Paz@Example.com"),
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["apellido"] == "Martínez Paz"
+    assert body["mail"] == "laura.paz@example.com"
+    assert body["cuenta"]["username"] == "laura.paz@example.com"
+    session.expire_all()
+    usuario = session.exec(select(Usuario).where(Usuario.persona_id == alta["id"])).one()
+    assert usuario.username == "laura.paz@example.com"
+
+
+def test_put_cliente_sin_domicilio_lo_quita(client, session) -> None:
+    _login_con_permisos(client, session, PERMISOS_EDICION)
+    alta = _crear_cliente(client)
+
+    response = client.put(f"/api/clientes/{alta['id']}", json=_update_payload(domicilio=None))
+
+    assert response.status_code == 200
+    assert response.json()["domicilio"] is None
+
+
+def test_put_cliente_con_cuenta_sin_mail_devuelve_422(client, session) -> None:
+    _login_con_permisos(client, session, PERMISOS_EDICION)
+    alta = _crear_cliente(client)
+
+    response = client.put(f"/api/clientes/{alta['id']}", json=_update_payload(mail=None))
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "MAIL_OBLIGATORIO"
+
+
+def test_put_cliente_sin_cuenta_acepta_sin_mail(client, session) -> None:
+    """El tutor eventual (y los clientes viejos) no tienen usuario: el mail es opcional."""
+    _login_con_permisos(client, session, PERMISOS_EDICION)
+    sin_cuenta = seed_cliente(
+        session, nombre="Tutor", apellido="Eventual", dni="99000111", fecha_nacimiento=date(1990, 1, 1)
+    )
+
+    response = client.put(
+        f"/api/clientes/{sin_cuenta.id}",
+        json=_update_payload(dni="99000111", mail=None),
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["cuenta"] is None
+
+
+def test_put_cliente_mail_de_otra_cuenta_devuelve_409(client, session) -> None:
+    _login_con_permisos(client, session, PERMISOS_EDICION)
+    alta = _crear_cliente(client)
+    otro = client.post(
+        "/api/clientes", json=_cliente_create_payload(dni="60999888", mail="otro@example.com")
+    ).json()
+
+    response = client.put(
+        f"/api/clientes/{otro['id']}",
+        json=_update_payload(dni="60999888", mail="LAURA@example.com"),
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"] == "MAIL_EN_USO"
+    assert alta["id"] != otro["id"]
+
+
+def test_put_cliente_dni_de_otra_persona_devuelve_409(client, session) -> None:
+    _login_con_permisos(client, session, PERMISOS_EDICION)
+    alta = _crear_cliente(client)
+
+    response = client.put(f"/api/clientes/{alta['id']}", json=_update_payload(dni="20111220"))
+
+    assert response.status_code == 409
+    assert response.json()["error"] == "DNI_DUPLICADO"
+

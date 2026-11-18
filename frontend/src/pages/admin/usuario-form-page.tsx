@@ -1,6 +1,6 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, ShieldOff, UserPlus } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Loader2, Pencil, ShieldOff, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,6 +21,8 @@ import type {
   RolListItem,
   UsuarioCreatePayload,
   UsuarioCreateResponse,
+  UsuarioDetail,
+  UsuarioUpdatePayload,
 } from "@/types/usuarios";
 
 export type UsuarioFormMode = "create" | "edit" | "view";
@@ -137,6 +139,113 @@ function sanitizeCelular(value: string): string {
   return value.replace(/[^\d]/g, "");
 }
 
+function isoToMasked(iso: string | null): string {
+  const match = iso ? /^(\d{4})-(\d{2})-(\d{2})/.exec(iso) : null;
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
+
+/** Carga el formulario con el detalle del usuario (ver y editar). */
+export function formFromDetail(detalle: UsuarioDetail): FormState {
+  return {
+    nombre: detalle.nombre,
+    apellido: detalle.apellido,
+    dni: detalle.dni ?? "",
+    fecha_nacimiento: isoToMasked(detalle.fecha_nacimiento),
+    sexo: detalle.sexo ?? "",
+    celular: detalle.celular,
+    mail: detalle.mail ?? "",
+    pais: detalle.domicilio?.pais ?? INITIAL_FORM.pais,
+    provincia: detalle.domicilio?.provincia ?? INITIAL_FORM.provincia,
+    ciudad: detalle.domicilio?.ciudad ?? "",
+    calle: detalle.domicilio?.calle ?? "",
+    altura: detalle.domicilio?.altura ?? "",
+    cp: detalle.domicilio?.cp ?? "",
+    departamento: detalle.domicilio?.departamento ?? "",
+    notas: detalle.domicilio?.notas ?? "",
+    rol_id: String(detalle.rol_id),
+    habilitado: detalle.habilitado,
+  };
+}
+
+function domicilioVacio(form: FormState): boolean {
+  return !form.ciudad.trim() && !form.calle.trim() && !form.altura.trim() && !form.cp.trim();
+}
+
+/** Validación para editar un usuario CLIENTE: mail obligatorio; el resto, como un cliente. */
+export function validateClienteForm(form: FormState): FormErrors {
+  const errors: FormErrors = {};
+  if (!form.nombre.trim()) {
+    errors.nombre = "El nombre es obligatorio.";
+  }
+  if (!form.apellido.trim()) {
+    errors.apellido = "El apellido es obligatorio.";
+  }
+  if (form.dni.trim() && !/^\d+$/.test(form.dni.trim())) {
+    errors.dni = "El DNI debe contener solo números.";
+  }
+  if (form.fecha_nacimiento.trim() && !fechaToIso(form.fecha_nacimiento)) {
+    errors.fecha_nacimiento = "Usá el formato dd/mm/yyyy con una fecha válida.";
+  }
+  if (!sanitizeCelular(form.celular)) {
+    errors.celular = "El celular es obligatorio.";
+  }
+  if (!form.mail.trim()) {
+    errors.mail = "El email es obligatorio para un cliente: es su usuario.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.mail.trim())) {
+    errors.mail = "Ingresá un email válido.";
+  }
+  if (!domicilioVacio(form)) {
+    Object.assign(errors, validateDomicilio(form));
+  }
+  return errors;
+}
+
+function validateDomicilio(form: FormState): FormErrors {
+  const errors: FormErrors = {};
+  if (!form.ciudad.trim()) {
+    errors.ciudad = "La ciudad es obligatoria.";
+  }
+  if (!form.calle.trim()) {
+    errors.calle = "La calle es obligatoria.";
+  }
+  if (!form.altura.trim()) {
+    errors.altura = "La altura es obligatoria.";
+  }
+  if (!form.cp.trim()) {
+    errors.cp = "El código postal es obligatorio.";
+  } else if (!/^\d+$/.test(form.cp.trim())) {
+    errors.cp = "El código postal debe ser numérico.";
+  }
+  return errors;
+}
+
+export function buildUpdatePayload(form: FormState, esCliente: boolean): UsuarioUpdatePayload {
+  const sinDomicilio = esCliente && domicilioVacio(form);
+  return {
+    nombre: form.nombre.trim(),
+    apellido: form.apellido.trim(),
+    dni: form.dni.trim() || null,
+    fecha_nacimiento: form.fecha_nacimiento.trim() ? fechaToIso(form.fecha_nacimiento) : null,
+    sexo: form.sexo || null,
+    celular: sanitizeCelular(form.celular),
+    mail: form.mail.trim() ? form.mail.trim() : null,
+    domicilio: sinDomicilio
+      ? null
+      : {
+          pais: form.pais,
+          provincia: form.provincia,
+          ciudad: form.ciudad.trim(),
+          calle: form.calle.trim(),
+          altura: form.altura.trim(),
+          cp: form.cp.trim(),
+          departamento: form.departamento.trim() ? form.departamento.trim() : null,
+          notas: form.notas.trim() ? form.notas.trim() : null,
+        },
+    rol_id: Number(form.rol_id),
+    habilitado: form.habilitado,
+  };
+}
+
 function validateForm(form: FormState): FormErrors {
   const errors: FormErrors = {};
 
@@ -215,6 +324,8 @@ export default function UsuarioFormPage({
   mode?: UsuarioFormMode;
 }) {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const usuarioId = mode === "create" ? null : Number(id);
   const { permisos } = useAuth();
   const canCreate = hasPermission(permisos, "usuarios:crear");
   const canEdit = hasPermission(permisos, "usuarios:editar");
@@ -231,6 +342,10 @@ export default function UsuarioFormPage({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<UsuarioCreateResponse | null>(null);
+  const [detalle, setDetalle] = React.useState<UsuarioDetail | null>(null);
+  const [isLoadingDetalle, setIsLoadingDetalle] = React.useState(mode !== "create");
+  const [detalleError, setDetalleError] = React.useState<string | null>(null);
+  const esCliente = detalle?.es_cliente ?? false;
 
   const fieldRefs = React.useRef<Partial<Record<keyof FormState, HTMLElement | null>>>(
     {}
@@ -268,6 +383,38 @@ export default function UsuarioFormPage({
       cancelled = true;
     };
   }, [mode, canCreate]);
+
+  React.useEffect(() => {
+    if (usuarioId === null || (!canView && !canEdit)) {
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingDetalle(true);
+    setDetalleError(null);
+    apiFetch<UsuarioDetail>(`/api/usuarios/${usuarioId}`)
+      .then((data) => {
+        if (!cancelled) {
+          setDetalle(data);
+          setForm(formFromDetail(data));
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          const status = (error as { status?: number }).status;
+          setDetalleError(
+            status === 404 ? "No se encontró el usuario." : "No se pudo cargar el usuario.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingDetalle(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [usuarioId, canView, canEdit]);
 
   if (mode === "create" && !canCreate) {
     return (
@@ -313,12 +460,17 @@ export default function UsuarioFormPage({
       return;
     }
 
-    const nextErrors = validateForm(form);
+    const nextErrors = esCliente ? validateClienteForm(form) : validateForm(form);
     setErrors(nextErrors);
     setSubmitError(null);
 
     if (Object.keys(nextErrors).length > 0) {
       window.setTimeout(() => focusFirstError(nextErrors), 0);
+      return;
+    }
+
+    if (mode === "edit" && usuarioId !== null) {
+      await guardarCambios(usuarioId);
       return;
     }
 
@@ -381,6 +533,61 @@ export default function UsuarioFormPage({
     }
   }
 
+  async function guardarCambios(idUsuario: number) {
+    setIsSubmitting(true);
+    try {
+      await apiFetch<UsuarioDetail>(`/api/usuarios/${idUsuario}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildUpdatePayload(form, esCliente)),
+      });
+      navigate(`/admin/usuarios/${idUsuario}`);
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      const body = (error as { body?: { error?: string; detalle?: string } }).body;
+      if (body?.error === "MAIL_OBLIGATORIO" || body?.error === "MAIL_EN_USO") {
+        const mensaje =
+          body.error === "MAIL_EN_USO"
+            ? "Ya existe una cuenta con ese email."
+            : "El email es obligatorio para un cliente: es su usuario.";
+        setErrors((prev) => ({ ...prev, mail: mensaje }));
+        setSubmitError(mensaje);
+      } else if (body?.error === "DNI_DUPLICADO") {
+        setErrors((prev) => ({ ...prev, dni: "Ya existe una persona con ese DNI." }));
+        setSubmitError("Ya existe una persona con ese DNI.");
+      } else if (body?.error === "CAMBIO_ROL_CLIENTE") {
+        const mensaje = "Un cliente no puede pasar a empleado ni un empleado a cliente.";
+        setErrors((prev) => ({ ...prev, rol_id: mensaje }));
+        setSubmitError(mensaje);
+      } else if (status === 403) {
+        setSubmitError("No tenés permisos para editar usuarios.");
+      } else if (typeof body?.detalle === "string" && (status === 404 || status === 422)) {
+        setSubmitError(body.detalle);
+      } else {
+        setSubmitError("No se pudieron guardar los cambios. Intentá de nuevo.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (mode !== "create" && (isLoadingDetalle || detalleError)) {
+    return (
+      <div className="mx-auto flex min-h-[40vh] max-w-3xl flex-col items-center justify-center gap-3 text-center">
+        {detalleError ? (
+          <>
+            <p className="text-sm text-destructive">{detalleError}</p>
+            <Button type="button" variant="outline" asChild>
+              <Link to="/admin/usuarios">Volver al listado</Link>
+            </Button>
+          </>
+        ) : (
+          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Cargando" />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="space-y-1">
@@ -396,7 +603,9 @@ export default function UsuarioFormPage({
               : "Detalle de usuario"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Completá los datos de la persona, domicilio y cuenta de acceso.
+          {mode === "create"
+            ? "Completá los datos de la persona, domicilio y cuenta de acceso."
+            : `@${detalle?.username ?? ""} · ${detalle?.rol_nombre ?? ""}`}
         </p>
       </div>
 
@@ -533,7 +742,11 @@ export default function UsuarioFormPage({
                 <p className="text-xs text-destructive">{errors.mail}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Opcional para empleados. Obligatorio si el rol es CLIENTE: es su usuario.
+                  {mode === "create"
+                    ? "Opcional para empleados. Obligatorio si el rol es CLIENTE: es su usuario."
+                    : esCliente
+                      ? "Es el usuario del cliente: si lo cambiás, cambia su usuario."
+                      : "Opcional para empleados."}
                 </p>
               )}
             </div>
@@ -671,14 +884,21 @@ export default function UsuarioFormPage({
               <Label htmlFor="username">Nombre de usuario</Label>
               <Input
                 id="username"
-                value={usernamePreview ? `@${usernamePreview}` : ""}
+                value={
+                  detalle
+                    ? `@${detalle.username}`
+                    : usernamePreview
+                      ? `@${usernamePreview}`
+                      : ""
+                }
                 readOnly
                 disabled
                 placeholder="Se genera automáticamente"
               />
               <p className="text-xs text-muted-foreground">
-                Se genera con la primera letra del nombre + apellido (sin espacios). Con rol
-                CLIENTE, el usuario es el email.
+                {mode === "create"
+                  ? "Se genera con la primera letra del nombre + apellido (sin espacios). Con rol CLIENTE, el usuario es el email."
+                  : "El usuario de un empleado no cambia. El de un cliente es su email."}
               </p>
             </div>
             <div className="space-y-2">
@@ -690,7 +910,8 @@ export default function UsuarioFormPage({
                 }}
                 value={form.rol_id}
                 onChange={(e) => updateField("rol_id", e.target.value)}
-                disabled={readOnly || isLoadingRoles}
+                // Un cliente no cambia de rol: siempre tiene su usuario CLIENTE.
+                disabled={readOnly || isLoadingRoles || esCliente}
                 className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${fieldClass(Boolean(errors.rol_id))}`}
               >
                 <option value="">
@@ -733,12 +954,20 @@ export default function UsuarioFormPage({
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate(-1)}
+            onClick={() => (mode === "view" ? navigate("/admin/usuarios") : navigate(-1))}
             disabled={isSubmitting}
           >
             <ArrowLeft className="size-4" />
-            Cancelar
+            {mode === "view" ? "Volver al listado" : "Cancelar"}
           </Button>
+          {mode === "view" && canEdit && usuarioId !== null ? (
+            <Button type="button" asChild>
+              <Link to={`/admin/usuarios/${usuarioId}/editar`}>
+                <Pencil className="size-4" />
+                Editar
+              </Link>
+            </Button>
+          ) : null}
           {!readOnly ? (
             <Button type="submit" disabled={isSubmitting || isLoadingRoles}>
               {isSubmitting ? (

@@ -59,18 +59,25 @@ def es_rol_cliente(rol: Rol) -> bool:
     return rol.nombre.strip().upper() == ROL_CLIENTE_NOMBRE
 
 
-def validar_dni_disponible(session: Session, dni: str | None) -> None:
+def validar_dni_disponible(
+    session: Session, dni: str | None, *, excluir_persona_id: int | None = None
+) -> None:
     if not dni:
         return
-    if session.exec(select(Persona.id).where(Persona.dni == dni)).first() is not None:
+    statement = select(Persona.id).where(Persona.dni == dni)
+    if excluir_persona_id is not None:
+        statement = statement.where(Persona.id != excluir_persona_id)
+    if session.exec(statement).first() is not None:
         raise APIError(409, "DNI_DUPLICADO", "Ya existe una persona con ese DNI")
 
 
-def validar_mail_disponible(session: Session, mail: str) -> None:
-    existente = session.exec(
-        select(Usuario.id).where(func.lower(Usuario.username) == normalizar_mail(mail))
-    ).first()
-    if existente is not None:
+def validar_mail_disponible(
+    session: Session, mail: str, *, excluir_usuario_id: int | None = None
+) -> None:
+    statement = select(Usuario.id).where(func.lower(Usuario.username) == normalizar_mail(mail))
+    if excluir_usuario_id is not None:
+        statement = statement.where(Usuario.id != excluir_usuario_id)
+    if session.exec(statement).first() is not None:
         raise APIError(409, "MAIL_EN_USO", "Ya existe una cuenta con ese mail")
 
 

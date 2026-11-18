@@ -46,3 +46,40 @@ export interface ClienteCreateResponse {
   username: string;
   password_temporal: string;
 }
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface ClienteCuenta {
+  usuario_id: number;
+  /** El mail del cliente. */
+  username: string;
+  habilitado: boolean;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface ClienteDetail {
+  id: number;
+  nombre: string;
+  apellido: string;
+  dni: string | null;
+  sexo: "M" | "F" | "X" | null;
+  fecha_nacimiento: string | null;
+  celular: string;
+  mail: string | null;
+  fecha_alta: string;
+  domicilio: DomicilioCreatePayload | null;
+  /** null solo para el tutor eventual (o clientes viejos sin cuenta). */
+  cuenta: ClienteCuenta | null;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+export interface ClienteUpdatePayload {
+  nombre: string;
+  apellido: string;
+  dni: string | null;
+  fecha_nacimiento: string | null;
+  sexo: "M" | "F" | "X" | null;
+  celular: string;
+  /** Obligatorio si el cliente tiene cuenta. */
+  mail: string | null;
+  domicilio: DomicilioCreatePayload | null;
+}

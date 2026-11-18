@@ -4,12 +4,32 @@ from datetime import date
 
 from sqlmodel import Session, select
 
+from app.core.errors import APIError
 from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
-from app.schemas.clientes import ClienteCreate, ClienteCreateResponse, ClienteListItem
+from app.schemas.clientes import (
+    ClienteCreate,
+    ClienteCreateResponse,
+    ClienteCuenta,
+    ClienteDetail,
+    ClienteListItem,
+    ClienteUpdate,
+)
 from app.services.cuenta_cliente_service import ROL_CLIENTE_NOMBRE, crear_cuenta_cliente
+from app.services.persona_service import (
+    actualizar_persona,
+    domicilio_detalle,
+    usuario_de_persona,
+)
 
-__all__ = ["ROL_CLIENTE_NOMBRE", "calcular_edad_truncada", "create_cliente", "list_clientes"]
+__all__ = [
+    "ROL_CLIENTE_NOMBRE",
+    "calcular_edad_truncada",
+    "create_cliente",
+    "get_cliente",
+    "list_clientes",
+    "update_cliente",
+]
 
 
 def calcular_edad_truncada(
@@ -86,3 +106,56 @@ def create_cliente(session: Session, payload: ClienteCreate) -> ClienteCreateRes
         username=cuenta.usuario.username,
         password_temporal=cuenta.password_temporal or "",
     )
+
+
+def _get_persona_cliente(session: Session, cliente_id: int) -> Persona:
+    persona = session.get(Persona, cliente_id)
+    if persona is None or not persona.es_cliente:
+        raise APIError(404, "CLIENTE_NO_ENCONTRADO", "No se encontró el cliente solicitado")
+    return persona
+
+
+def get_cliente(session: Session, cliente_id: int) -> ClienteDetail:
+    persona = _get_persona_cliente(session, cliente_id)
+    usuario = usuario_de_persona(session, persona.id or 0)
+    return ClienteDetail(
+        id=persona.id or 0,
+        nombre=persona.nombre,
+        apellido=persona.apellido,
+        dni=persona.dni,
+        sexo=persona.sexo,
+        fecha_nacimiento=persona.fecha_nacimiento,
+        celular=persona.celular,
+        mail=persona.mail,
+        fecha_alta=persona.fecha_alta,
+        domicilio=domicilio_detalle(session, persona.domicilio_id),
+        cuenta=(
+            ClienteCuenta(
+                usuario_id=usuario.id or 0,
+                username=usuario.username,
+                habilitado=usuario.habilitado,
+            )
+            if usuario is not None
+            else None
+        ),
+    )
+
+
+def update_cliente(session: Session, cliente_id: int, payload: ClienteUpdate) -> ClienteDetail:
+    """Edición desde Clientes. Si cambia el mail, cambia también el usuario del cliente."""
+    persona = _get_persona_cliente(session, cliente_id)
+    actualizar_persona(
+        session,
+        persona,
+        nombre=payload.nombre,
+        apellido=payload.apellido,
+        celular=payload.celular,
+        mail=payload.mail,
+        dni=payload.dni,
+        sexo=payload.sexo,
+        fecha_nacimiento=payload.fecha_nacimiento,
+        domicilio=payload.domicilio,
+    )
+    session.commit()
+    return get_cliente(session, cliente_id)
+

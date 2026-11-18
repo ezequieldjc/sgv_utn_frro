@@ -89,3 +89,81 @@ class UsuarioRestablecerResponse(BaseModel):
     usuario_id: int
     username: str
     password_temporal: str
+
+
+class DomicilioDetalle(BaseModel):
+    """Domicilio tal como está guardado (sin validaciones: es una respuesta)."""
+
+    pais: str
+    provincia: str
+    ciudad: str
+    calle: str
+    altura: str
+    cp: str
+    departamento: str | None = None
+    notas: str | None = None
+
+
+class UsuarioDetail(BaseModel):
+    id: int
+    username: str
+    habilitado: bool
+    rol_id: int
+    rol_nombre: str
+    # True si es un usuario CLIENTE: para él fecha de nacimiento, sexo, DNI y domicilio son
+    # opcionales y el mail es obligatorio (es su usuario).
+    es_cliente: bool
+    nombre: str
+    apellido: str
+    dni: str | None = None
+    fecha_nacimiento: date | None = None
+    sexo: str | None = None
+    celular: str
+    mail: str | None = None
+    domicilio: DomicilioDetalle | None = None
+    ultimo_inicio_sesion: datetime | None = None
+
+
+class UsuarioUpdate(BaseModel):
+    """Edición desde Admin → Usuarios. Para un empleado, DNI, fecha de nacimiento, sexo y
+    domicilio siguen siendo obligatorios (lo controla el servicio); para un cliente, no."""
+
+    nombre: str = Field(min_length=1, max_length=100)
+    apellido: str = Field(min_length=1, max_length=100)
+    dni: str | None = Field(default=None, max_length=20)
+    fecha_nacimiento: date | None = None
+    sexo: Literal["M", "F", "X"] | None = None
+    celular: str = Field(min_length=1, max_length=30)
+    mail: str | None = Field(default=None, max_length=100)
+    domicilio: DomicilioCreate | None = None
+    rol_id: int
+    habilitado: bool = True
+
+    @field_validator("dni")
+    @classmethod
+    def dni_solo_digitos(cls, value: str | None) -> str | None:
+        if value is None or value.strip() == "":
+            return None
+        value = value.strip()
+        if not value.isdigit():
+            raise ValueError("El DNI debe contener solo números")
+        return value
+
+    @field_validator("celular")
+    @classmethod
+    def celular_solo_digitos(cls, value: str) -> str:
+        digits = "".join(ch for ch in value if ch.isdigit())
+        if not digits:
+            raise ValueError("El celular debe contener al menos un dígito")
+        return digits
+
+    @field_validator("mail")
+    @classmethod
+    def mail_formato(cls, value: str | None) -> str | None:
+        if value is None or value.strip() == "":
+            return None
+        normalized = value.strip()
+        if "@" not in normalized or "." not in normalized.split("@")[-1]:
+            raise ValueError("El email no tiene un formato válido")
+        return normalized
+
