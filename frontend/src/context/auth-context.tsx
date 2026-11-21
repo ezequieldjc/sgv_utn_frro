@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { EVENTO_SESION_EXPIRADA, apiFetch } from '../lib/api';
 import type { AuthSessionResponse, Usuario } from '../types/auth';
 import type { PublicConfig } from '../types/config';
+import { applyBrandingToDocument } from '../lib/branding';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthContextValue {
@@ -35,21 +36,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [navigate]);
 
   useEffect(() => {
-    // rehydrate: call /api/auth/me and /api/config/public in parallel
+    // rehydrate: call /api/auth/me and /api/config/public independently
     let mounted = true;
     (async () => {
       setIsLoading(true);
+
       try {
-        const [me, cfg] = await Promise.all([
-          apiFetch<AuthSessionResponse>('/api/auth/me'),
-          apiFetch<PublicConfig>('/api/config/public'),
-        ]);
+        const cfg = await apiFetch<PublicConfig>('/api/config/public');
+        if (!mounted) return;
+        setClinicName(applyBrandingToDocument(cfg));
+      } catch {
+        // Keep the static fallback while public branding is unavailable.
+        applyBrandingToDocument({ razon_social: "SGV" });
+      }
+
+      try {
+        const me = await apiFetch<AuthSessionResponse>('/api/auth/me');
         if (!mounted) return;
         setUsuario(me.usuario);
         setPermisos(me.permisos || []);
-        setClinicName(cfg.razon_social || cfg.clinic_name);
       } catch (err) {
-        // not authenticated or config failed -> leave null
+        // not authenticated: leave null
         setUsuario(null);
         setPermisos([]);
       } finally {
@@ -73,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // refresh public config
     try {
       const cfg = await apiFetch<PublicConfig>('/api/config/public');
-      setClinicName(cfg.razon_social || cfg.clinic_name);
+      setClinicName(applyBrandingToDocument(cfg));
     } catch (e) {
       // ignore
     }

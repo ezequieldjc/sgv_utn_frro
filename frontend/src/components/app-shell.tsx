@@ -102,11 +102,6 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Historial de Consultas",
         permiso: "consultas:ver_historial",
       },
-      {
-        to: "/consultas/historia-clinica",
-        label: "Historia Clínica",
-        permiso: "consultas:ver_historia_clinica",
-      },
     ],
   },
   {

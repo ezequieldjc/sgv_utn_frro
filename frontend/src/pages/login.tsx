@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/auth-context";
 import { apiFetch } from "@/lib/api";
+import { applyBrandingToDocument } from "@/lib/branding";
 import type { CambiarContrasenaObligatorioResponse } from "@/types/auth";
 import type { PublicConfig } from "@/types/config";
 
@@ -70,7 +71,7 @@ export default function LoginPage() {
       try {
         const cfg = await apiFetch<PublicConfig>("/api/config/public");
         if (!mounted) return;
-        setBrand(cfg.razon_social || cfg.clinic_name || null);
+        setBrand(applyBrandingToDocument(cfg));
       } catch {
         // ignore
       }
