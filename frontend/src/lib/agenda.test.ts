@@ -6,6 +6,7 @@ import {
   accionesDisponibles,
   diaSemanaBackend,
   estaEnHorario,
+  filtroProfesionalInicial,
   limitesHorario,
   mensajeError,
   puedeArrastrar,
@@ -206,5 +207,28 @@ describe("grilla de horarios", () => {
   it("test_preseleccion_por_hora_solo_si_esta_libre", () => {
     expect(inicioPreseleccionado(FRANJAS, "", "09:00")).toBe(FRANJAS[2].fecha_hora_inicio);
     expect(inicioPreseleccionado(FRANJAS, "", "08:30")).toBe("");
+  });
+});
+
+describe("filtro profesional inicial", () => {
+  const veterinarios = [
+    { id: 7, username: "laura", nombre: "Laura", apellido: "Perez" },
+    { id: 8, username: "juan", nombre: "Juan", apellido: "Gomez" },
+  ];
+
+  it("veterinario autenticado inicia filtrado por sí mismo", () => {
+    expect(filtroProfesionalInicial(null, veterinarios, 7, ["agenda:ver", "agenda:atender"])).toBe("7");
+  });
+
+  it("usuarios sin agenda:atender inician con todos", () => {
+    expect(filtroProfesionalInicial(null, veterinarios, 7, ["agenda:ver"])).toBe("");
+  });
+
+  it("administrador con comodín no se convierte en veterinario", () => {
+    expect(filtroProfesionalInicial(null, veterinarios, 7, ["*", "agenda:atender"])).toBe("");
+  });
+
+  it("respeta un profesional válido indicado por URL", () => {
+    expect(filtroProfesionalInicial("8", veterinarios, 7, ["agenda:ver", "agenda:atender"])).toBe("8");
   });
 });

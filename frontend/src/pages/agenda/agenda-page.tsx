@@ -45,6 +45,7 @@ import {
   ESTADO_LABEL,
   estaEnHorario,
   fechaIso,
+  filtroProfesionalInicial,
   hasPermission,
   limitesHorario,
   mensajeError,
@@ -185,7 +186,7 @@ interface DropPendiente {
 export default function AgendaPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { permisos } = useAuth();
+  const { usuario, permisos } = useAuth();
   const canView = hasPermission(permisos, "agenda:ver");
   const canCreate = hasPermission(permisos, "agenda:crear_turno");
   const canEdit = hasPermission(permisos, "agenda:editar_turno");
@@ -219,6 +220,14 @@ export default function AgendaPage() {
           apiFetch<TipoTurnoOpcion[]>("/api/agenda/tipos-turno"),
         ]);
         setVeterinarios(vets);
+        setVetFiltro((actual) =>
+          filtroProfesionalInicial(
+            searchParams.get("veterinario_id") ?? (actual || null),
+            vets,
+            usuario?.id,
+            permisos,
+          ),
+        );
         setHorario(hor);
         setTipos(tps);
       } catch (err) {
