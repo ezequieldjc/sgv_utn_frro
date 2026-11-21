@@ -42,6 +42,11 @@ INSERT INTO auth.permiso (nombre, descripcion) VALUES
 ('ventas:registrar', 'Permite registrar ventas de mostrador'),
 ('ventas:ver', 'Permite consultar el historial de ventas'),
 
+-- 7. Portal del cliente (solo lectura de lo propio)
+('portal:ver', 'Permite al cliente ver sus mascotas, su historia clínica, sus turnos y sus compras'),
+('portal:pedir_turno', 'Permite al cliente pedir turnos para sus mascotas y cancelar los que siguen solicitados'),
+('portal:crear_mascota', 'Permite al cliente dar de alta sus mascotas desde el portal'),
+
 -- 10. Administración (Admin)
 ('usuarios:ver', 'Permite ver el listado de usuarios del sistema'),
 ('usuarios:crear', 'Permite dar de alta a un nuevo usuario del sistema'),

@@ -12,13 +12,10 @@ import RolesPage from "./pages/admin/roles-page";
 import ParametrosPage from "./pages/admin/parametros-page";
 import ClientesPage from "./pages/clientes/clientes-page";
 import ClienteFormPage from "./pages/clientes/cliente-form-page";
-import {
-  ClienteDetallePage,
-  ClienteEditarPage,
-} from "./pages/clientes/stubs";
 import MascotasPage from "./pages/mascotas/mascotas-page";
 import MascotaFormPage from "./pages/mascotas/mascota-form-page";
 import MascotaEditPage from "./pages/mascotas/mascota-edit-page";
+import MascotaVacunasPage from "./pages/mascotas/mascota-vacunas-page";
 import ConsultasHistorialPage from "./pages/consultas/consultas-historial-page";
 import ConsultaPage from "./pages/consultas/consulta-page";
 import NuevaConsultaPage from "./pages/consultas/nueva-consulta-page";
@@ -30,6 +27,18 @@ import MovimientosPage from "./pages/stock/movimientos-page";
 import AnalisisStockPage from "./pages/stock/analisis-page";
 import NuevaVentaPage from "./pages/ventas/nueva-venta-page";
 import VentasPage from "./pages/ventas/ventas-page";
+import RecordatoriosPage from "./pages/recordatorios/recordatorios-page";
+import RecetasHistorialPage from "./pages/recetas/recetas-historial-page";
+import NuevaRecetaPage from "./pages/recetas/nueva-receta-page";
+import MisMascotasPage from "./pages/portal/mis-mascotas-page";
+import PortalMascotaPage from "./pages/portal/portal-mascota-page";
+import PortalConsultaPage from "./pages/portal/portal-consulta-page";
+import MisTurnosPage from "./pages/portal/mis-turnos-page";
+import MisComprasPage from "./pages/portal/mis-compras-page";
+import PortalInicioPage from "./pages/portal/portal-inicio-page";
+import PedirTurnoPage from "./pages/portal/pedir-turno-page";
+import NuevaMascotaPage from "./pages/portal/nueva-mascota-page";
+import RegistroPage from "./pages/registro-page";
 
 export default function App() {
   return (
@@ -37,6 +46,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegistroPage />} />
 
           <Route
             path="/*"
@@ -49,23 +59,38 @@ export default function App() {
             <Route index element={<ShellHome />} />
             <Route path="admin/usuarios" element={<UsuariosPage />} />
             <Route path="admin/usuarios/nuevo" element={<UsuarioFormPage mode="create" />} />
+            <Route
+              path="admin/usuarios/:id"
+              element={<UsuarioFormPage key="view" mode="view" />}
+            />
+            <Route
+              path="admin/usuarios/:id/editar"
+              element={<UsuarioFormPage key="edit" mode="edit" />}
+            />
             <Route path="admin/roles" element={<RolesPage />} />
             <Route path="admin/roles/:id" element={<RolesPage />} />
             <Route path="admin/parametros" element={<ParametrosPage />} />
             <Route path="admin/catalogos" element={<CatalogosPage />} />
             <Route path="clientes" element={<ClientesPage />} />
-            <Route path="clientes/nuevo" element={<ClienteFormPage />} />
-            <Route path="clientes/:id" element={<ClienteDetallePage />} />
-            <Route path="clientes/:id/editar" element={<ClienteEditarPage />} />
+            <Route path="clientes/nuevo" element={<ClienteFormPage key="create" />} />
+            <Route path="clientes/:id" element={<ClienteFormPage key="view" mode="view" />} />
+            <Route
+              path="clientes/:id/editar"
+              element={<ClienteFormPage key="edit" mode="edit" />}
+            />
             <Route path="mascotas" element={<MascotasPage />} />
             <Route path="mascotas/nuevo" element={<MascotaFormPage />} />
             <Route path="mascotas/:id/editar" element={<MascotaEditPage />} />
+            <Route path="mascotas/:id/vacunas" element={<MascotaVacunasPage />} />
             <Route path="consultas/historial" element={<ConsultasHistorialPage />} />
             <Route path="consultas/historia-clinica" element={<ConsultasHistorialPage />} />
             <Route path="consultas/nueva" element={<NuevaConsultaPage />} />
             <Route path="consultas/:id" element={<ConsultaPage />} />
             <Route path="agenda" element={<AgendaPage />} />
             <Route path="agenda/nuevo-turno" element={<TurnoFormPage />} />
+            <Route path="recordatorios" element={<RecordatoriosPage />} />
+            <Route path="recetas/historial" element={<RecetasHistorialPage />} />
+            <Route path="recetas/nueva" element={<NuevaRecetaPage />} />
             <Route path="stock" element={<InventarioPage />} />
             <Route path="stock/alta" element={<ProductoFormPage />} />
             <Route path="stock/:id/editar" element={<ProductoFormPage />} />
@@ -73,6 +98,14 @@ export default function App() {
             <Route path="stock/analisis" element={<AnalisisStockPage />} />
             <Route path="ventas" element={<VentasPage />} />
             <Route path="ventas/nueva" element={<NuevaVentaPage />} />
+            <Route path="portal" element={<PortalInicioPage />} />
+            <Route path="portal/mascotas" element={<MisMascotasPage />} />
+            <Route path="portal/mascotas/nueva" element={<NuevaMascotaPage />} />
+            <Route path="portal/mascotas/:id" element={<PortalMascotaPage />} />
+            <Route path="portal/consultas/:id" element={<PortalConsultaPage />} />
+            <Route path="portal/turnos" element={<MisTurnosPage />} />
+            <Route path="portal/turnos/nuevo" element={<PedirTurnoPage />} />
+            <Route path="portal/compras" element={<MisComprasPage />} />
           </Route>
         </Routes>
       </AuthProvider>

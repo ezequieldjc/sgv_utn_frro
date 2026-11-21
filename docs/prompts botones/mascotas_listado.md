@@ -48,6 +48,7 @@ Estado: **implementado** (no reimplementar desde cero; esta spec describe el as-
 | Botón / alta Nueva Mascota | `mascotas:crear` o `*` |
 | Botón Editar | `mascotas:editar` o `*` → `/mascotas/:id/editar` |
 | Botón Historial de consultas | `consultas:ver_historial` o `*` → `/consultas/historial?mascota_id=` |
+| Botón Vacunas y desparasitaciones | `vacunas:ver`, `vacunas:registrar`, `consultas:crear`, `consultas:ver_historia_clinica` o `*` → `/mascotas/:id/vacunas` |
 
 No usar `mascotas:create` / `mascotas:update`.
 
@@ -92,6 +93,10 @@ Con `mascotas:editar` → `/mascotas/:id/editar` (ver `mascotas_listado_editar.m
 
 ### Historial de consultas
 Con `consultas:ver_historial` → `/consultas/historial?mascota_id={id}` (stub de pantalla por ahora).
+
+### Vacunas y desparasitaciones
+Ícono de jeringa → `/mascotas/{id}/vacunas`: carnet y registro de aplicaciones (ver
+`vacunas_mascota.md`).
 
 ### Paginación
 - `page_size = 50` (fijo en v1).
@@ -189,7 +194,13 @@ Reglas:
    `sys.config` `PERSONA_ID_TUTOR_EVENTUAL` y usar ese `persona_id`. Si falta config/persona →
    error controlado.
 2. Validar que `raza_id` pertenece a `especie_id`.
-3. Setear **siempre** `mascota_estado_id = 1` (ACTIVA). No pedirlo al cliente.
+3. Estado: ACTIVA (`mascota_estado_id = 1`). Con tutor eventual y el parámetro
+   `ESTADOS_MASCOTA_TUTOR_EVENTUAL` cargado, uno de esos estados: el que se elige en el
+   formulario o, si no se elige, el primero (En Tránsito / Rescate). Otro estado con tutor
+   eventual → `400 ESTADO_NO_PERMITIDO_TUTOR_EVENTUAL`.
+3.1. El listado filtra por defecto las mascotas **atendibles** (`solo_atendibles=true`): ACTIVA
+   y las de los estados del tutor eventual. Son las que la agenda acepta para turnos y las que
+   aparecen en el buscador de pacientes.
 4. **No** setear `ultimo_peso` en el INSERT de mascota (lo actualiza el trigger).
 5. Si viene `peso_inicial_kg`: luego del insert de mascota, `INSERT` en
    `clinica.historial_peso` (`mascota_id`, `fecha = NOW()`, `peso_kg`).

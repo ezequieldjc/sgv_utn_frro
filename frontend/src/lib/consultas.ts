@@ -1,5 +1,9 @@
+import { addDays, format, isSunday, startOfDay } from "date-fns";
+
 import type {
+  ConsultaAnteriorResumen,
   ConsultaDetalle,
+  ConsultaSignoItem,
   ConsultaUpdatePayload,
   DiagnosticoFirmaPayload,
   MascotaResumen,
@@ -58,6 +62,15 @@ export const DICTADOS_DEMO: Record<string, string> = {
     "El dueño cuenta que no vomita ni tiene diarrea. " +
     "Pesa 33 kilos, temperatura 38,5. Presenta dolor de cadera a la manipulación. " +
     "Pido radiografía de cadera.",
+  // Caso 11 de docs/casos_prueba_dictado.md (Felipe, dermatitis): es el que muestra el sesgo por
+  // raza en la demo. Para Simón (caso 12, otitis) el texto se pega a mano.
+  "chinese-shar-pei":
+    "Viene porque se rasca todo el día y se lame las patas desde hace un mes. " +
+    "El dueño cuenta que empeora en primavera, que no vomita ni tiene diarrea y que come bien. " +
+    "Pesa 21,5 kilos, temperatura 38,7. Presenta enrojecimiento en los pliegues de la cara, " +
+    "en las axilas y entre los dedos. No sacude la cabeza. Pido raspado cutáneo. " +
+    "Indico baño con clorhexidina cada tres días, oclacitinib 16 mg un comprimido cada 12 horas " +
+    "por 14 días y control en quince días.",
 };
 
 export const DICTADO_DEMO_GENERICO =
@@ -71,6 +84,24 @@ export function dictadoDemoPara(mascota: Pick<MascotaResumen, "raza_codigo">): s
 }
 
 /** El motor normaliza a 100 %: los extremos se muestran sin sugerir certeza absoluta. */
+/**
+ * Aviso para el panel cuando "otra causa no contemplada" pesa más que la primera sugerencia.
+ * Sin sugerencias no hay nada que advertir: el panel ya pide dictar o cargar signos.
+ */
+export function avisoEvidencia(
+  sugerencias: SugerenciaItem[],
+  evidenciaSuficiente: boolean,
+  otraCausaPct: string | null,
+): string | null {
+  if (sugerencias.length === 0 || evidenciaSuficiente) {
+    return null;
+  }
+  return (
+    `Evidencia insuficiente: con estos signos, lo más probable (${porcentajeLabel(otraCausaPct)}) ` +
+    "es una causa que no está en el catálogo del prototipo. Tomá las sugerencias con cautela."
+  );
+}
+
 export function porcentajeLabel(valor: string | number | null): string {
   if (valor === null) {
     return "—";
@@ -115,6 +146,7 @@ export function fechaHoraLabel(iso: string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hourCycle: "h23",
   });
 }
 
@@ -284,6 +316,10 @@ const MENSAJES_ERROR: Record<string, string> = {
   SIGNO_DUPLICADO: "Ese signo ya está cargado en la consulta.",
   DIAGNOSTICO_DUPLICADO: "La misma patología está cargada dos veces.",
   PERMISOS_INSUFICIENTES: "No tenés permiso para hacer esto.",
+  CONSULTA_ANTERIOR_NO_ENCONTRADA: "La consulta anterior no existe.",
+  CONSULTA_ANTERIOR_OTRA_MASCOTA: "La consulta anterior es de otra mascota.",
+  CONSULTA_ANTERIOR_NO_FIRMADA: "Solo se puede hacer el control de una consulta firmada.",
+  CONSULTA_ANTERIOR_POSTERIOR: "La consulta anterior tiene que ser previa a esta.",
 };
 
 export function mensajeError(error: unknown, fallback = "Ocurrió un error. Intentá de nuevo."): string {
@@ -299,4 +335,196 @@ export function mensajeError(error: unknown, fallback = "Ocurrió un error. Inte
   }
   const mensaje = (error as Error)?.message;
   return mensaje || fallback;
+}
+
+// ---------------------------------------------------------------------------
+// Controles: la consulta anterior y la evolución
+// ---------------------------------------------------------------------------
+
+const NUMEROS_EN_LETRAS: Record<string, number> = {
+  un: 1,
+  una: 1,
+  uno: 1,
+  dos: 2,
+  tres: 3,
+  cuatro: 4,
+  cinco: 5,
+  seis: 6,
+  siete: 7,
+  ocho: 8,
+  nueve: 9,
+  diez: 10,
+  once: 11,
+  doce: 12,
+  trece: 13,
+  catorce: 14,
+  quince: 15,
+  dieciseis: 16,
+  diecisiete: 17,
+  dieciocho: 18,
+  diecinueve: 19,
+  veinte: 20,
+  treinta: 30,
+};
+
+function sinTildes(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/**
+ * Días hasta el control que indicó el veterinario en el texto: "control en diez días",
+ * "control en dos semanas", "control en 48 horas", "control a los 15 días". Null si no lo indica.
+ */
+export function diasHastaControl(texto: string | null): number | null {
+  if (!texto) {
+    return null;
+  }
+  const match = sinTildes(texto).match(
+    /control(?:es)?\s+(?:en|dentro de|a los|a las)\s+(\d{1,3}|[a-z]+)\s+(horas?|dias?|semanas?|mes(?:es)?)\b/,
+  );
+  if (!match) {
+    return null;
+  }
+  const cantidad = /^\d+$/.test(match[1]) ? Number(match[1]) : NUMEROS_EN_LETRAS[match[1]];
+  if (!cantidad) {
+    return null;
+  }
+  const unidad = match[2];
+  if (unidad.startsWith("hora")) {
+    return Math.max(1, Math.ceil(cantidad / 24));
+  }
+  if (unidad.startsWith("semana")) {
+    return cantidad * 7;
+  }
+  if (unidad.startsWith("mes")) {
+    return cantidad * 30;
+  }
+  return cantidad;
+}
+
+/**
+ * Fecha sugerida para el control (yyyy-MM-dd, hora local): la de la consulta más los días que
+ * indicó el veterinario en el tratamiento o en las observaciones. Nunca antes de hoy, y si cae
+ * domingo (no hay atención), el lunes. Null si el texto no indica un control.
+ */
+export function fechaControlSugerida(
+  consulta: Pick<ConsultaDetalle, "fecha_hora" | "tratamiento" | "observaciones">,
+  hoy: Date = new Date(),
+): string | null {
+  const dias = diasHastaControl(consulta.tratamiento) ?? diasHastaControl(consulta.observaciones);
+  if (dias === null) {
+    return null;
+  }
+  let fecha = addDays(startOfDay(new Date(consulta.fecha_hora)), dias);
+  if (fecha < startOfDay(hoy)) {
+    fecha = startOfDay(hoy);
+  }
+  if (isSunday(fecha)) {
+    fecha = addDays(fecha, 1);
+  }
+  return format(fecha, "yyyy-MM-dd");
+}
+
+/** "jueves 26/11" para mostrar una fecha yyyy-MM-dd sin hora. */
+export function diaLabel(fechaIso: string): string {
+  const [anio, mes, dia] = fechaIso.split("-").map(Number);
+  // El día de la semana sale del navegador; el resto se arma a mano porque el formato corto de
+  // "es-AR" varía entre navegadores (26/11 o 26-11).
+  const semana = new Date(anio, mes - 1, dia).toLocaleDateString("es-AR", { weekday: "long" });
+  return `${semana} ${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}`;
+}
+
+/** Link al alta de turno con el control precargado: mascota, profesional, tipo y fecha. */
+export function linkProgramarControl(detalle: ConsultaDetalle, hoy: Date = new Date()): string {
+  const { mascota } = detalle;
+  const params = new URLSearchParams({
+    mascota_id: String(mascota.id),
+    mascota: `${mascota.nombre} (${mascota.especie_nombre}) · ${mascota.tutor_nombre}`,
+    veterinario_id: String(detalle.veterinario_id),
+    tipo: "Control",
+  });
+  const fecha = fechaControlSugerida(detalle, hoy);
+  if (fecha) {
+    params.set("fecha", fecha);
+  }
+  return `/agenda/nuevo-turno?${params.toString()}`;
+}
+
+export type EstadoSigno = "presente" | "negado" | "sin_mencion";
+export type CambioSigno = "persiste" | "resuelto" | "nuevo" | "sin_registrar";
+
+export interface FilaEvolucion {
+  codigo: string;
+  nombre: string;
+  antes: EstadoSigno;
+  ahora: EstadoSigno;
+  cambio: CambioSigno;
+}
+
+export const CAMBIO_SIGNO_LABEL: Record<CambioSigno, string> = {
+  persiste: "Persiste",
+  resuelto: "Resuelto",
+  nuevo: "Nuevo",
+  sin_registrar: "Sin registrar",
+};
+
+export const ESTADO_SIGNO_LABEL: Record<EstadoSigno, string> = {
+  presente: "Presente",
+  negado: "Negado",
+  sin_mencion: "—",
+};
+
+function estadoDe(signos: ConsultaSignoItem[], codigo: string): EstadoSigno {
+  const signo = signos.find((s) => s.codigo === codigo);
+  if (!signo) {
+    return "sin_mencion";
+  }
+  return signo.presente ? "presente" : "negado";
+}
+
+/**
+ * Compara los signos de la consulta anterior con los del control. Entran los que estuvieron
+ * presentes en alguna de las dos, en el orden en que aparecieron. Los signos sin código no se
+ * pueden comparar y quedan afuera.
+ */
+export function evolucionSignos(
+  anteriores: ConsultaSignoItem[],
+  actuales: ConsultaSignoItem[],
+): FilaEvolucion[] {
+  const nombres = new Map<string, string>();
+  for (const signo of [...anteriores, ...actuales]) {
+    if (signo.codigo && !nombres.has(signo.codigo)) {
+      nombres.set(signo.codigo, signo.nombre ?? signo.codigo);
+    }
+  }
+  const filas: FilaEvolucion[] = [];
+  for (const [codigo, nombre] of nombres) {
+    const antes = estadoDe(anteriores, codigo);
+    const ahora = estadoDe(actuales, codigo);
+    if (antes !== "presente" && ahora !== "presente") {
+      continue;
+    }
+    let cambio: CambioSigno = "nuevo";
+    if (antes === "presente") {
+      cambio = ahora === "presente" ? "persiste" : ahora === "negado" ? "resuelto" : "sin_registrar";
+    }
+    filas.push({ codigo, nombre, antes, ahora, cambio });
+  }
+  return filas;
+}
+
+/** El diagnóstico principal de la consulta anterior, listo para cargarlo como manual en el control. */
+export function diagnosticoAnterior(
+  anterior: ConsultaAnteriorResumen | null,
+): DiagnosticoManual | null {
+  const principal = anterior?.diagnosticos.find((d) => d.tipo_diagnostico === "principal");
+  if (!principal) {
+    return null;
+  }
+  if (principal.patologia_id !== null) {
+    return { patologia_id: principal.patologia_id, descripcion: "" };
+  }
+  return principal.descripcion_libre
+    ? { patologia_id: null, descripcion: principal.descripcion_libre }
+    : null;
 }

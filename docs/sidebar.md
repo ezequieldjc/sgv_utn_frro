@@ -49,12 +49,18 @@ Create a responsive App Shell component in `src/components/app-shell.tsx` for th
       - "Historia Clínica" (requires `consultas:ver_historia_clinica`)
   - **RECETAS**:
     - Collapsible/sub-items:
-      - "Nueva Receta" (requires `recetas:crear`)
-      - "Historial de Recetas" (requires `recetas:ver_historial`)
+      - "Nueva Receta" (requires `recetas:crear` or `consultas:crear`): la receta sale de una
+        consulta firmada, así que lleva a iniciar la consulta
+      - "Historial de Recetas" (requires `recetas:ver_historial`, `recetas:crear`,
+        `consultas:ver_historial` or `consultas:ver_historia_clinica`, the same as
+        `GET /api/recetas`): recetas en PDF de las consultas firmadas
+        (`docs/prompts botones/recetas.md`)
   - **AGENDA**:
     - Collapsible/sub-items:
       - "Nuevo Turno" (requires `agenda:crear_turno`)
       - "Ver Agenda" (requires `agenda:ver`)
+      - "Recordatorios" (requires `recordatorios:enviar`): recordatorios de turnos y vacunas por
+        WhatsApp (`docs/prompts botones/recordatorios.md`)
   - **MASCOTAS Y CLIENTES**:
     - Collapsible/sub-items:
       - "Listado de Mascotas" (requires `mascotas:ver_listado`)

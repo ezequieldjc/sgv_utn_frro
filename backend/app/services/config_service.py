@@ -14,8 +14,14 @@ INTEGER_PARAMETROS = frozenset(
         "ACCESS_TOKEN_EXPIRACION",
         "REFRESH_TOKEN_EXPIRACION",
         "PERSONA_ID_TUTOR_EVENTUAL",
+        "DIAS_REFUERZO_VACUNA",
+        "DIAS_REFUERZO_DESPARASITACION",
+        "DIAS_AVISO_DOSIS",
+        "DIAS_AVISO_DOSIS_VENCIDA",
     }
 )
+# Listas de ids separados por coma (por ejemplo "5,4").
+LISTA_ENTEROS_PARAMETROS = frozenset({"ESTADOS_MASCOTA_TUTOR_EVENTUAL", "TIPOS_TURNO_PORTAL"})
 
 
 def normalize_and_validate_parametro_valor(parametro_nombre: str, raw_valor: str) -> str:
@@ -41,6 +47,17 @@ def normalize_and_validate_parametro_valor(parametro_nombre: str, raw_valor: str
                 f"El parámetro '{parametro_nombre}' debe ser un entero >= 1",
             )
         return str(numero)
+
+    if parametro_nombre in LISTA_ENTEROS_PARAMETROS:
+        partes = [parte.strip() for parte in valor.split(",")]
+        if any(not parte.isdigit() or int(parte) < 1 for parte in partes):
+            raise APIError(
+                400,
+                "VALOR_INVALIDO",
+                f"El parámetro '{parametro_nombre}' debe ser una lista de ids separados por coma "
+                "(por ejemplo: 5,4)",
+            )
+        return ",".join(str(int(parte)) for parte in partes)
 
     return valor
 

@@ -5,16 +5,31 @@ from datetime import date
 from sqlmodel import Session, select
 
 from app.core.errors import APIError
-from app.core.security import hash_password
-from app.models.auth.historial_contrasena import HistorialContrasena
-from app.models.auth.rol import Rol
-from app.models.auth.usuario import Usuario
 from app.models.core.domicilio import Domicilio
 from app.models.core.persona import Persona
-from app.schemas.clientes import ClienteCreate, ClienteCreateResponse, ClienteListItem
-from app.services.usuario_service import allocate_username, generate_temp_password
+from app.schemas.clientes import (
+    ClienteCreate,
+    ClienteCreateResponse,
+    ClienteCuenta,
+    ClienteDetail,
+    ClienteListItem,
+    ClienteUpdate,
+)
+from app.services.cuenta_cliente_service import ROL_CLIENTE_NOMBRE, crear_cuenta_cliente
+from app.services.persona_service import (
+    actualizar_persona,
+    domicilio_detalle,
+    usuario_de_persona,
+)
 
-ROL_CLIENTE_NOMBRE = "CLIENTE"
+__all__ = [
+    "ROL_CLIENTE_NOMBRE",
+    "calcular_edad_truncada",
+    "create_cliente",
+    "get_cliente",
+    "list_clientes",
+    "update_cliente",
+]
 
 
 def calcular_edad_truncada(
@@ -66,73 +81,81 @@ def list_clientes(session: Session) -> list[ClienteListItem]:
 
 
 def create_cliente(session: Session, payload: ClienteCreate) -> ClienteCreateResponse:
-    domicilio_id: int | None = None
-    if payload.domicilio is not None:
-        domicilio = Domicilio(
-            pais=payload.domicilio.pais,
-            provincia=payload.domicilio.provincia,
-            ciudad=payload.domicilio.ciudad,
-            cp=payload.domicilio.cp,
-            calle=payload.domicilio.calle,
-            altura=payload.domicilio.altura,
-            departamento=payload.domicilio.departamento,
-            notas=payload.domicilio.notas,
-        )
-        session.add(domicilio)
-        session.flush()
-        domicilio_id = domicilio.id
-
-    persona = Persona(
-        nombre=payload.nombre.strip(),
-        apellido=payload.apellido.strip(),
+    """Alta desde recepción: siempre crea el usuario CLIENTE (el mail es el usuario) con una
+    contraseña temporal que la pantalla le muestra a la recepción."""
+    cuenta = crear_cuenta_cliente(
+        session,
+        nombre=payload.nombre,
+        apellido=payload.apellido,
+        celular=payload.celular,
+        mail=payload.mail,
         dni=payload.dni,
         sexo=payload.sexo,
         fecha_nacimiento=payload.fecha_nacimiento,
-        domicilio_id=domicilio_id,
-        mail=payload.mail,
-        celular=payload.celular,
-        es_cliente=True,
+        domicilio=payload.domicilio,
     )
-    session.add(persona)
-    session.flush()
-
-    username: str | None = None
-    password_temporal: str | None = None
-
-    if payload.crear_usuario:
-        rol = session.exec(select(Rol).where(Rol.nombre == ROL_CLIENTE_NOMBRE)).first()
-        if rol is None:
-            raise APIError(404, "ROL_NO_ENCONTRADO", "No se encontró el rol CLIENTE")
-
-        username = allocate_username(session, payload.nombre, payload.apellido)
-        password_temporal = generate_temp_password()
-
-        usuario = Usuario(
-            persona_id=persona.id or 0,
-            username=username,
-            habilitado=payload.habilitado,
-            rol_id=rol.id or 0,
-            version_token=1,
-        )
-        session.add(usuario)
-        session.flush()
-
-        historial = HistorialContrasena(
-            usuario_id=usuario.id or 0,
-            hashed_password=hash_password(password_temporal),
-            debe_cambiar=True,
-        )
-        session.add(historial)
-
     session.commit()
-    session.refresh(persona)
+    session.refresh(cuenta.persona)
+    session.refresh(cuenta.usuario)
 
     return ClienteCreateResponse(
+        id=cuenta.persona.id or 0,
+        nombre=cuenta.persona.nombre,
+        apellido=cuenta.persona.apellido,
+        dni=cuenta.persona.dni,
+        username=cuenta.usuario.username,
+        password_temporal=cuenta.password_temporal or "",
+    )
+
+
+def _get_persona_cliente(session: Session, cliente_id: int) -> Persona:
+    persona = session.get(Persona, cliente_id)
+    if persona is None or not persona.es_cliente:
+        raise APIError(404, "CLIENTE_NO_ENCONTRADO", "No se encontró el cliente solicitado")
+    return persona
+
+
+def get_cliente(session: Session, cliente_id: int) -> ClienteDetail:
+    persona = _get_persona_cliente(session, cliente_id)
+    usuario = usuario_de_persona(session, persona.id or 0)
+    return ClienteDetail(
         id=persona.id or 0,
         nombre=persona.nombre,
         apellido=persona.apellido,
         dni=persona.dni,
-        usuario_creado=payload.crear_usuario,
-        username=username,
-        password_temporal=password_temporal,
+        sexo=persona.sexo,
+        fecha_nacimiento=persona.fecha_nacimiento,
+        celular=persona.celular,
+        mail=persona.mail,
+        fecha_alta=persona.fecha_alta,
+        domicilio=domicilio_detalle(session, persona.domicilio_id),
+        cuenta=(
+            ClienteCuenta(
+                usuario_id=usuario.id or 0,
+                username=usuario.username,
+                habilitado=usuario.habilitado,
+            )
+            if usuario is not None
+            else None
+        ),
     )
+
+
+def update_cliente(session: Session, cliente_id: int, payload: ClienteUpdate) -> ClienteDetail:
+    """Edición desde Clientes. Si cambia el mail, cambia también el usuario del cliente."""
+    persona = _get_persona_cliente(session, cliente_id)
+    actualizar_persona(
+        session,
+        persona,
+        nombre=payload.nombre,
+        apellido=payload.apellido,
+        celular=payload.celular,
+        mail=payload.mail,
+        dni=payload.dni,
+        sexo=payload.sexo,
+        fecha_nacimiento=payload.fecha_nacimiento,
+        domicilio=payload.domicilio,
+    )
+    session.commit()
+    return get_cliente(session, cliente_id)
+

@@ -9,11 +9,16 @@
   guardan.
 - La firma, en una sola transacción, guarda los diagnósticos aceptados, confirma los signos, deja la
   consulta en solo lectura, pasa el turno a `atendido` y actualiza `mascota.ultimo_peso`.
+- Un control es una consulta con `consulta_padre_id`: apunta a una consulta anterior firmada de la
+  misma mascota. Si se abre desde un turno de tipo Control, se vincula sola a la última firmada; el
+  veterinario puede cambiarla o quitarla mientras sea borrador. Como la anterior está firmada y una
+  firmada no cambia, la cadena de controles nunca forma un ciclo.
 """
 
 from __future__ import annotations
 
 import time
+import unicodedata
 from datetime import date, datetime, timezone
 
 from sqlalchemy import func
@@ -21,6 +26,7 @@ from sqlmodel import Session, col, select
 
 from app.core.errors import APIError
 from app.core.time_utils import utc_now
+from app.models.agenda.tipo_turno import TipoTurno
 from app.models.agenda.turno import Turno
 from app.models.auth.usuario import Usuario
 from app.models.catalogo.estado_reproductivo import EstadoReproductivo
@@ -35,6 +41,7 @@ from app.models.clinica.raza import Raza
 from app.models.clinica.sintoma import Sintoma
 from app.models.core.persona import Persona
 from app.schemas.consultas import (
+    ConsultaAnteriorResumen,
     ConsultaCreate,
     ConsultaDetalle,
     ConsultaFirmar,
@@ -42,6 +49,7 @@ from app.schemas.consultas import (
     ConsultaListResponse,
     ConsultaSignoItem,
     ConsultaUpdate,
+    ControlResumen,
     DiagnosticoItem,
     DictadoCreate,
     DictadoItem,
@@ -59,6 +67,9 @@ from app.services.turno_service import get_zona_horaria
 MODELO_STT_TEXTO = "texto"
 TEXTOS_CONSULTA = ("motivo", "anamnesis", "examen_fisico", "tratamiento", "observaciones")
 ESTADOS_TURNO_ATENDIBLES = ("solicitado", "confirmado")
+# Nombre del tipo de turno que abre un control. Se compara sin mayúsculas ni tildes; si el tipo
+# se renombra, el vínculo automático deja de funcionar pero el manual sigue andando.
+TIPO_TURNO_CONTROL = "control"
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +237,65 @@ def _dictados(session: Session, consulta_id: int) -> list[DictadoItem]:
     ]
 
 
+def _principales(session: Session, consulta_ids: list[int]) -> dict[int, str]:
+    """Nombre del diagnóstico principal de cada consulta (las que no tienen, no aparecen)."""
+    if not consulta_ids:
+        return {}
+    principales: dict[int, str] = {}
+    for dx, patologia in session.exec(
+        select(ConsultaDiagnostico, Patologia)
+        .join(
+            Patologia,
+            col(Patologia.id) == col(ConsultaDiagnostico.patologia_id),
+            isouter=True,
+        )
+        .where(
+            col(ConsultaDiagnostico.consulta_id).in_(consulta_ids),
+            ConsultaDiagnostico.tipo_diagnostico == "principal",
+        )
+    ).all():
+        principales[dx.consulta_id] = patologia.nombre if patologia else (dx.descripcion_libre or "")
+    return principales
+
+
+def _consulta_anterior(session: Session, padre_id: int) -> ConsultaAnteriorResumen | None:
+    padre = session.get(Consulta, padre_id)
+    if padre is None:
+        return None
+    return ConsultaAnteriorResumen(
+        id=padre.id or 0,
+        fecha_hora=_aware(padre.fecha_hora),
+        fecha_firma=_aware(padre.fecha_firma) if padre.fecha_firma else None,
+        veterinario_nombre=_nombre_usuario(session, padre.veterinario_id),
+        motivo=padre.motivo,
+        peso_kg=padre.peso_kg,
+        temperatura_c=padre.temperatura_c,
+        tratamiento=padre.tratamiento,
+        observaciones=padre.observaciones,
+        diagnosticos=_diagnosticos(session, padre.id or 0),
+        signos=_signos(session, padre.id or 0),
+    )
+
+
+def _controles(session: Session, consulta_id: int) -> list[ControlResumen]:
+    hijos = session.exec(
+        select(Consulta)
+        .where(Consulta.consulta_padre_id == consulta_id)
+        .order_by(col(Consulta.fecha_hora), col(Consulta.id))
+    ).all()
+    principales = _principales(session, [h.id for h in hijos if h.id is not None])
+    return [
+        ControlResumen(
+            id=h.id or 0,
+            fecha_hora=_aware(h.fecha_hora),
+            estado=h.estado,  # type: ignore[arg-type]
+            motivo=h.motivo,
+            diagnostico_principal=principales.get(h.id or 0),
+        )
+        for h in hijos
+    ]
+
+
 def get_detalle(session: Session, consulta_id: int) -> ConsultaDetalle:
     consulta = _get_consulta(session, consulta_id)
     return ConsultaDetalle(
@@ -247,7 +317,62 @@ def get_detalle(session: Session, consulta_id: int) -> ConsultaDetalle:
         signos=_signos(session, consulta.id or 0),
         diagnosticos=_diagnosticos(session, consulta.id or 0),
         dictados=_dictados(session, consulta.id or 0),
+        consulta_padre=(
+            _consulta_anterior(session, consulta.consulta_padre_id)
+            if consulta.consulta_padre_id is not None
+            else None
+        ),
+        controles=_controles(session, consulta.id or 0),
     )
+
+
+# ---------------------------------------------------------------------------
+# Controles: vínculo con la consulta anterior
+# ---------------------------------------------------------------------------
+
+
+def _normalizar(texto: str) -> str:
+    sin_tildes = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+    return sin_tildes.strip().lower()
+
+
+def _es_turno_de_control(session: Session, turno: Turno) -> bool:
+    tipo = session.get(TipoTurno, turno.tipo_turno_id)
+    return tipo is not None and _normalizar(tipo.nombre) == TIPO_TURNO_CONTROL
+
+
+def _ultima_firmada(session: Session, mascota_id: int) -> Consulta | None:
+    return session.exec(
+        select(Consulta)
+        .where(Consulta.mascota_id == mascota_id, Consulta.estado == "firmada")
+        .order_by(col(Consulta.fecha_hora).desc(), col(Consulta.id).desc())
+    ).first()
+
+
+def _validar_anterior(
+    session: Session, mascota_id: int, padre_id: int, fecha_consulta: datetime | None
+) -> Consulta:
+    """La consulta anterior de un control: existe, es de la misma mascota, está firmada y es previa."""
+    padre = session.get(Consulta, padre_id)
+    if padre is None:
+        raise APIError(404, "CONSULTA_ANTERIOR_NO_ENCONTRADA", "La consulta anterior no existe")
+    if padre.mascota_id != mascota_id:
+        raise APIError(
+            400, "CONSULTA_ANTERIOR_OTRA_MASCOTA", "La consulta anterior es de otra mascota"
+        )
+    if padre.estado != "firmada":
+        raise APIError(
+            409,
+            "CONSULTA_ANTERIOR_NO_FIRMADA",
+            "Solo se puede hacer el control de una consulta firmada",
+        )
+    if fecha_consulta is not None and _aware(padre.fecha_hora) > _aware(fecha_consulta):
+        raise APIError(
+            400,
+            "CONSULTA_ANTERIOR_POSTERIOR",
+            "La consulta anterior tiene que ser previa a esta",
+        )
+    return padre
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +387,7 @@ def crear_consulta(
     if session.get(Mascota, payload.mascota_id) is None:
         raise APIError(404, "MASCOTA_NO_ENCONTRADA", "La mascota no existe")
 
+    turno: Turno | None = None
     if payload.turno_id is not None:
         turno = session.get(Turno, payload.turno_id)
         if turno is None:
@@ -282,12 +408,22 @@ def crear_consulta(
                 f"No se puede iniciar una consulta con un turno en estado '{turno.estado}'",
             )
 
+    padre_id: int | None = None
+    if payload.consulta_padre_id is not None:
+        padre_id = _validar_anterior(
+            session, payload.mascota_id, payload.consulta_padre_id, None
+        ).id
+    elif turno is not None and _es_turno_de_control(session, turno):
+        ultima = _ultima_firmada(session, payload.mascota_id)
+        padre_id = ultima.id if ultima is not None else None
+
     consulta = Consulta(
         mascota_id=payload.mascota_id,
         veterinario_id=veterinario_id,
         turno_id=payload.turno_id,
         fecha_hora=utc_now(),
         estado="borrador",
+        consulta_padre_id=padre_id,
     )
     session.add(consulta)
     session.commit()
@@ -299,7 +435,15 @@ def actualizar_consulta(
     session: Session, consulta_id: int, payload: ConsultaUpdate
 ) -> ConsultaDetalle:
     consulta = _get_borrador(session, consulta_id)
-    for campo in payload.model_fields_set:
+    campos = set(payload.model_fields_set)
+    if "consulta_padre_id" in campos:
+        campos.discard("consulta_padre_id")
+        if payload.consulta_padre_id is not None:
+            _validar_anterior(
+                session, consulta.mascota_id, payload.consulta_padre_id, consulta.fecha_hora
+            )
+        consulta.consulta_padre_id = payload.consulta_padre_id
+    for campo in campos:
         setattr(consulta, campo, getattr(payload, campo))
     _tocar(consulta)
     session.add(consulta)
@@ -527,7 +671,7 @@ def eliminar_signo(session: Session, consulta_id: int, signo_id: int) -> Consult
 
 def _calcular(
     session: Session, consulta: Consulta
-) -> tuple[list[motor_simulado.Sugerencia], int]:
+) -> tuple[motor_simulado.ResultadoMotor, int]:
     filas = session.exec(
         select(ConsultaSintoma, Sintoma)
         .join(Sintoma, col(Sintoma.id) == col(ConsultaSintoma.sintoma_id), isouter=True)
@@ -555,17 +699,17 @@ def _calcular(
         )
         for p in session.exec(select(Patologia).where(col(Patologia.activo).is_(True))).all()
     ]
-    sugerencias = motor_simulado.diagnosticar(
-        raza.codigo if raza else None, signos, patologias
-    )
-    return sugerencias, sin_codigo
+    resultado = motor_simulado.diagnosticar(raza.codigo if raza else None, signos, patologias)
+    return resultado, sin_codigo
 
 
 def get_sugerencias(session: Session, consulta_id: int) -> SugerenciasResponse:
     consulta = _get_consulta(session, consulta_id)
-    sugerencias, sin_codigo = _calcular(session, consulta)
+    resultado, sin_codigo = _calcular(session, consulta)
     return SugerenciasResponse(
         version_motor=motor_simulado.VERSION_MOTOR,
+        otra_causa_pct=resultado.otra_causa_pct,
+        evidencia_suficiente=resultado.evidencia_suficiente,
         sugerencias=[
             SugerenciaItem(
                 patologia_id=s.patologia_id,
@@ -576,7 +720,7 @@ def get_sugerencias(session: Session, consulta_id: int) -> SugerenciasResponse:
                 estudio_sugerido=s.estudio_sugerido,
                 explicacion=s.explicacion,
             )
-            for s in sugerencias
+            for s in resultado.sugerencias
         ],
         signos_sin_codigo=sin_codigo,
     )
@@ -605,7 +749,7 @@ def firmar_consulta(
         if patologia is None or not patologia.activo:
             raise APIError(404, "PATOLOGIA_NO_ENCONTRADA", "La patología no existe")
 
-    vigentes = {s.patologia_id: s for s in _calcular(session, consulta)[0]}
+    vigentes = {s.patologia_id: s for s in _calcular(session, consulta)[0].sugerencias}
     ahora = utc_now()
     for dx in payload.diagnosticos:
         fila = ConsultaDiagnostico(
@@ -686,24 +830,7 @@ def listar_consultas(
         .limit(page_size)
     ).all()
 
-    ids = [c.id for c, _ in consultas]
-    principales: dict[int, str] = {}
-    if ids:
-        for dx, patologia in session.exec(
-            select(ConsultaDiagnostico, Patologia)
-            .join(
-                Patologia,
-                col(Patologia.id) == col(ConsultaDiagnostico.patologia_id),
-                isouter=True,
-            )
-            .where(
-                col(ConsultaDiagnostico.consulta_id).in_(ids),
-                ConsultaDiagnostico.tipo_diagnostico == "principal",
-            )
-        ).all():
-            principales[dx.consulta_id] = (
-                patologia.nombre if patologia else (dx.descripcion_libre or "")
-            )
+    principales = _principales(session, [c.id for c, _ in consultas if c.id is not None])
 
     return ConsultaListResponse(
         items=[
@@ -717,6 +844,7 @@ def listar_consultas(
                 motivo=c.motivo,
                 diagnostico_principal=principales.get(c.id or 0),
                 veterinario_nombre=_nombre_usuario(session, c.veterinario_id),
+                consulta_padre_id=c.consulta_padre_id,
             )
             for c, m in consultas
         ],

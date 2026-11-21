@@ -18,11 +18,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
 import { useSelectTypeahead } from "@/hooks/use-select-typeahead";
 import { apiFetch } from "@/lib/api";
+import { agruparEspecies, esTutorEventual, nombresPermitidos } from "@/lib/mascotas";
 import type {
   CatalogoOpcion,
   MascotaCreatePayload,
   MascotaCreateResponse,
   RazaOpcion,
+  TutorEventualConfig,
   TutorOpcion,
 } from "@/types/mascotas";
 
@@ -42,6 +44,8 @@ interface FormState {
   peso_inicial_kg: string;
   microchip: string;
   alertas_medicas: string;
+  /** Solo con tutor eventual: uno de los estados permitidos (por ejemplo, En Tránsito / Rescate). */
+  mascota_estado_id: string;
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -60,6 +64,7 @@ const INITIAL_FORM: FormState = {
   peso_inicial_kg: "",
   microchip: "",
   alertas_medicas: "",
+  mascota_estado_id: "",
 };
 
 function hasPermission(permisos: string[], required: string): boolean {
@@ -152,6 +157,9 @@ function buildMascotaPayload(form: FormState): MascotaCreatePayload {
     peso_inicial_kg: pesoRaw ? Number(pesoRaw) : null,
     microchip: form.microchip.trim() || null,
     alertas_medicas: form.alertas_medicas.trim() || null,
+    // Con dueño queda ACTIVA; con tutor eventual, el estado elegido (o el de por defecto).
+    mascota_estado_id:
+      form.tutor_eventual && form.mascota_estado_id ? Number(form.mascota_estado_id) : null,
   };
 }
 
@@ -190,6 +198,7 @@ export default function MascotaFormPage() {
   const [form, setForm] = React.useState<FormState>(INITIAL_FORM);
   const [errors, setErrors] = React.useState<FormErrors>({});
   const [especies, setEspecies] = React.useState<CatalogoOpcion[]>([]);
+  const especiesAgrupadas = React.useMemo(() => agruparEspecies(especies), [especies]);
   const [razas, setRazas] = React.useState<RazaOpcion[]>([]);
   const [razaDefaultNombre, setRazaDefaultNombre] = React.useState("Sin raza definida");
   const [tutorOptions, setTutorOptions] = React.useState<TutorOpcion[]>([]);
@@ -199,6 +208,8 @@ export default function MascotaFormPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<MascotaCreateResponse | null>(null);
+  const [tutorEventual, setTutorEventual] = React.useState<TutorEventualConfig | null>(null);
+  const permitidos = tutorEventual?.estados_permitidos ?? [];
 
   React.useEffect(() => {
     if (!canCreate) {
@@ -214,6 +225,14 @@ export default function MascotaFormPage() {
         setRazaDefaultNombre(cfg.nombre);
       } catch {
         setSubmitError("No se pudieron cargar especies / configuración.");
+      }
+      try {
+        setTutorEventual(
+          await apiFetch<TutorEventualConfig>("/api/mascotas/config/tutor-eventual"),
+        );
+      } catch {
+        // Sin la configuración, el alta funciona como antes (queda ACTIVA).
+        setTutorEventual(null);
       }
     })();
   }, [canCreate]);
@@ -381,7 +400,10 @@ export default function MascotaFormPage() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Nueva Mascota</h1>
         <p className="text-sm text-muted-foreground">
-          Alta rápida de admisión. El estado operativo se registra como ACTIVA.
+          Alta rápida de admisión. El estado operativo se registra como Activo
+          {permitidos.length > 0
+            ? `; si no tiene tutor registrado, queda ${nombresPermitidos(tutorEventual)}.`
+            : "."}
         </p>
       </div>
 
@@ -397,6 +419,12 @@ export default function MascotaFormPage() {
               onCheckedChange={(checked) => {
                 const on = checked === true;
                 updateField("tutor_eventual", on);
+                updateField(
+                  "mascota_estado_id",
+                  on && tutorEventual?.estado_por_defecto_id
+                    ? String(tutorEventual.estado_por_defecto_id)
+                    : "",
+                );
                 if (on) {
                   updateField("persona_id", "");
                   updateField("tutor_label", "");
@@ -433,7 +461,10 @@ export default function MascotaFormPage() {
               ) : null}
               {tutorOptions.length > 0 ? (
                 <ul className="max-h-48 overflow-auto rounded-md border">
-                  {tutorOptions.map((tutor) => (
+                  {tutorOptions
+                    // El tutor eventual se elige con el check de arriba, no desde la búsqueda.
+                    .filter((tutor) => !esTutorEventual(tutorEventual, tutor.id))
+                    .map((tutor) => (
                     <li key={tutor.id}>
                       <button
                         type="button"
@@ -458,7 +489,7 @@ export default function MascotaFormPage() {
                         </span>
                       </button>
                     </li>
-                  ))}
+                    ))}
                 </ul>
               ) : null}
               {!isSearchingTutores &&
@@ -476,9 +507,32 @@ export default function MascotaFormPage() {
               ) : null}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Se asignará el tutor eventual configurado en el sistema.
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Se asignará el tutor eventual configurado en el sistema.
+              </p>
+              {permitidos.length > 0 ? (
+                <div className="space-y-2">
+                  <Label htmlFor="mascota_estado_id">Estado</Label>
+                  <select
+                    id="mascota_estado_id"
+                    value={form.mascota_estado_id}
+                    onChange={(event) => updateField("mascota_estado_id", event.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm sm:w-72"
+                  >
+                    {permitidos.map((item) => (
+                      <option key={item.id} value={String(item.id)}>
+                        {item.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Sin tutor registrado, la mascota queda {nombresPermitidos(tutorEventual)}. Al
+                    asignarle un dueño pasa a Activo.
+                  </p>
+                </div>
+              ) : null}
+            </div>
           )}
         </section>
 
@@ -510,10 +564,12 @@ export default function MascotaFormPage() {
                     event,
                     [
                       { value: "", label: "Seleccionar…" },
-                      ...especies.map((item) => ({
-                        value: String(item.id),
-                        label: item.nombre,
-                      })),
+                      ...[...especiesAgrupadas.destacadas, ...especiesAgrupadas.resto].map(
+                        (item) => ({
+                          value: String(item.id),
+                          label: item.nombre,
+                        }),
+                      ),
                     ],
                     form.especie_id,
                     (value) => updateField("especie_id", value),
@@ -523,11 +579,24 @@ export default function MascotaFormPage() {
                 className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm ${fieldClass(Boolean(errors.especie_id))}`}
               >
                 <option value="">Seleccionar…</option>
-                {especies.map((item) => (
-                  <option key={item.id} value={String(item.id)}>
-                    {item.nombre}
-                  </option>
-                ))}
+                {especiesAgrupadas.destacadas.length > 0 ? (
+                  <optgroup label="Más comunes">
+                    {especiesAgrupadas.destacadas.map((item) => (
+                      <option key={item.id} value={String(item.id)}>
+                        {item.nombre}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {especiesAgrupadas.resto.length > 0 ? (
+                  <optgroup label={especiesAgrupadas.destacadas.length > 0 ? "Otras especies" : "Especies"}>
+                    {especiesAgrupadas.resto.map((item) => (
+                      <option key={item.id} value={String(item.id)}>
+                        {item.nombre}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
               </select>
               {errors.especie_id ? (
                 <p className="text-xs text-destructive">{errors.especie_id}</p>
@@ -746,7 +815,7 @@ export default function MascotaFormPage() {
           <DialogHeader>
             <DialogTitle>Mascota creada correctamente</DialogTitle>
             <DialogDescription>
-              Se registró «{success?.nombre}» con estado ACTIVA
+              Se registró «{success?.nombre}» con estado {success?.mascota_estado_nombre ?? "Activo"}
               {success?.peso_registrado ? " y se guardó el peso inicial." : "."}
             </DialogDescription>
           </DialogHeader>

@@ -832,3 +832,333 @@ def test_restablecer_contrasena_con_permiso_wildcard_devuelve_200(client, sessio
     assert response.status_code == 200
     assert response.json()["usuario_id"] == target.id
     assert admin.username == "admin"
+
+
+# ---------------------------------------------------------------------------
+# Rol CLIENTE desde Admin → Usuarios: crea un cliente completo (cuentas de cliente)
+# ---------------------------------------------------------------------------
+
+
+def _login_admin_con_rol_cliente(client, session) -> int:
+    _seed_jwt_config(session)
+    seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+    rol_cliente = Rol(nombre="CLIENTE", descripcion="Cliente de la clínica")
+    session.add(rol_cliente)
+    session.commit()
+    session.refresh(rol_cliente)
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "Secret123!"},
+    )
+    assert login_response.status_code == 200
+    return rol_cliente.id or 0
+
+
+def test_create_usuario_rol_cliente_crea_un_cliente_con_el_mail_como_usuario(
+    client, session
+) -> None:
+    from app.services.cliente_service import list_clientes
+
+    rol_cliente_id = _login_admin_con_rol_cliente(client, session)
+    body = _usuario_create_payload(dni="50111222", rol_id=rol_cliente_id)
+    body["mail"] = "Carlos@Example.com"
+
+    response = client.post("/api/usuarios", json=body)
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["username"] == "carlos@example.com"
+    assert payload["debe_cambiar"] is True
+
+    usuario = session.get(Usuario, payload["id"])
+    assert usuario is not None
+    persona = session.get(Persona, usuario.persona_id)
+    assert persona is not None
+    assert persona.es_cliente is True
+    assert persona.mail == "carlos@example.com"
+    assert persona.domicilio_id is not None
+
+    # Aparece en Clientes, así que se le pueden asignar mascotas.
+    assert [c.id for c in list_clientes(session)] == [persona.id]
+
+
+def test_create_usuario_rol_cliente_sin_mail_devuelve_422_y_no_crea_nada(client, session) -> None:
+    rol_cliente_id = _login_admin_con_rol_cliente(client, session)
+    body = _usuario_create_payload(dni="50111222", rol_id=rol_cliente_id)
+    body["mail"] = None
+
+    response = client.post("/api/usuarios", json=body)
+    assert response.status_code == 422
+    assert response.json()["error"] == "MAIL_OBLIGATORIO"
+    assert session.exec(select(Persona).where(Persona.dni == "50111222")).first() is None
+
+
+def test_create_usuario_rol_cliente_mail_en_uso_devuelve_409(client, session) -> None:
+    rol_cliente_id = _login_admin_con_rol_cliente(client, session)
+    primero = client.post(
+        "/api/usuarios", json=_usuario_create_payload(dni="50111222", rol_id=rol_cliente_id)
+    )
+    assert primero.status_code == 201
+
+    body = _usuario_create_payload(dni="50999888", rol_id=rol_cliente_id)
+    body["mail"] = "CARLOS@example.com"
+    response = client.post("/api/usuarios", json=body)
+    assert response.status_code == 409
+    assert response.json()["error"] == "MAIL_EN_USO"
+
+
+def test_create_usuario_empleado_sin_mail_sigue_con_username_generado(client, session) -> None:
+    _seed_jwt_config(session)
+    admin = seed_usuario_con_permiso(
+        session,
+        username="admin",
+        password="Secret123!",
+        nombre="María",
+        apellido="Gómez",
+        dni="20111222",
+        permiso_nombre="usuarios:crear",
+    )
+    assert client.post(
+        "/api/auth/login", json={"username": "admin", "password": "Secret123!"}
+    ).status_code == 200
+    body = _usuario_create_payload(dni="50111222", rol_id=admin.rol_id or 0)
+    body["mail"] = None
+
+    response = client.post("/api/usuarios", json=body)
+    assert response.status_code == 201
+    assert response.json()["username"] == "clopez"
+    usuario = session.get(Usuario, response.json()["id"])
+    assert usuario is not None
+    persona = session.get(Persona, usuario.persona_id)
+    assert persona is not None
+    assert persona.es_cliente is False
+    assert persona.mail is None
+
+
+# ---------------------------------------------------------------------------
+# Ver detalle y editar (GET / PUT /api/usuarios/{id})
+# ---------------------------------------------------------------------------
+
+
+def _login_editor(client, session, permisos: tuple[str, ...] = ("usuarios:ver", "usuarios:editar")):
+    """Admin con los permisos pedidos, más un empleado (VETERINARIO) y el rol CLIENTE."""
+    _seed_jwt_config(session)
+    admin = None
+    for i, permiso in enumerate(permisos):
+        admin = seed_usuario_con_permiso(
+            session,
+            username="admin" if i == 0 else f"admin{i}",
+            password="Secret123!",
+            nombre="María",
+            apellido="Gómez",
+            dni=f"2011122{i}",
+            permiso_nombre=permiso,
+        )
+    veterinario = seed_usuario_con_permiso(
+        session,
+        username="vsosa",
+        password="Secret123!",
+        nombre="Valeria",
+        apellido="Sosa",
+        dni="27111222",
+        permiso_nombre="agenda:ver",
+        rol_nombre="VETERINARIO",
+    )
+    rol_cliente = Rol(nombre="CLIENTE", descripcion="Cliente de la clínica")
+    session.add(rol_cliente)
+    session.commit()
+    session.refresh(rol_cliente)
+    assert client.post(
+        "/api/auth/login", json={"username": "admin", "password": "Secret123!"}
+    ).status_code == 200
+    return admin, veterinario, rol_cliente
+
+
+def _update_payload(*, rol_id: int, **cambios) -> dict:
+    payload = _usuario_create_payload(dni="27111222", rol_id=rol_id, nombre="Valeria", apellido="Sosa")
+    payload.update(cambios)
+    return payload
+
+
+def test_get_usuario_devuelve_el_detalle_con_persona_y_domicilio(client, session) -> None:
+    _, veterinario, _ = _login_editor(client, session)
+
+    response = client.get(f"/api/usuarios/{veterinario.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["username"] == "vsosa"
+    assert body["rol_nombre"] == "VETERINARIO"
+    assert body["es_cliente"] is False
+    assert body["nombre"] == "Valeria"
+    assert body["dni"] == "27111222"
+    assert body["domicilio"] is None
+
+
+def test_get_usuario_inexistente_devuelve_404(client, session) -> None:
+    _login_editor(client, session)
+
+    response = client.get("/api/usuarios/99999")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "USUARIO_NO_ENCONTRADO"
+
+
+def test_get_usuario_sin_permiso_usuarios_ver_devuelve_403(client, session) -> None:
+    _, veterinario, _ = _login_editor(client, session, permisos=("usuarios:crear",))
+
+    assert client.get(f"/api/usuarios/{veterinario.id}").status_code == 403
+
+
+def test_put_usuario_sin_permiso_usuarios_editar_devuelve_403(client, session) -> None:
+    _, veterinario, _ = _login_editor(client, session, permisos=("usuarios:ver",))
+
+    response = client.put(
+        f"/api/usuarios/{veterinario.id}", json=_update_payload(rol_id=veterinario.rol_id)
+    )
+
+    assert response.status_code == 403
+
+
+def test_put_usuario_actualiza_persona_y_domicilio_sin_cambiar_el_username(client, session) -> None:
+    _, veterinario, _ = _login_editor(client, session)
+
+    response = client.put(
+        f"/api/usuarios/{veterinario.id}",
+        json=_update_payload(
+            rol_id=veterinario.rol_id, nombre="Valeria Inés", celular="341 222-3333"
+        ),
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["nombre"] == "Valeria Inés"
+    assert body["celular"] == "3412223333"
+    assert body["username"] == "vsosa"
+    assert body["domicilio"]["ciudad"] == "Rosario"
+    session.expire_all()
+    persona = session.get(Persona, veterinario.persona_id)
+    assert persona is not None and persona.domicilio_id is not None
+    # Sin cambio de rol ni inhabilitación, las sesiones siguen vigentes.
+    assert session.get(Usuario, veterinario.id).version_token == 1
+
+
+def test_put_usuario_cambio_de_rol_invalida_las_sesiones(client, session) -> None:
+    admin, veterinario, _ = _login_editor(client, session)
+
+    response = client.put(
+        f"/api/usuarios/{veterinario.id}", json=_update_payload(rol_id=admin.rol_id)
+    )
+
+    assert response.status_code == 200
+    session.expire_all()
+    usuario = session.get(Usuario, veterinario.id)
+    assert usuario.rol_id == admin.rol_id
+    assert usuario.version_token == 2
+
+
+def test_put_usuario_inhabilitar_invalida_las_sesiones(client, session) -> None:
+    _, veterinario, _ = _login_editor(client, session)
+
+    response = client.put(
+        f"/api/usuarios/{veterinario.id}",
+        json=_update_payload(rol_id=veterinario.rol_id, habilitado=False),
+    )
+
+    assert response.status_code == 200
+    session.expire_all()
+    usuario = session.get(Usuario, veterinario.id)
+    assert usuario.habilitado is False
+    assert usuario.version_token == 2
+
+
+def test_put_usuario_empleado_a_cliente_devuelve_400(client, session) -> None:
+    _, veterinario, rol_cliente = _login_editor(client, session)
+
+    response = client.put(
+        f"/api/usuarios/{veterinario.id}", json=_update_payload(rol_id=rol_cliente.id)
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "CAMBIO_ROL_CLIENTE"
+
+
+def test_put_usuario_empleado_sin_domicilio_devuelve_422(client, session) -> None:
+    _, veterinario, _ = _login_editor(client, session)
+
+    response = client.put(
+        f"/api/usuarios/{veterinario.id}",
+        json=_update_payload(rol_id=veterinario.rol_id, domicilio=None, sexo=None),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "DATOS_INCOMPLETOS"
+
+
+def test_put_usuario_dni_de_otra_persona_devuelve_409(client, session) -> None:
+    _, veterinario, _ = _login_editor(client, session)
+
+    response = client.put(
+        f"/api/usuarios/{veterinario.id}",
+        json=_update_payload(rol_id=veterinario.rol_id, dni="20111220"),
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"] == "DNI_DUPLICADO"
+
+
+def test_put_usuario_cliente_cambia_el_mail_y_el_usuario(client, session) -> None:
+    admin, _, rol_cliente = _login_editor(client, session)
+    session.add(RolPermiso(rol_id=admin.rol_id, permiso_id=_permiso_id(session, "usuarios:crear")))
+    session.commit()
+    alta = client.post(
+        "/api/usuarios",
+        json=_usuario_create_payload(dni="50111222", rol_id=rol_cliente.id or 0),
+    ).json()
+
+    # Cliente sin domicilio ni fecha: para un cliente no son obligatorios.
+    payload = _usuario_create_payload(dni="50111222", rol_id=rol_cliente.id or 0)
+    payload.update(mail="Nuevo.Mail@Example.com", domicilio=None, fecha_nacimiento=None, sexo=None)
+    response = client.put(f"/api/usuarios/{alta['id']}", json=payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["es_cliente"] is True
+    assert body["username"] == "nuevo.mail@example.com"
+    assert body["mail"] == "nuevo.mail@example.com"
+    assert body["domicilio"] is None
+
+
+def test_put_usuario_cliente_sin_mail_devuelve_422(client, session) -> None:
+    admin, _, rol_cliente = _login_editor(client, session)
+    session.add(RolPermiso(rol_id=admin.rol_id, permiso_id=_permiso_id(session, "usuarios:crear")))
+    session.commit()
+    alta = client.post(
+        "/api/usuarios",
+        json=_usuario_create_payload(dni="50111222", rol_id=rol_cliente.id or 0),
+    ).json()
+
+    payload = _usuario_create_payload(dni="50111222", rol_id=rol_cliente.id or 0)
+    payload["mail"] = None
+    response = client.put(f"/api/usuarios/{alta['id']}", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "MAIL_OBLIGATORIO"
+
+
+def _permiso_id(session, nombre: str) -> int:
+    permiso = session.exec(select(Permiso).where(Permiso.nombre == nombre)).first()
+    if permiso is None:
+        permiso = Permiso(nombre=nombre, descripcion=nombre)
+        session.add(permiso)
+        session.commit()
+        session.refresh(permiso)
+    return permiso.id or 0
+

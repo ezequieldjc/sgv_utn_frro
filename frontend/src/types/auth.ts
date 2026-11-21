@@ -18,3 +18,21 @@ export interface AuthSessionResponse {
 export interface CambiarContrasenaObligatorioResponse {
   mensaje: string;
 }
+
+// Registro público de un cliente (POST /api/auth/registro).
+export interface RegistroPayload {
+  nombre: string;
+  apellido: string;
+  dni: string;
+  celular: string;
+  mail: string;
+  fecha_nacimiento: string | null;
+  sexo: "M" | "F" | "X" | null;
+  password: string;
+  password_repetida: string;
+}
+
+export interface RegistroResponse {
+  mensaje: string;
+  username: string;
+}

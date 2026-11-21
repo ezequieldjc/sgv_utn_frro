@@ -17,7 +17,7 @@ class Usuario(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     persona_id: int = Field(foreign_key="core.persona.id", nullable=False)
-    username: str = Field(max_length=50, nullable=False)
+    username: str = Field(max_length=100, nullable=False)
     habilitado: bool = Field(default=False, nullable=False)
     rol_id: int = Field(foreign_key="auth.rol.id", nullable=False)
     version_token: int = Field(default=1, nullable=False)

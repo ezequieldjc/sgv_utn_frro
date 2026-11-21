@@ -6,6 +6,7 @@ import type {
   HorarioAtencion,
   MotivoNoDisponible,
   TurnoItem,
+  VeterinarioOpcion,
 } from "@/types/agenda";
 
 export type VistaAgenda = "day" | "week" | "agenda";
@@ -228,4 +229,30 @@ export function mensajeError(error: unknown, fallback = "Ocurrió un error. Inte
   }
   const mensaje = (error as Error)?.message;
   return mensaje || fallback;
+}
+
+/**
+ * Devuelve el filtro inicial: respeta un profesional indicado por URL y,
+ * para veterinarios reales, selecciona al usuario autenticado.
+ * El comodín administrativo `*` no convierte al administrador en veterinario.
+ */
+export function filtroProfesionalInicial(
+  veterinarioParam: string | null,
+  veterinarios: VeterinarioOpcion[],
+  usuarioId: number | null | undefined,
+  permisos: string[],
+): string {
+  if (veterinarioParam && veterinarios.some((v) => String(v.id) === veterinarioParam)) {
+    return veterinarioParam;
+  }
+
+  const esVeterinario = permisos.includes("agenda:atender") && !permisos.includes("*");
+  if (esVeterinario && usuarioId) {
+    const propio = veterinarios.find((v) => v.id === usuarioId);
+    if (propio) {
+      return String(propio.id);
+    }
+  }
+
+  return "";
 }

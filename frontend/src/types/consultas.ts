@@ -59,6 +59,32 @@ export interface DictadoItem {
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
+/** La consulta de la que esta es control, con lo necesario para comparar la evolución. */
+export interface ConsultaAnteriorResumen {
+  id: number;
+  fecha_hora: string;
+  fecha_firma: string | null;
+  veterinario_nombre: string;
+  motivo: string | null;
+  peso_kg: string | null;
+  temperatura_c: string | null;
+  tratamiento: string | null;
+  observaciones: string | null;
+  diagnosticos: DiagnosticoItem[];
+  signos: ConsultaSignoItem[];
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
+/** Una consulta que se cargó como control de esta. */
+export interface ControlResumen {
+  id: number;
+  fecha_hora: string;
+  estado: EstadoConsulta;
+  motivo: string | null;
+  diagnostico_principal: string | null;
+}
+
+// TODO: reemplazar por tipo generado desde OpenAPI
 export interface ConsultaDetalle {
   id: number;
   estado: EstadoConsulta;
@@ -78,6 +104,8 @@ export interface ConsultaDetalle {
   signos: ConsultaSignoItem[];
   diagnosticos: DiagnosticoItem[];
   dictados: DictadoItem[];
+  consulta_padre: ConsultaAnteriorResumen | null;
+  controles: ControlResumen[];
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
@@ -95,6 +123,8 @@ export interface Explicacion {
   edad: unknown;
   sintomas_presentes: ExplicacionSigno[];
   sintomas_negados: ExplicacionSigno[];
+  /** Desde simulado-0.2: peso de "otra causa no contemplada" en el mismo total. */
+  otra_causa_pct?: number;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
@@ -113,6 +143,10 @@ export interface SugerenciasResponse {
   version_motor: string;
   sugerencias: SugerenciaItem[];
   signos_sin_codigo: number;
+  /** Peso de "otra causa no contemplada" en el mismo total que las sugerencias; null sin signos. */
+  otra_causa_pct: string | null;
+  /** Falso cuando "otra causa" es más probable que la primera sugerencia. */
+  evidencia_suficiente: boolean;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI
@@ -126,6 +160,7 @@ export interface ConsultaListItem {
   motivo: string | null;
   diagnostico_principal: string | null;
   veterinario_nombre: string;
+  consulta_padre_id: number | null;
 }
 
 // TODO: reemplazar por tipo generado desde OpenAPI

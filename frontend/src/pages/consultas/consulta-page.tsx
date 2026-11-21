@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Save, Signature, Stethoscope, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Signature, Stethoscope, Syringe, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +19,14 @@ import {
   PERMISOS_LECTURA,
   armarDiagnosticosFirma,
   cambiosFicha,
+  diagnosticoAnterior,
   dictadoDemoPara,
+  fechaControlSugerida,
   fechaHoraLabel,
   fichaDesdeDetalle,
   hasAnyPermission,
   hasPermission,
+  linkProgramarControl,
   mensajeError,
   validarFicha,
   type ClavePrincipal,
@@ -32,8 +35,12 @@ import {
   type FichaErrors,
   type FichaForm,
 } from "@/lib/consultas";
+import { PERMISOS_RECETAS, tieneReceta } from "@/lib/recetas";
+import { PERMISOS_VER_VACUNAS } from "@/lib/vacunas";
 import type {
   ConsultaDetalle,
+  ConsultaListItem,
+  ConsultaListResponse,
   ConsultaSignoItem,
   PatologiaOpcion,
   SintomaOpcion,
@@ -50,6 +57,8 @@ import {
   TarjetaMascota,
   TarjetaSignos,
 } from "./consulta-componentes";
+import { TarjetaControl, TarjetaControles } from "./control-componentes";
+import { BotonRecetaPdf } from "../recetas/boton-receta-pdf";
 
 const MANUAL_VACIO: DiagnosticoManual = { patologia_id: null, descripcion: "" };
 
@@ -61,6 +70,9 @@ export default function ConsultaPage() {
   const canVer = hasAnyPermission(permisos, PERMISOS_LECTURA);
   const canEditar = hasAnyPermission(permisos, PERMISOS_EDICION);
   const canFirmar = hasPermission(permisos, "consultas:firmar");
+  const canReceta = hasAnyPermission(permisos, [...PERMISOS_LECTURA, ...PERMISOS_RECETAS]);
+  const canVacunas = hasAnyPermission(permisos, PERMISOS_VER_VACUNAS);
+  const canProgramarControl = hasPermission(permisos, "agenda:crear_turno");
 
   const [detalle, setDetalle] = React.useState<ConsultaDetalle | null>(null);
   const [cargando, setCargando] = React.useState(true);
@@ -86,6 +98,10 @@ export default function ConsultaPage() {
   const [decisiones, setDecisiones] = React.useState<Record<number, DecisionSugerencia>>({});
   const [principal, setPrincipal] = React.useState<ClavePrincipal>(null);
   const [manual, setManual] = React.useState<DiagnosticoManual>(MANUAL_VACIO);
+
+  // Consultas firmadas de la mascota que pueden ser la anterior de este control.
+  const [candidatas, setCandidatas] = React.useState<ConsultaListItem[]>([]);
+  const [vinculando, setVinculando] = React.useState(false);
 
   const [confirmarFirma, setConfirmarFirma] = React.useState(false);
   const [confirmarDescarte, setConfirmarDescarte] = React.useState(false);
@@ -164,6 +180,34 @@ export default function ConsultaPage() {
       cancelado = true;
     };
   }, [aplicarDetalle, canVer, cargarSugerencias, consultaId]);
+
+  const mascotaId = detalle?.mascota.id;
+  const fechaConsulta = detalle?.fecha_hora;
+  React.useEffect(() => {
+    if (!editable || mascotaId === undefined || fechaConsulta === undefined) {
+      setCandidatas([]);
+      return;
+    }
+    let cancelado = false;
+    void (async () => {
+      try {
+        const data = await apiFetch<ConsultaListResponse>(
+          `/api/consultas?mascota_id=${mascotaId}&estado=firmada&page_size=50`,
+        );
+        if (!cancelado) {
+          const limite = new Date(fechaConsulta).getTime();
+          setCandidatas(data.items.filter((c) => new Date(c.fecha_hora).getTime() <= limite));
+        }
+      } catch {
+        if (!cancelado) {
+          setCandidatas([]);
+        }
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [editable, mascotaId, fechaConsulta]);
 
   // Cronómetro de la grabación simulada.
   React.useEffect(() => {
@@ -250,6 +294,37 @@ export default function ConsultaPage() {
     }
   }
 
+  async function vincularAnterior(padreId: number | null) {
+    setError(null);
+    setExito(null);
+    setVinculando(true);
+    try {
+      const data = await apiFetch<ConsultaDetalle>(`/api/consultas/${consultaId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consulta_padre_id: padreId }),
+      });
+      // Conserva lo que se está escribiendo en la ficha: el vínculo no la toca.
+      setDetalle(data);
+    } catch (err) {
+      setError(mensajeError(err, "No se pudo vincular la consulta anterior."));
+    } finally {
+      setVinculando(false);
+    }
+  }
+
+  function usarDiagnosticoAnterior() {
+    const dx = diagnosticoAnterior(detalle?.consulta_padre ?? null);
+    if (!dx) {
+      return;
+    }
+    setManual(dx);
+    if (principal === null) {
+      setPrincipal("manual");
+    }
+    setExito("Se cargó el diagnóstico de la consulta anterior como diagnóstico manual. Revisalo antes de firmar.");
+  }
+
   const base = `/api/consultas/${consultaId}/signos`;
   const json = { "Content-Type": "application/json" };
 
@@ -282,7 +357,11 @@ export default function ConsultaPage() {
       });
       aplicarDetalle(data);
       setConfirmarFirma(false);
-      setExito("Consulta firmada. Quedó en la historia clínica y en solo lectura.");
+      setExito(
+        tieneReceta(data)
+          ? "Consulta firmada. Quedó en la historia clínica y la receta ya se puede descargar en PDF."
+          : "Consulta firmada. Quedó en la historia clínica y en solo lectura.",
+      );
     } catch (err) {
       setConfirmarFirma(false);
       setError(mensajeError(err, "No se pudo firmar la consulta."));
@@ -359,11 +438,24 @@ export default function ConsultaPage() {
             {detalle.fecha_firma ? ` · firmada el ${fechaHoraLabel(detalle.fecha_firma)}` : ""}
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link to={`/consultas/historial?mascota_id=${detalle.mascota.id}`}>
-            Historia clínica
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {canReceta && tieneReceta(detalle) ? (
+            <BotonRecetaPdf consultaId={detalle.id} size="default" onError={setError} />
+          ) : null}
+          {canVacunas ? (
+            <Button variant="outline" asChild>
+              <Link to={`/mascotas/${detalle.mascota.id}/vacunas?consulta_id=${detalle.id}`}>
+                <Syringe />
+                Vacunas
+              </Link>
+            </Button>
+          ) : null}
+          <Button variant="outline" asChild>
+            <Link to={`/consultas/historial?mascota_id=${detalle.mascota.id}`}>
+              Historia clínica
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error ? <BannerError>{error}</BannerError> : null}
@@ -371,6 +463,15 @@ export default function ConsultaPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-6">
+          <TarjetaControl
+            anterior={detalle.consulta_padre}
+            signosActuales={detalle.signos}
+            candidatas={candidatas}
+            editable={editable}
+            trabajando={vinculando}
+            onVincular={(padreId) => void vincularAnterior(padreId)}
+            onUsarDiagnostico={usarDiagnosticoAnterior}
+          />
           {editable ? (
             <>
               <TarjetaDictado
@@ -453,6 +554,8 @@ export default function ConsultaPage() {
             <PanelSugerencias
               sugerencias={sugerencias?.sugerencias ?? []}
               signosSinCodigo={sugerencias?.signos_sin_codigo ?? 0}
+              otraCausaPct={sugerencias?.otra_causa_pct ?? null}
+              evidenciaSuficiente={sugerencias?.evidencia_suficiente ?? true}
               cargando={cargandoSugerencias}
               decisiones={decisiones}
               principal={principal}
@@ -482,7 +585,15 @@ export default function ConsultaPage() {
               }}
             />
           ) : (
-            <DiagnosticosFirmados diagnosticos={detalle.diagnosticos} />
+            <>
+              <DiagnosticosFirmados diagnosticos={detalle.diagnosticos} />
+              <TarjetaControles
+                controles={detalle.controles}
+                fechaSugerida={fechaControlSugerida(detalle)}
+                linkProgramar={linkProgramarControl(detalle)}
+                puedeProgramar={canProgramarControl}
+              />
+            </>
           )}
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   Loader2,
   Phone,
   Stethoscope,
+  Syringe,
   UserX,
   XCircle,
 } from "lucide-react";
@@ -39,6 +40,7 @@ import {
   turnoNoComenzo,
   type AccionTurno,
 } from "@/lib/agenda";
+import { esTurnoDeVacunacion } from "@/lib/vacunas";
 import type { TurnoItem } from "@/types/agenda";
 import type { ConsultaDetalle } from "@/types/consultas";
 
@@ -89,6 +91,11 @@ export function TurnoDetalleSheet({ turno, permisos, onClose, onChanged, onRepro
   const inicio = new Date(actual.fecha_hora_inicio);
   const puedeIniciarConsulta =
     hasPermission(permisos, "consultas:crear") && ESTADOS_TURNO_ATENDIBLES.includes(actual.estado);
+  // Un turno de vacunación se atiende registrando la dosis (descuenta stock y lo marca atendido).
+  const puedeVacunar =
+    hasPermission(permisos, "vacunas:registrar") &&
+    ESTADOS_TURNO_ATENDIBLES.includes(actual.estado) &&
+    esTurnoDeVacunacion(actual.tipo_turno_nombre);
 
   async function iniciarConsulta() {
     setIsWorking(true);
@@ -189,10 +196,23 @@ export function TurnoDetalleSheet({ turno, permisos, onClose, onChanged, onRepro
             </div>
           ) : null}
 
-          {acciones.length > 0 || puedeIniciarConsulta ? (
+          {acciones.length > 0 || puedeIniciarConsulta || puedeVacunar ? (
             <div className="mt-auto grid gap-2">
+              {puedeVacunar ? (
+                <Button
+                  disabled={isWorking}
+                  onClick={() => navigate(`/mascotas/${actual.mascota_id}/vacunas?turno_id=${actual.id}`)}
+                >
+                  <Syringe />
+                  Registrar vacuna
+                </Button>
+              ) : null}
               {puedeIniciarConsulta ? (
-                <Button disabled={isWorking} onClick={() => void iniciarConsulta()}>
+                <Button
+                  variant={puedeVacunar ? "outline" : "default"}
+                  disabled={isWorking}
+                  onClick={() => void iniciarConsulta()}
+                >
                   {isWorking ? <Loader2 className="animate-spin" /> : <Stethoscope />}
                   Iniciar consulta
                 </Button>

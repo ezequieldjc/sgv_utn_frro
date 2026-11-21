@@ -7,6 +7,7 @@ import pytest
 from sqlmodel import select
 
 from app.core.time_utils import utc_now
+from app.models.agenda.tipo_turno import TipoTurno
 from app.models.agenda.turno import Turno
 from app.models.clinica.consulta import Consulta
 from app.models.clinica.consulta_diagnostico import ConsultaDiagnostico
@@ -393,6 +394,9 @@ def test_sugerencias_para_bulldog_con_signos_respiratorios_ponen_primero_al_braq
     assert primera["explicacion"]["raza"] == {"codigo": "french-bulldog", "multiplicador": 4.0}
     assert [s["codigo"] for s in primera["explicacion"]["sintomas_negados"]] == ["sincope"]
     assert len(data["sugerencias"]) <= 3
+    # Con siete signos que explica el braquicefálico, "otra causa" casi no pesa.
+    assert data["evidencia_suficiente"] is True
+    assert Decimal(data["otra_causa_pct"]) < Decimal("1")
 
 
 def test_sugerencias_sin_signos_devuelve_lista_vacia(client, escenario):
@@ -401,6 +405,8 @@ def test_sugerencias_sin_signos_devuelve_lista_vacia(client, escenario):
     data = client.get(f"/api/consultas/{consulta['id']}/sugerencias").json()
 
     assert data["sugerencias"] == []
+    assert data["otra_causa_pct"] is None
+    assert data["evidencia_suficiente"] is False
 
 
 def test_motor_excluye_patologias_de_conformacion_en_razas_no_predispuestas():
@@ -410,10 +416,25 @@ def test_motor_excluye_patologias_de_conformacion_en_razas_no_predispuestas():
     ]
     signos = [motor_simulado.SignoEntrada("estertor_ronquido", True)]
 
-    sugerencias = motor_simulado.diagnosticar("labrador-retriever", signos, patologias)
+    resultado = motor_simulado.diagnosticar("labrador-retriever", signos, patologias)
 
-    assert [s.codigo for s in sugerencias] == ["acute-gastroenteritis"]
-    assert sugerencias[0].probabilidad_pct == Decimal("100.00")
+    assert [s.codigo for s in resultado.sugerencias] == ["acute-gastroenteritis"]
+    # Antes la gastroenteritis se llevaba el 100 % solo por ser la única que quedaba.
+    # Un ronquido no la explica: lo más probable es una causa fuera del catálogo.
+    assert resultado.evidencia_suficiente is False
+    assert resultado.otra_causa_pct is not None
+    assert resultado.otra_causa_pct > resultado.sugerencias[0].probabilidad_pct
+
+
+def test_motor_otra_causa_tiene_piso_aunque_las_prevalencias_sumen_mas_de_uno():
+    patologias = [
+        motor_simulado.PatologiaEntrada(i, codigo, codigo, 0.5)
+        for i, codigo in enumerate(motor_simulado.BASE_CONOCIMIENTO, start=1)
+    ]
+
+    assert motor_simulado.probabilidad_otra_causa(patologias) == (
+        motor_simulado.PROBABILIDAD_OTRA_CAUSA_MINIMA
+    )
 
 
 def test_motor_es_deterministico_y_los_porcentajes_no_superan_100():
@@ -431,8 +452,12 @@ def test_motor_es_deterministico_y_los_porcentajes_no_superan_100():
     segunda = motor_simulado.diagnosticar(None, signos, patologias)
 
     assert primera == segunda
-    assert primera[0].codigo == "acute-gastroenteritis"
-    assert sum(s.probabilidad_pct for s in primera) <= Decimal("100")
+    assert primera.sugerencias[0].codigo == "acute-gastroenteritis"
+    assert primera.evidencia_suficiente is True
+    # Top 3 + otra causa no pasan de 100 (más el redondeo a dos decimales de cada uno).
+    assert primera.otra_causa_pct is not None
+    total = sum(s.probabilidad_pct for s in primera.sugerencias) + primera.otra_causa_pct
+    assert total <= Decimal("100.02")
 
 
 # ---------------------------------------------------------------------------
@@ -654,3 +679,170 @@ def test_extractor_de_peso_y_temperatura_respeta_los_rangos(texto, peso, tempera
 
     assert nlp_simulado.extraer_peso(normalizado) == peso
     assert nlp_simulado.extraer_temperatura(normalizado) == temperatura
+
+
+# ---------------------------------------------------------------------------
+# Controles: consulta anterior (consulta_padre_id)
+# ---------------------------------------------------------------------------
+
+BRAQUICEFALICO = "brachycephalic-obstructive-airway-syndrome"
+
+
+def _consulta_firmada(client, escenario) -> dict:
+    """La consulta de Coco del turno del escenario, dictada y firmada con la primera sugerencia."""
+    consulta = _abrir(client, escenario)
+    _dictar(client, consulta["id"])
+    response = _firmar_con_principal_ia(client, consulta["id"])
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _turno_de_control(session, mascota: Mascota, veterinario_id: int) -> Turno:
+    tipo = TipoTurno(nombre="Control", duracion_min=30, activo=True)
+    session.add(tipo)
+    session.commit()
+    session.refresh(tipo)
+    inicio = utc_now() + timedelta(days=10)
+    turno = Turno(
+        mascota_id=mascota.id or 0,
+        veterinario_id=veterinario_id,
+        tipo_turno_id=tipo.id or 0,
+        fecha_hora_inicio=inicio,
+        fecha_hora_fin=inicio + timedelta(minutes=30),
+        estado="confirmado",
+        canal_origen="mostrador",
+    )
+    session.add(turno)
+    session.commit()
+    session.refresh(turno)
+    return turno
+
+
+def _abrir_control(client, session, escenario) -> tuple[dict, dict]:
+    firmada = _consulta_firmada(client, escenario)
+    turno = _turno_de_control(session, escenario["coco"], escenario["vet"].id or 0)
+    response = client.post(
+        "/api/consultas", json={"mascota_id": escenario["coco"].id, "turno_id": turno.id}
+    )
+    assert response.status_code == 201, response.text
+    return firmada, response.json()
+
+
+def test_consulta_desde_turno_de_control_se_vincula_a_la_ultima_firmada(
+    client, session, escenario
+):
+    firmada, control = _abrir_control(client, session, escenario)
+
+    anterior = control["consulta_padre"]
+    assert anterior["id"] == firmada["id"]
+    assert anterior["diagnosticos"][0]["patologia_codigo"] == BRAQUICEFALICO
+    assert "control en diez días" in anterior["tratamiento"]
+    negados = {s["codigo"] for s in anterior["signos"] if not s["presente"]}
+    assert negados == {"sincope"}
+    assert control["controles"] == []
+
+
+def test_consulta_sin_turno_de_control_no_se_vincula_sola(client, escenario):
+    _consulta_firmada(client, escenario)
+
+    response = client.post("/api/consultas", json={"mascota_id": escenario["coco"].id})
+
+    assert response.status_code == 201
+    assert response.json()["consulta_padre"] is None
+
+
+def test_la_consulta_anterior_tiene_que_ser_firmada_de_la_misma_mascota_y_existir(
+    client, session, escenario
+):
+    borrador = _abrir(client, escenario)
+    coco = escenario["coco"].id
+
+    no_firmada = client.post(
+        "/api/consultas", json={"mascota_id": coco, "consulta_padre_id": borrador["id"]}
+    )
+    assert no_firmada.status_code == 409
+    assert no_firmada.json()["error"] == "CONSULTA_ANTERIOR_NO_FIRMADA"
+
+    inexistente = client.post(
+        "/api/consultas", json={"mascota_id": coco, "consulta_padre_id": 9999}
+    )
+    assert inexistente.status_code == 404
+    assert inexistente.json()["error"] == "CONSULTA_ANTERIOR_NO_ENCONTRADA"
+
+    _dictar(client, borrador["id"])
+    assert _firmar_con_principal_ia(client, borrador["id"]).status_code == 200
+    luna = _seed_mascota(session, nombre="Luna", tutor_apellido="Perez")
+    otra_mascota = client.post(
+        "/api/consultas", json={"mascota_id": luna.id, "consulta_padre_id": borrador["id"]}
+    )
+    assert otra_mascota.status_code == 400
+    assert otra_mascota.json()["error"] == "CONSULTA_ANTERIOR_OTRA_MASCOTA"
+
+
+def test_patch_vincula_y_desvincula_la_consulta_anterior(client, escenario):
+    firmada = _consulta_firmada(client, escenario)
+    nueva = client.post("/api/consultas", json={"mascota_id": escenario["coco"].id}).json()
+
+    vinculada = client.patch(
+        f"/api/consultas/{nueva['id']}", json={"consulta_padre_id": firmada["id"]}
+    )
+    assert vinculada.status_code == 200
+    assert vinculada.json()["consulta_padre"]["id"] == firmada["id"]
+
+    # Cambiar el vínculo no toca la ficha.
+    con_motivo = client.patch(f"/api/consultas/{nueva['id']}", json={"motivo": "Control"})
+    assert con_motivo.json()["consulta_padre"]["id"] == firmada["id"]
+
+    desvinculada = client.patch(f"/api/consultas/{nueva['id']}", json={"consulta_padre_id": None})
+    assert desvinculada.status_code == 200
+    assert desvinculada.json()["consulta_padre"] is None
+    assert desvinculada.json()["motivo"] == "Control"
+
+
+def test_la_consulta_anterior_no_puede_ser_posterior(client, escenario):
+    temprana = client.post("/api/consultas", json={"mascota_id": escenario["coco"].id}).json()
+    posterior = _consulta_firmada(client, escenario)
+
+    response = client.patch(
+        f"/api/consultas/{temprana['id']}", json={"consulta_padre_id": posterior["id"]}
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "CONSULTA_ANTERIOR_POSTERIOR"
+
+
+def test_la_anterior_lista_sus_controles_y_el_historial_marca_el_control(
+    client, session, escenario
+):
+    firmada, control = _abrir_control(client, session, escenario)
+
+    anterior = client.get(f"/api/consultas/{firmada['id']}").json()
+    assert [(c["id"], c["estado"]) for c in anterior["controles"]] == [(control["id"], "borrador")]
+
+    historial = client.get(
+        "/api/consultas", params={"mascota_id": escenario["coco"].id}
+    ).json()["items"]
+    padres = {item["id"]: item["consulta_padre_id"] for item in historial}
+    assert padres == {firmada["id"]: None, control["id"]: firmada["id"]}
+
+
+def test_firmar_un_control_conserva_el_vinculo_y_el_diagnostico_anterior(
+    client, session, escenario
+):
+    firmada, control = _abrir_control(client, session, escenario)
+    patologia_id = firmada["diagnosticos"][0]["patologia_id"]
+
+    response = client.post(
+        f"/api/consultas/{control['id']}/firmar",
+        json={
+            "diagnosticos": [
+                {"origen": "manual", "tipo_diagnostico": "principal", "patologia_id": patologia_id}
+            ]
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["consulta_padre"]["id"] == firmada["id"]
+    anterior = client.get(f"/api/consultas/{firmada['id']}").json()
+    assert anterior["controles"][0]["estado"] == "firmada"
+    assert anterior["controles"][0]["diagnostico_principal"] == "Síndrome braquicefálico"

@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   SEXO_LABEL,
+  avisoEvidencia,
   edadLabel,
   formatearCronometro,
   nombreDiagnostico,
@@ -498,6 +499,11 @@ function Explicacion({
             {signo(s.codigo)}: negado, ×{(1 - s.frecuencia).toFixed(2)}
           </li>
         ))}
+        {explicacion.otra_causa_pct !== undefined ? (
+          <li>
+            Otra causa no contemplada: {porcentajeLabel(explicacion.otra_causa_pct)} del total
+          </li>
+        ) : null}
       </ul>
       {sugerencia.estudio_sugerido ? (
         <p className="mt-1">Estudio sugerido: {sugerencia.estudio_sugerido}</p>
@@ -509,6 +515,8 @@ function Explicacion({
 export function PanelSugerencias({
   sugerencias,
   signosSinCodigo,
+  otraCausaPct,
+  evidenciaSuficiente,
   cargando,
   decisiones,
   principal,
@@ -522,6 +530,8 @@ export function PanelSugerencias({
 }: {
   sugerencias: SugerenciaItem[];
   signosSinCodigo: number;
+  otraCausaPct: string | null;
+  evidenciaSuficiente: boolean;
   cargando: boolean;
   decisiones: Record<number, DecisionSugerencia>;
   principal: ClavePrincipal;
@@ -534,6 +544,7 @@ export function PanelSugerencias({
   onManual: (manual: DiagnosticoManual) => void;
 }) {
   const manualActivo = manual.patologia_id !== null || manual.descripcion.trim() !== "";
+  const aviso = avisoEvidencia(sugerencias, evidenciaSuficiente, otraCausaPct);
   return (
     <section className={`${tarjeta} space-y-4`}>
       <div className="flex items-start justify-between gap-2">
@@ -552,6 +563,15 @@ export function PanelSugerencias({
           <RefreshCw className={`size-4 ${cargando ? "animate-spin" : ""}`} />
         </Button>
       </div>
+
+      {aviso ? (
+        <p
+          role="status"
+          className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+        >
+          {aviso}
+        </p>
+      ) : null}
 
       {sugerencias.length === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -630,6 +650,12 @@ export function PanelSugerencias({
           })}
         </ul>
       )}
+
+      {sugerencias.length > 0 && otraCausaPct !== null ? (
+        <p className="text-xs text-muted-foreground">
+          Otra causa no contemplada en el catálogo: {porcentajeLabel(otraCausaPct)}
+        </p>
+      ) : null}
 
       {signosSinCodigo > 0 ? (
         <p className="text-xs text-amber-700 dark:text-amber-300">

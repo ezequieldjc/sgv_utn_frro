@@ -66,6 +66,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/auth-context";
+import { PERMISOS_RECETAS } from "@/lib/recetas";
 
 interface NavLink {
   to: string;
@@ -82,6 +83,16 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
+    title: "Mi portal",
+    icon: PawPrint,
+    items: [
+      { to: "/portal", label: "Inicio", permiso: "portal:ver" },
+      { to: "/portal/mascotas", label: "Mis mascotas", permiso: "portal:ver" },
+      { to: "/portal/turnos", label: "Mis turnos", permiso: "portal:ver" },
+      { to: "/portal/compras", label: "Mis compras", permiso: "portal:ver" },
+    ],
+  },
+  {
     title: "Consultas",
     icon: Stethoscope,
     items: [
@@ -91,22 +102,23 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Historial de Consultas",
         permiso: "consultas:ver_historial",
       },
-      {
-        to: "/consultas/historia-clinica",
-        label: "Historia Clínica",
-        permiso: "consultas:ver_historia_clinica",
-      },
     ],
   },
   {
     title: "Recetas",
     icon: Pill,
     items: [
-      { to: "/recetas/nueva", label: "Nueva Receta", permiso: "recetas:crear" },
+      // La receta sale de la consulta firmada: quien puede atender ve "Nueva Receta", y el
+      // historial usa los mismos permisos que GET /api/recetas.
+      {
+        to: "/recetas/nueva",
+        label: "Nueva Receta",
+        permiso: ["recetas:crear", "consultas:crear"],
+      },
       {
         to: "/recetas/historial",
         label: "Historial de Recetas",
-        permiso: "recetas:ver_historial",
+        permiso: PERMISOS_RECETAS,
       },
     ],
   },
@@ -116,6 +128,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: "/agenda/nuevo-turno", label: "Nuevo Turno", permiso: "agenda:crear_turno" },
       { to: "/agenda", label: "Ver Agenda", permiso: "agenda:ver" },
+      { to: "/recordatorios", label: "Recordatorios", permiso: "recordatorios:enviar" },
     ],
   },
   {
@@ -172,12 +185,17 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 const SEGMENT_LABELS: Record<string, string> = {
+  portal: "Mi portal",
+  turnos: "Mis turnos",
+  compras: "Mis compras",
   consultas: "Consultas",
   nueva: "Nueva",
   historial: "Historial",
   "historia-clinica": "Historia Clínica",
   recetas: "Recetas",
   agenda: "Agenda",
+  recordatorios: "Recordatorios",
+  vacunas: "Vacunas",
   "nuevo-turno": "Nuevo Turno",
   mascotas: "Mascotas",
   clientes: "Clientes",

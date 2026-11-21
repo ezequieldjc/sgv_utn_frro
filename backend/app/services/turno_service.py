@@ -37,7 +37,7 @@ from app.schemas.agenda import (
     VeterinarioOpcion,
 )
 from app.services.config_service import get_config_value
-from app.services.mascota_service import MASCOTA_ESTADO_ACTIVA_ID
+from app.services.mascota_service import ids_estados_atendibles
 
 PERMISO_ATENDER = "agenda:atender"
 
@@ -242,8 +242,11 @@ def _validar_mascota(session: Session, mascota_id: int) -> None:
     mascota = session.get(Mascota, mascota_id)
     if mascota is None:
         raise APIError(404, "MASCOTA_NO_ENCONTRADA", "No se encontró la mascota indicada")
-    if mascota.mascota_estado_id != MASCOTA_ESTADO_ACTIVA_ID:
-        raise APIError(400, "MASCOTA_NO_ACTIVA", "La mascota indicada no está activa")
+    # ACTIVA o en un estado del tutor eventual (en tránsito, extraviada): también se atienden.
+    if mascota.mascota_estado_id not in ids_estados_atendibles(session):
+        raise APIError(
+            400, "MASCOTA_NO_ACTIVA", "La mascota no puede recibir turnos en su estado actual"
+        )
 
 
 def es_veterinario_asignable(session: Session, usuario_id: int) -> bool:
@@ -496,7 +499,7 @@ def buscar_mascotas(session: Session, q: str, *, limit: int = 20) -> list[Mascot
         .join(Especie, Especie.id == Raza.especie_id)
         .join(Persona, Persona.id == Mascota.persona_id)
         .where(
-            Mascota.mascota_estado_id == MASCOTA_ESTADO_ACTIVA_ID,
+            col(Mascota.mascota_estado_id).in_(ids_estados_atendibles(session)),
             or_(
                 col(Mascota.nombre).ilike(like),
                 col(Persona.nombre).ilike(like),
@@ -652,35 +655,59 @@ def get_disponibilidad(
 # ---------------------------------------------------------------------------
 
 
-def create_turno(session: Session, payload: TurnoCreate) -> TurnoItem:
-    tipo = _get_tipo_turno_activo(session, payload.tipo_turno_id)
-    _validar_mascota(session, payload.mascota_id)
-    _validar_veterinario(session, payload.veterinario_id)
+def registrar_turno(
+    session: Session,
+    *,
+    mascota_id: int,
+    veterinario_id: int,
+    tipo_turno_id: int,
+    fecha_hora_inicio: datetime,
+    estado: str,
+    canal_origen: str,
+) -> Turno:
+    """Valida y guarda un turno. Lo usan la app interna (`create_turno`) y el portal del
+    cliente, que agrega sus propias reglas antes de llamarla."""
+    tipo = _get_tipo_turno_activo(session, tipo_turno_id)
+    _validar_mascota(session, mascota_id)
+    _validar_veterinario(session, veterinario_id)
 
-    inicio = _to_utc(payload.fecha_hora_inicio)
+    inicio = _to_utc(fecha_hora_inicio)
     fin = inicio + timedelta(minutes=tipo.duracion_min)
     _validar_no_pasado(inicio)
     _validar_horario(inicio, fin)
     _validar_superposiciones(
         session,
-        veterinario_id=payload.veterinario_id,
-        mascota_id=payload.mascota_id,
+        veterinario_id=veterinario_id,
+        mascota_id=mascota_id,
         inicio=inicio,
         fin=fin,
     )
 
     turno = Turno(
-        mascota_id=payload.mascota_id,
-        veterinario_id=payload.veterinario_id,
-        tipo_turno_id=payload.tipo_turno_id,
+        mascota_id=mascota_id,
+        veterinario_id=veterinario_id,
+        tipo_turno_id=tipo_turno_id,
         fecha_hora_inicio=inicio,
         fecha_hora_fin=fin,
-        estado=payload.estado_inicial,
-        canal_origen=payload.canal_origen,
+        estado=estado,
+        canal_origen=canal_origen,
     )
     session.add(turno)
     _commit_turno(session)
     session.refresh(turno)
+    return turno
+
+
+def create_turno(session: Session, payload: TurnoCreate) -> TurnoItem:
+    turno = registrar_turno(
+        session,
+        mascota_id=payload.mascota_id,
+        veterinario_id=payload.veterinario_id,
+        tipo_turno_id=payload.tipo_turno_id,
+        fecha_hora_inicio=payload.fecha_hora_inicio,
+        estado=payload.estado_inicial,
+        canal_origen=payload.canal_origen,
+    )
     return get_turno(session, turno.id or 0)
 
 

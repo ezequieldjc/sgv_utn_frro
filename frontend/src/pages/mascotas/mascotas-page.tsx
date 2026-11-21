@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   ShieldOff,
+  Syringe,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -31,14 +32,16 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { useSelectTypeahead } from "@/hooks/use-select-typeahead";
 import { apiFetch } from "@/lib/api";
+import { FILTRO_ATENDIBLES, etiquetaAtendibles } from "@/lib/mascotas";
+import { PERMISOS_VER_VACUNAS } from "@/lib/vacunas";
 import type {
   CatalogoOpcion,
   MascotaListResponse,
   RazaOpcion,
+  TutorEventualConfig,
 } from "@/types/mascotas";
 
 const PAGE_SIZE = 50;
-const ESTADO_ACTIVA_ID = 1;
 const ESPECIE_DEFAULT_PATTERN = /^canin[oa]$/i;
 const FILTER_SELECT_CLASS =
   "h-10 w-full min-w-0 rounded-md border border-input bg-transparent px-3 text-sm";
@@ -104,10 +107,13 @@ export default function MascotasPage() {
   const canCreate = hasPermission(permisos, "mascotas:crear");
   const canEdit = hasPermission(permisos, "mascotas:editar");
   const canViewHistorial = hasPermission(permisos, "consultas:ver_historial");
+  const canVacunas = PERMISOS_VER_VACUNAS.some((p) => hasPermission(permisos, p));
 
   const clienteIdParam = searchParams.get("cliente_id");
   const especieFromUrl = searchParams.get("especie_id");
-  const initialEstado = searchParams.get("mascota_estado_id") ?? String(ESTADO_ACTIVA_ID);
+  // Por defecto, las que se pueden atender: activas y las del tutor eventual (en tránsito,
+  // extraviadas). Así un animal rescatado no desaparece del listado.
+  const initialEstado = searchParams.get("mascota_estado_id") ?? FILTRO_ATENDIBLES;
 
   const [q, setQ] = React.useState(searchParams.get("q") ?? "");
   const [debouncedQ, setDebouncedQ] = React.useState(q);
@@ -119,6 +125,7 @@ export default function MascotasPage() {
   const [especies, setEspecies] = React.useState<CatalogoOpcion[]>([]);
   const [razas, setRazas] = React.useState<RazaOpcion[]>([]);
   const [estados, setEstados] = React.useState<CatalogoOpcion[]>([]);
+  const [tutorEventual, setTutorEventual] = React.useState<TutorEventualConfig | null>(null);
   const [data, setData] = React.useState<MascotaListResponse | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
@@ -146,6 +153,13 @@ export default function MascotasPage() {
         pendingEspecieDefault.current = false;
         setEspecieReady(true);
         setErrorMessage("No se pudieron cargar los filtros del listado.");
+      }
+      try {
+        setTutorEventual(
+          await apiFetch<TutorEventualConfig>("/api/mascotas/config/tutor-eventual"),
+        );
+      } catch {
+        setTutorEventual(null);
       }
     })();
   }, [canView]);
@@ -209,7 +223,9 @@ export default function MascotasPage() {
         if (razaId) {
           params.set("raza_id", razaId);
         }
-        if (estadoId) {
+        if (estadoId === FILTRO_ATENDIBLES) {
+          params.set("solo_atendibles", "true");
+        } else if (estadoId) {
           params.set("mascota_estado_id", estadoId);
         }
         if (clienteIdParam) {
@@ -385,6 +401,7 @@ export default function MascotasPage() {
               handleTypeaheadKeyDown(
                 event,
                 [
+                  { value: FILTRO_ATENDIBLES, label: etiquetaAtendibles(estados, tutorEventual) },
                   { value: "", label: "Todos los estados" },
                   ...estados.map((item) => ({
                     value: String(item.id),
@@ -403,6 +420,7 @@ export default function MascotasPage() {
               setEstadoId(event.target.value);
             }}
           >
+            <option value={FILTRO_ATENDIBLES}>{etiquetaAtendibles(estados, tutorEventual)}</option>
             <option value="">Todos los estados</option>
             {estados.map((item) => (
               <option key={item.id} value={String(item.id)}>
@@ -485,6 +503,15 @@ export default function MascotasPage() {
                               to={`/consultas/historial?mascota_id=${mascota.id}`}
                             >
                               <ClipboardList className="size-4" />
+                            </ActionIconButton>
+                          ) : null}
+
+                          {canVacunas ? (
+                            <ActionIconButton
+                              label="Vacunas y desparasitaciones"
+                              to={`/mascotas/${mascota.id}/vacunas`}
+                            >
+                              <Syringe className="size-4" />
                             </ActionIconButton>
                           ) : null}
                         </div>

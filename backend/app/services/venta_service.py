@@ -38,6 +38,17 @@ def _nombre_cliente(persona: Persona | None) -> str | None:
 def registrar_venta(session: Session, payload: VentaCreate, usuario_id: int) -> VentaResultado:
     """Venta de mostrador: envases completos, precio tomado del producto.
     Crea la venta, sus líneas y un movimiento `venta` por producto en una sola transacción."""
+    venta, advertencias = crear_venta(session, payload, usuario_id)
+    session.commit()
+    return VentaResultado(venta=get_venta(session, venta.id or 0), advertencias=advertencias)
+
+
+def crear_venta(session: Session, payload: VentaCreate, usuario_id: int) -> tuple[Venta, list[str]]:
+    """Arma la venta, sus líneas y los movimientos de stock sin confirmar la transacción.
+
+    La usa `registrar_venta` y también quien necesita la venta dentro de su propia operación
+    (por ejemplo, la vacuna que se cobra al aplicarla): el commit queda a cargo de quien llama.
+    """
     if payload.persona_id is not None and session.get(Persona, payload.persona_id) is None:
         raise APIError(404, "CLIENTE_NO_ENCONTRADO", "No se encontró el cliente indicado")
 
@@ -89,8 +100,7 @@ def registrar_venta(session: Session, payload: VentaCreate, usuario_id: int) -> 
             venta_id=venta.id,
         )
         advertencias.extend(avisos)
-    session.commit()
-    return VentaResultado(venta=get_venta(session, venta.id or 0), advertencias=advertencias)
+    return venta, advertencias
 
 
 def get_venta(session: Session, venta_id: int) -> VentaDetail:

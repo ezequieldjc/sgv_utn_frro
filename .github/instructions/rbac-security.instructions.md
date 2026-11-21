@@ -24,6 +24,10 @@ puede hacer algo se resuelve siempre usuario → rol → rol_permiso → permiso
   `ADMIN` (case-insensitive) para hacerlo inmutable (solo lectura, sin editar `rol_permiso`,
   sin recrearlo). Nunca para autorizar al usuario logueado. El `*` no se asigna a roles
   operativos desde la UI/API.
+- Excepción documentada: en un alta de usuario se puede detectar el rol *objetivo* `CLIENTE`
+  (`cuenta_cliente_service.es_rol_cliente`) para saber **qué se crea**: un usuario CLIENTE es
+  siempre un cliente completo (persona con `es_cliente = true` y el mail como usuario). Quien da
+  el alta se sigue autorizando con `usuarios:crear`.
 
 ## Sesión y frontend
 
@@ -59,6 +63,12 @@ vencido.
 Nunca sobrescribas el hash: cada cambio inserta un registro nuevo (bcrypt/argon2). Si el
 vigente tiene `debe_cambiar=true`, el login responde `403 DEBE_CAMBIAR_CONTRASENA` sin JWT; el
 cambio se hace en `POST /api/auth/cambiar-contrasena-obligatorio` (público, sin auto-login).
+
+## Registro de clientes
+
+`POST /api/auth/registro` es público (como el login): crea juntas la persona cliente y su
+usuario CLIENTE, con el mail como usuario y la contraseña que eligió (`debe_cambiar = false`).
+No inicia sesión. Si el DNI o el mail ya existen responde un único 409 `CUENTA_EXISTENTE`.
 
 ## Auditoría de login (`auth.login`)
 

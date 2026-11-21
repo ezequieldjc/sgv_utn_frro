@@ -4,9 +4,20 @@ from fastapi import APIRouter, Cookie, Depends, status
 from sqlmodel import Session
 
 from app.db.session import get_session
-from app.schemas.clientes import ClienteCreate, ClienteCreateResponse, ClienteListItem
+from app.schemas.clientes import (
+    ClienteCreate,
+    ClienteCreateResponse,
+    ClienteDetail,
+    ClienteListItem,
+    ClienteUpdate,
+)
 from app.services.authorization_service import require_permission
-from app.services.cliente_service import create_cliente, list_clientes
+from app.services.cliente_service import (
+    create_cliente,
+    get_cliente,
+    list_clientes,
+    update_cliente,
+)
 
 router = APIRouter(prefix="/api/clientes", tags=["clientes"])
 
@@ -28,3 +39,25 @@ def post_cliente(
 ) -> ClienteCreateResponse:
     require_permission(session, access_token, "clientes:crear")
     return create_cliente(session, body)
+
+
+@router.get("/{cliente_id}", response_model=ClienteDetail)
+def get_cliente_by_id(
+    cliente_id: int,
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> ClienteDetail:
+    require_permission(session, access_token, "clientes:ver_listado")
+    return get_cliente(session, cliente_id)
+
+
+@router.put("/{cliente_id}", response_model=ClienteDetail)
+def put_cliente(
+    cliente_id: int,
+    body: ClienteUpdate,
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> ClienteDetail:
+    require_permission(session, access_token, "clientes:editar")
+    return update_cliente(session, cliente_id, body)
+
