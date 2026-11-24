@@ -69,3 +69,6 @@ cypress/screenshots/
 # --- Secretos locales (no versionar) ---
 cookies.txt
 scripts/secretkey.txt
+
+# --- Frontend compilado que el workflow copia al backend ---
+backend/static/
