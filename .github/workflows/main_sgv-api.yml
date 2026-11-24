@@ -27,6 +27,29 @@ jobs:
           source antenv/bin/activate
           pip install -r requirements.txt
 
+      # El frontend se sirve desde este mismo App Service (ver backend/app/core/frontend.py).
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: ./frontend
+        # VITE_API_BASE_URL vacía: el frontend llama a /api en su mismo dominio.
+        env:
+          VITE_API_BASE_URL: ''
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy frontend build into backend
+        run: |
+          rm -rf backend/static
+          cp -r frontend/dist backend/static
+          test -f backend/static/index.html
+
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:

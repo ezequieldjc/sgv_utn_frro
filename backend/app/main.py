@@ -19,6 +19,8 @@ from app.api.roles import router as roles_router
 from app.api.usuarios import router as usuarios_router
 from app.api.vacunas import router as vacunas_router
 from app.core.errors import APIError
+from app.core.frontend import registrar_frontend
+from app.core.settings import get_settings
 from app.schemas.common import ErrorResponse
 
 
@@ -27,8 +29,9 @@ app = FastAPI(title="UTN FRRO SVG API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
+        origen.strip().rstrip("/")
+        for origen in get_settings().cors_origins.split(",")
+        if origen.strip()
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -62,3 +65,6 @@ app.include_router(portal_router)
 app.include_router(vacunas_router)
 app.include_router(recordatorios_router)
 app.include_router(recetas_router)
+
+# Va al final: la ruta comodín del frontend no tiene que tapar ninguna ruta de la API.
+registrar_frontend(app)
