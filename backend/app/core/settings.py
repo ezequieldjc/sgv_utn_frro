@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     refresh_cookie_name: str = Field(default="refresh_token", alias="REFRESH_COOKIE_NAME")
     cookie_secure: bool = Field(default=False, alias="COOKIE_SECURE")
     cookie_samesite: str = Field(default="strict", alias="COOKIE_SAMESITE")
+    # Orígenes extra permitidos por CORS, separados por coma. Solo hace falta si el frontend
+    # se sirve desde otro dominio: en producción va en el mismo App Service y no se usa.
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173",
+        alias="CORS_ORIGINS",
+    )
     access_token_expiration_minutes_default: int = Field(
         default=15,
         alias="ACCESS_TOKEN_EXPIRATION_MINUTES_DEFAULT",
