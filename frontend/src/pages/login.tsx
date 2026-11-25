@@ -62,6 +62,7 @@ export default function LoginPage() {
   const [changeError, setChangeError] = useState<string | null>(null);
   const [mismatchError, setMismatchError] = useState<string | null>(null);
   const [isChanging, setIsChanging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isChangeOpen = changeUsername !== null;
 
@@ -106,6 +107,9 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     setError(null);
     setSuccessMessage(null);
     try {
@@ -129,6 +133,8 @@ export default function LoginPage() {
       }
       const message = err instanceof Error ? err.message : "Error al iniciar sesión";
       setError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -216,7 +222,27 @@ export default function LoginPage() {
             </div>
           ) : null}
 
-          {error ? <div className="mb-4 text-sm text-red-300">{error}</div> : null}
+          {error ? (
+            <div role="alert" className="mb-4 rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {error}
+            </div>
+          ) : null}
+
+          {isSubmitting ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mb-4 flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white shadow-sm"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10">
+                <Loader2 className="size-5 animate-spin text-[color:var(--primary)]" />
+              </span>
+              <div>
+                <p className="font-medium">Iniciando sesión</p>
+                <p className="text-xs text-white/65">Estamos verificando tus datos...</p>
+              </div>
+            </div>
+          ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -231,6 +257,7 @@ export default function LoginPage() {
                 placeholder="usuario o mail"
                 maxLength={100}
                 autoComplete="username"
+                disabled={isLoading || isSubmitting}
                 required
               />
             </div>
@@ -247,6 +274,7 @@ export default function LoginPage() {
                 className="mt-1 block w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-white/50"
                 placeholder="contraseña"
                 autoComplete="current-password"
+                disabled={isLoading || isSubmitting}
                 required
               />
             </div>
@@ -254,10 +282,17 @@ export default function LoginPage() {
             <div>
               <button
                 type="submit"
-                disabled={isLoading}
-                className="inline-flex w-full items-center justify-center rounded-md bg-[color:var(--primary)] px-4 py-2 text-white disabled:opacity-60"
+                disabled={isLoading || isSubmitting}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[color:var(--primary)] px-4 py-2 font-medium text-white shadow-sm transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {isLoading ? "Cargando..." : "Ingresar"}
+                {isLoading || isSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Iniciando sesión...
+                  </>
+                ) : (
+                  "Ingresar"
+                )}
               </button>
             </div>
           </form>
